@@ -44,11 +44,15 @@ namespace electrum {
         kTypeTagSymbol
     };
 
-    struct ASTNode {
-        TypeTag tag;
+    struct SourcePosition {
         size_t line;
         size_t column;
         shared_ptr<string> filename;
+    };
+
+    struct ASTNode {
+        TypeTag tag;
+        shared_ptr<SourcePosition> sourcePosition;
 
         union {
             int64_t integerValue;

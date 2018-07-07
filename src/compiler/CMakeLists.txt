@@ -23,7 +23,7 @@ if(APPLE)
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/llvm)
 endif()
 
-message(STATUS "Module path ${CMAKE_MODULE_PATH}")
+# LLVM
 find_package(LLVM REQUIRED CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -32,7 +32,11 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 include_directories(${CMAKE_PROJECT_NAME}c_lib PUBLIC ${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 llvm_map_components_to_libnames(llvm_libs support core irreader)
-
 target_link_libraries(${CMAKE_PROJECT_NAME}c_lib ${llvm_libs})
+
+# Boost
+
+find_package(Boost 1.59.0 REQUIRED)
+include_directories(${Boost_INCLUDE_DIR})
 
 target_link_libraries(${CMAKE_PROJECT_NAME}c_lib ${CMAKE_PROJECT_NAME}_lexer)
