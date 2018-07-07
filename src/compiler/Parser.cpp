@@ -59,6 +59,9 @@ namespace electrum {
         auto val = make_shared<electrum::ASTNode>();
         val->tag = kTypeTagInteger;
         val->integerValue = stoll(t.text);
+        val->line = t.line;
+        val->column = t.column;
+        val->filename = t.filename;
         return val;
     }
 
@@ -66,6 +69,9 @@ namespace electrum {
         auto val = make_shared<ASTNode>();
         val->tag = kTypeTagFloat;
         val->floatValue = std::stod(t.text);
+        val->line = t.line;
+        val->column = t.column;
+        val->filename = t.filename;
         return val;
     }
 
@@ -73,6 +79,9 @@ namespace electrum {
         auto val = make_shared<ASTNode>();
         val->tag = kTypeTagSymbol;
         val->stringValue = make_shared<string>(t.text);
+        val->line = t.line;
+        val->column = t.column;
+        val->filename = t.filename;
         return val;
     }
 
@@ -82,6 +91,9 @@ namespace electrum {
         // TODO: Parse escapes
         val->tag = kTypeTagString;
         val->stringValue = make_shared<string>(t.text);
+        val->line = t.line;
+        val->column = t.column;
+        val->filename = t.filename;
         return val;
     }
 
@@ -103,6 +115,9 @@ namespace electrum {
                     auto val = make_shared<ASTNode>();
                     val->tag = kTypeTagList;
                     val->listValue = list;
+                    val->line = t.line;
+                    val->column = t.column;
+                    val->filename = t.filename;
                     return std::make_pair(val, it);
                 }
                 default: {
