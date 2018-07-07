@@ -38,6 +38,7 @@ namespace electrum {
             case kTypeTagInteger: return analyzeInteger(form);
             case kTypeTagFloat: return analyzeFloat(form);
             case kTypeTagString: return analyzeString(form);
+            case kTypeTagList: return analyzeList(form);
 
 
         }
@@ -165,7 +166,7 @@ namespace electrum {
         auto node = make_shared<DoAnalyzerNode>();
 
         // Add all but the last statements to 'statements'
-        for (auto it = listPtr->begin()++; it < listPtr->end() - 1; ++it) {
+        for (auto it = listPtr->begin() + 1; it < listPtr->end() - 1; ++it) {
             node->statements.push_back(analyzeForm(*it));
         }
 

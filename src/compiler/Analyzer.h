@@ -38,10 +38,18 @@ namespace electrum {
     using std::make_shared;
     using std::string;
 
+    enum AnalyzerNodeType {
+        kAnalyzerNodeTypeNone = -1,
+        kAnalyzerNodeTypeIf,
+        kAnalyzerNodeTypeConstant,
+        kAnalyzerNodeTypeDo
+    };
+
     class AnalyzerNode {
     public:
         shared_ptr<SourcePosition> sourcePosition;
         virtual vector<shared_ptr<AnalyzerNode>> children() { return {}; };
+        virtual AnalyzerNodeType nodeType() = 0;
     };
 
     /**
@@ -57,6 +65,10 @@ namespace electrum {
 
         vector<shared_ptr<AnalyzerNode>> children() override {
             return {condition, consequent, alternative};
+        }
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeIf;
         }
     };
 
@@ -83,6 +95,10 @@ namespace electrum {
                 double,
                 bool,
                 shared_ptr<string>> value;
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeConstant;
+        }
     };
 
     /*
@@ -99,6 +115,10 @@ namespace electrum {
             auto rv = vector<shared_ptr<AnalyzerNode>>(statements);
             rv.push_back(returnValue);
             return rv;
+        }
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeDo;
         }
     };
 
@@ -129,7 +149,8 @@ namespace electrum {
 
         /// Analysis functions for special forms
         const std::unordered_map<std::string, AnalyzerFunc> specialForms  {
-                { "if*", &Analyzer::analyzeIf }
+                { "if", &Analyzer::analyzeIf },
+                { "do", &Analyzer::analyzeDo }
         };
 
         shared_ptr <AnalyzerNode> analyzeDo(const shared_ptr <ASTNode> form);
