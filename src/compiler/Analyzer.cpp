@@ -25,6 +25,7 @@
 
 #include <memory>
 #include "Analyzer.h"
+#include "CompilerExceptions.h"
 
 namespace electrum {
 
@@ -33,7 +34,7 @@ namespace electrum {
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode> form) {
 
-        switch(form->tag) {
+        switch (form->tag) {
             case kTypeTagInteger: return analyzeInteger(form);
             case kTypeTagFloat: return analyzeFloat(form);
             case kTypeTagString: return analyzeString(form);
@@ -49,6 +50,7 @@ namespace electrum {
         node->type = kAnalyzerConstantTypeInteger;
         node->value = form->integerValue;
         node->sourcePosition = form->sourcePosition;
+        return node;
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeFloat(const shared_ptr<ASTNode> form) {
@@ -56,6 +58,7 @@ namespace electrum {
         node->type = kAnalyzerConstantTypeFloat;
         node->value = form->floatValue;
         node->sourcePosition = form->sourcePosition;
+        return node;
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeBoolean(const shared_ptr<ASTNode> form) {
@@ -63,6 +66,7 @@ namespace electrum {
         node->type = kAnalyzerConstantTypeBoolean;
         // TODO: Implement boolean
         node->sourcePosition = form->sourcePosition;
+        return node;
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeString(const shared_ptr<ASTNode> form) {
@@ -70,20 +74,21 @@ namespace electrum {
         node->type = kAnalyzerConstantTypeString;
         node->value = form->stringValue;
         node->sourcePosition = form->sourcePosition;
+        return node;
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeList(const shared_ptr<ASTNode> form) {
         auto listPtr = form->listValue;
         auto listSize = listPtr->size();
 
-        if(listSize > 0) {
+        if (listSize > 0) {
             auto firstItemForm = listPtr->at(0);
 
             // Check for special form
-            if(firstItemForm->tag == kTypeTagSymbol) {
+            if (firstItemForm->tag == kTypeTagSymbol) {
                 // Check for special form
                 auto maybeSpecial = maybeAnalyzeSpecialForm(firstItemForm->stringValue, form);
-                if(maybeSpecial) {
+                if (maybeSpecial) {
                     return maybeSpecial;
                 } else {
                     // The node isn't a special form, so it might be a function call.
@@ -104,7 +109,7 @@ namespace electrum {
 
         // If an analysis function exists for the symbol, return the result
         auto analyseFunc = specialForms.find(*symbolName);
-        if(analyseFunc != specialForms.end()) {
+        if (analyseFunc != specialForms.end()) {
             auto func = analyseFunc->second;
             return (this->*func)(form);
         }
@@ -122,8 +127,9 @@ namespace electrum {
         assert(!listPtr->empty());
 
         // Check list has at least a condition and consequent
-        if(listPtr->size() < 3) {
-            throw std::exception(); // TODO: Replace with proper exception
+        if (listPtr->size() < 3) {
+            throw CompilerException("if form requires at least a condition and a consequent",
+                                    form->sourcePosition);
         }
 
         auto conditionForm = listPtr->at(1);
@@ -133,10 +139,11 @@ namespace electrum {
         node->condition = analyzeForm(conditionForm);
         node->consequent = analyzeForm(consequentForm);
 
-        if(listPtr->size() > 4) {
+        if (listPtr->size() > 4) {
             // The list has more elements than is expected.
-            throw std::exception(); // TODO: Replace with proper exception
-        } else if(listPtr->size() > 3) {
+            throw CompilerException("if form must have a maximum of 3 statements",
+                                    listPtr->at(4)->sourcePosition);
+        } else if (listPtr->size() > 3) {
             auto alternativeForm = listPtr->at(3);
             node->alternative = analyzeForm(alternativeForm);
         }
@@ -144,5 +151,28 @@ namespace electrum {
         return node;
     }
 
+    shared_ptr<AnalyzerNode> Analyzer::analyzeDo(const shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto listPtr = form->listValue;
+        assert(!listPtr->empty());
+
+        if (listPtr->size() < 2) {
+            // Do forms must have at least one form in the body
+            throw CompilerException("Do forms must have at least one body statement",
+                                    form->sourcePosition);
+        }
+
+        auto node = make_shared<DoAnalyzerNode>();
+
+        // Add all but the last statements to 'statements'
+        for (auto it = listPtr->begin()++; it < listPtr->end() - 1; ++it) {
+            node->statements.push_back(analyzeForm(*it));
+        }
+
+        // Add the last statement to 'returnValue'
+        node->returnValue = analyzeForm(*(listPtr->end() - 1));
+
+        return node;
+    }
 
 }

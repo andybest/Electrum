@@ -41,6 +41,7 @@ namespace electrum {
     class AnalyzerNode {
     public:
         shared_ptr<SourcePosition> sourcePosition;
+        virtual vector<shared_ptr<AnalyzerNode>> children() { return {}; };
     };
 
     /**
@@ -53,6 +54,10 @@ namespace electrum {
         shared_ptr<AnalyzerNode> condition;
         shared_ptr<AnalyzerNode> consequent;
         shared_ptr<AnalyzerNode> alternative;
+
+        vector<shared_ptr<AnalyzerNode>> children() override {
+            return {condition, consequent, alternative};
+        }
     };
 
     /**
@@ -78,6 +83,23 @@ namespace electrum {
                 double,
                 bool,
                 shared_ptr<string>> value;
+    };
+
+    /*
+     * Node that represents a 'do' form
+     */
+    class DoAnalyzerNode : public AnalyzerNode {
+    public:
+        /// A vector of all statements in the do form, except the return value
+        vector<shared_ptr<AnalyzerNode>> statements;
+        /// The last value in the do form
+        shared_ptr<AnalyzerNode> returnValue;
+
+        vector<shared_ptr<AnalyzerNode>> children() override {
+            auto rv = vector<shared_ptr<AnalyzerNode>>(statements);
+            rv.push_back(returnValue);
+            return rv;
+        }
     };
 
     class Analyzer {
@@ -109,6 +131,8 @@ namespace electrum {
         const std::unordered_map<std::string, AnalyzerFunc> specialForms  {
                 { "if*", &Analyzer::analyzeIf }
         };
+
+        shared_ptr <AnalyzerNode> analyzeDo(const shared_ptr <ASTNode> form);
     };
 }
 
