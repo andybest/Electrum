@@ -81,3 +81,11 @@ TEST(Lexer, lexes_quote_quasiquote_unquote_spliceunquote) {
     ASSERT_TOKEN(tokens[8], kTokenTypeSymbol, "rest");
     ASSERT_TOKEN(tokens[9], kTokenTypeRParen, ")");
 }
+
+TEST(Lexer, lexes_string) {
+    TOKENIZE_STRING("\"Hello, world!\"");
+
+    EXPECT_EQ(tokens.size(), 1);
+
+    ASSERT_TOKEN(tokens[0], kTokenTypeString, "\"Hello, world!\"");
+}

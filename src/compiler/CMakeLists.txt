@@ -4,12 +4,15 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(HEADER_FILES
         Compiler.h
-        Parser.h)
+        Parser.h
+        types/Types.h
+        Analyzer.h)
 
 set(SOURCE_FILES
         main.cpp
         Compiler.cpp
-        Parser.cpp types/Types.h)
+        Parser.cpp
+        Analyzer.cpp )
 
 add_library(${CMAKE_PROJECT_NAME}c_lib STATIC
         ${HEADER_FILES}

@@ -54,6 +54,8 @@ namespace electrum {
 
     public:
         std::shared_ptr<ASTNode> readString(string input) const;
+
+        shared_ptr <ASTNode> parseString(const Token &t) const;
     };
 }
 

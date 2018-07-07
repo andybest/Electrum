@@ -46,6 +46,9 @@ namespace electrum {
 
     struct ASTNode {
         TypeTag tag;
+        size_t line;
+        size_t column;
+        shared_ptr<string> filename;
 
         union {
             int64_t integerValue;

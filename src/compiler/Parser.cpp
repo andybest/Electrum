@@ -43,6 +43,7 @@ namespace electrum {
                 case kTokenTypeInteger: return make_pair(parseInteger(t), it);
                 case kTokenTypeFloat: return make_pair(parseFloat(t), it);
                 case kTokenTypeSymbol: return make_pair(parseSymbol(t), it);
+                case kTokenTypeString: return make_pair(parseString(t), it);
                 case kTokenTypeLParen: {
                     return parseList(tokens, ++it);
                 }
@@ -71,6 +72,15 @@ namespace electrum {
     shared_ptr<ASTNode> Parser::parseSymbol(const Token &t) const {
         auto val = make_shared<ASTNode>();
         val->tag = kTypeTagSymbol;
+        val->stringValue = make_shared<string>(t.text);
+        return val;
+    }
+
+    shared_ptr<ASTNode> Parser::parseString(const Token &t) const {
+        auto val = make_shared<ASTNode>();
+
+        // TODO: Parse escapes
+        val->tag = kTypeTagString;
         val->stringValue = make_shared<string>(t.text);
         return val;
     }

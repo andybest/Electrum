@@ -12,6 +12,7 @@
 
 %class {
 public:
+    std::shared_ptr<std::string> filename;
 
     std::vector<Token> getTokens() {
         std::vector<Token> tokens;
@@ -26,6 +27,7 @@ public:
                 t.column = columno();
                 t.text = str();
                 t.type = static_cast<TokenType>(r);
+                t.filename = filename;
                 tokens.push_back(t);
             }
             r = yylex();
@@ -64,6 +66,8 @@ INTRALINE_WS        " " | "\t"
 LINE_ENDING         "\r\n" | "\n" | "\r"
 WHITESPACE          {INTRALINE_WS} | {LINE_ENDING}
 
+STRING              \"([^\\\"]|\\\")*\"
+
 %%
 
 {L_PAREN}           { return kTokenTypeLParen; }
@@ -81,6 +85,8 @@ WHITESPACE          {INTRALINE_WS} | {LINE_ENDING}
 {INTEGER}           { return kTokenTypeInteger; }
 
 {IDENTIFIER}        { return kTokenTypeSymbol; }
+
+{STRING}            { return kTokenTypeString; }
 
 <<EOF>>             { return kTokenTypeEOF; }
 

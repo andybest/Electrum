@@ -28,6 +28,7 @@
 
 #include <cstdint>
 #include <string>
+#include <memory>
 
 namespace electrum {
     enum TokenType {
@@ -41,13 +42,14 @@ namespace electrum {
         kTokenTypeSymbol,
         kTokenTypeFloat,
         kTokenTypeInteger,
+        kTokenTypeString,
         kTokenTypeEOF
     };
 
     struct Token {
         TokenType type;
         std::string text;
-        std::string filename;
+        std::shared_ptr<std::string> filename;
         size_t line;
         size_t column;
     };
