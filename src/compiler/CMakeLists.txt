@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(HEADER_FILES
         Compiler.h
         Parser.h
-        types/Types.h
         Analyzer.h)
 
 set(SOURCE_FILES

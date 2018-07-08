@@ -1,7 +1,7 @@
 
 #include "gtest/gtest.h"
 #include "compiler/Parser.h"
-#include "compiler/types/Types.h"
+#include "types/Types.h"
 
 #define PARSE_STRING(s) Parser p; auto val = p.readString((s))
 #define ASSERT_INT(v, intVal) EXPECT_EQ((v)->tag, kTypeTagInteger); EXPECT_EQ((v)->integerValue, intVal)

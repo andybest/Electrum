@@ -24,7 +24,7 @@
 
 #include "gtest/gtest.h"
 #include "compiler/Parser.h"
-#include "compiler/types/Types.h"
+#include "types/Types.h"
 #include "compiler/Analyzer.h"
 
 using namespace electrum;

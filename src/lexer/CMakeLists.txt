@@ -18,7 +18,7 @@ set(HEADER_FILES
         LexerDefs.h)
 
 set(SOURCE_FILES
-        ${LEXER_SRC})
+        ${LEXER_SRC} ../interpreter/Interpreter.cpp ../interpreter/Interpreter.h)
 
 add_library(${CMAKE_PROJECT_NAME}_lexer STATIC
         ${HEADER_FILES}
