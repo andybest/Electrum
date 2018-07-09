@@ -39,8 +39,10 @@ namespace electrum {
     enum TypeTag {
         kTypeTagInteger,
         kTypeTagFloat,
+        kTypeTagBoolean,
         kTypeTagList,
         kTypeTagString,
+        kTypeTagNil,
         kTypeTagSymbol
     };
 
@@ -57,6 +59,7 @@ namespace electrum {
         union {
             int64_t integerValue;
             double floatValue;
+            bool booleanValue;
         };
 
         shared_ptr<vector<shared_ptr<ASTNode>>> listValue;

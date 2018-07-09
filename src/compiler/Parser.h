@@ -56,6 +56,8 @@ namespace electrum {
         std::shared_ptr<ASTNode> readString(string input) const;
 
         shared_ptr <ASTNode> parseString(const Token &t) const;
+
+        shared_ptr <ASTNode> parseBoolean(const Token &t) const;
     };
 }
 

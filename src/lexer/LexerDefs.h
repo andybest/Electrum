@@ -42,6 +42,7 @@ namespace electrum {
         kTokenTypeSymbol,
         kTokenTypeFloat,
         kTokenTypeInteger,
+        kTokenTypeBoolean,
         kTokenTypeString,
         kTokenTypeEOF
     };

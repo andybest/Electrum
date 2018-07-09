@@ -25,11 +25,20 @@
 #ifndef ELECTRUM_INTERPRETER_H
 #define ELECTRUM_INTERPRETER_H
 
+#include <memory>
 #include "types/Types.h"
 
 namespace electrum {
+
+    using std::shared_ptr;
+    using std::make_shared;
+
     class Interpreter {
-        int temp;
+    public:
+        shared_ptr <ASTNode> evalExpr(shared_ptr <ASTNode> expr);
+    private:
+        shared_ptr<ASTNode> evalIf(shared_ptr<ASTNode> expr);
+        shared_ptr <ASTNode> lookupVariable();
     };
 }
 

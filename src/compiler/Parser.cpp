@@ -42,6 +42,7 @@ namespace electrum {
             switch (t.type) {
                 case kTokenTypeInteger: return make_pair(parseInteger(t), it);
                 case kTokenTypeFloat: return make_pair(parseFloat(t), it);
+                case kTokenTypeBoolean: return make_pair(parseBoolean(t), it);
                 case kTokenTypeSymbol: return make_pair(parseSymbol(t), it);
                 case kTokenTypeString: return make_pair(parseString(t), it);
                 case kTokenTypeLParen: {
@@ -71,6 +72,23 @@ namespace electrum {
         auto val = make_shared<ASTNode>();
         val->tag = kTypeTagFloat;
         val->floatValue = std::stod(t.text);
+
+        val->sourcePosition = make_shared<SourcePosition>();
+        val->sourcePosition->line = t.line;
+        val->sourcePosition->column = t.column;
+        val->sourcePosition->filename = t.filename;
+        return val;
+    }
+
+    shared_ptr<ASTNode> Parser::parseBoolean(const Token &t) const {
+        auto val = make_shared<ASTNode>();
+        val->tag = kTypeTagBoolean;
+
+        if(t.text == "#t" || t.text == "#true") {
+            val->booleanValue = true;
+        } else {
+            val->booleanValue = false;
+        }
 
         val->sourcePosition = make_shared<SourcePosition>();
         val->sourcePosition->line = t.line;
