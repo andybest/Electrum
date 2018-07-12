@@ -22,42 +22,45 @@
  SOFTWARE.
 */
 
-#ifndef ELECTRUM_INTERPRETER_H
-#define ELECTRUM_INTERPRETER_H
+#ifndef ELECTRUM_INTERPRETEREXCEPTIONS_H
+#define ELECTRUM_INTERPRETEREXCEPTIONS_H
 
+#include <exception>
 #include <memory>
+#include <string>
+#include <utility>
 #include "types/Types.h"
 
 namespace electrum {
-
-    using std::shared_ptr;
-    using std::make_shared;
-
-    class Interpreter {
+    class InterpreterException : public std::exception {
     public:
-        Interpreter();
+        explicit InterpreterException(const char *message,
+                                      shared_ptr <SourcePosition> sourcePosition)
+                : message_(message),
+                  sourcePosition_(std::move(sourcePosition)) {
+        }
 
-        shared_ptr<ASTNode> evalExpr(shared_ptr<ASTNode> expr);
+        explicit InterpreterException(std::string message,
+                                      shared_ptr <SourcePosition> sourcePosition)
+                : message_(std::move(message)),
+                  sourcePosition_(std::move(sourcePosition)) {
+        }
 
-        shared_ptr<ASTNode> evalExpr(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
+        virtual ~InterpreterException() throw() {}
 
-    private:
-        shared_ptr<ASTNode> evalIf(shared_ptr<ASTNode> expr);
+        virtual const char *what() const throw() {
+            return message_.c_str();
+        }
 
-        shared_ptr<Environment> rootEnvironment_;
+        std::shared_ptr<SourcePosition> sourcePosition() {
+            return sourcePosition_;
+        }
 
-        shared_ptr <ASTNode>
-        lookupVariable(const string name, shared_ptr <Environment> env, shared_ptr <ASTNode> expr) const;
-
-        shared_ptr<ASTNode> evalDefine(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
-
-        shared_ptr<ASTNode> evalDo(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
-
-        shared_ptr<Environment> extendEnvironment(shared_ptr<Environment> env);
-
-        void storeInEnvironment(string name, shared_ptr<ASTNode> val, shared_ptr<Environment> env);
+    protected:
+        std::string message_;
+        std::shared_ptr<SourcePosition> sourcePosition_;
     };
 }
 
 
-#endif //ELECTRUM_INTERPRETER_H
+#endif //ELECTRUM_INTERPRETEREXCEPTIONS_H

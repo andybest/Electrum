@@ -22,42 +22,36 @@
  SOFTWARE.
 */
 
-#ifndef ELECTRUM_INTERPRETER_H
-#define ELECTRUM_INTERPRETER_H
+#include "Runtime.h"
+#include <cstdlib>
 
-#include <memory>
-#include "types/Types.h"
+#define GC_MALLOC malloc
 
-namespace electrum {
-
-    using std::shared_ptr;
-    using std::make_shared;
-
-    class Interpreter {
-    public:
-        Interpreter();
-
-        shared_ptr<ASTNode> evalExpr(shared_ptr<ASTNode> expr);
-
-        shared_ptr<ASTNode> evalExpr(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
-
-    private:
-        shared_ptr<ASTNode> evalIf(shared_ptr<ASTNode> expr);
-
-        shared_ptr<Environment> rootEnvironment_;
-
-        shared_ptr <ASTNode>
-        lookupVariable(const string name, shared_ptr <Environment> env, shared_ptr <ASTNode> expr) const;
-
-        shared_ptr<ASTNode> evalDefine(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
-
-        shared_ptr<ASTNode> evalDo(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
-
-        shared_ptr<Environment> extendEnvironment(shared_ptr<Environment> env);
-
-        void storeInEnvironment(string name, shared_ptr<ASTNode> val, shared_ptr<Environment> env);
-    };
+EBoolean *make_boolean(uint8_t booleanValue) {
+    EBoolean *boolVal = static_cast<EBoolean *>(GC_MALLOC(sizeof(EInteger)));
+    boolVal->header.tag = kETypeTagBoolean;
+    boolVal->booleanValue = booleanValue;
+    return boolVal;
 }
 
+uint64_t is_boolean(EObjectHeader *val) {
+    return static_cast<uint64_t>(val->tag == kETypeTagBoolean);
+}
 
-#endif //ELECTRUM_INTERPRETER_H
+EInteger *make_integer(int64_t value) {
+    EInteger *intVal = static_cast<EInteger *>(GC_MALLOC(sizeof(EInteger)));
+    intVal->header.tag = kETypeTagInteger;
+    intVal->intValue = value;
+    return intVal;
+}
+
+uint64_t is_integer(EObjectHeader *val) {
+    return static_cast<uint64_t>(val->tag == kETypeTagInteger);
+}
+
+EFloat *make_float(double value) {
+    EFloat *intVal = static_cast<EFloat *>(GC_MALLOC(sizeof(EFloat)));
+    intVal->header.tag = kETypeTagFloat;
+    intVal->floatValue = value;
+    return intVal;
+}

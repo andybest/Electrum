@@ -18,14 +18,20 @@ set(HEADER_FILES
         LexerDefs.h)
 
 set(SOURCE_FILES
-        ${LEXER_SRC} ../interpreter/Interpreter.cpp ../interpreter/Interpreter.h)
+        ${LEXER_SRC}
+        ../interpreter/Interpreter.cpp
+        ../interpreter/Interpreter.h)
 
 add_library(${CMAKE_PROJECT_NAME}_lexer STATIC
         ${HEADER_FILES}
         ${SOURCE_FILES})
 
-target_include_directories(${CMAKE_PROJECT_NAME}_lexer PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(${CMAKE_PROJECT_NAME}_lexer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(${CMAKE_PROJECT_NAME}_lexer
+        PUBLIC
+        ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(${CMAKE_PROJECT_NAME}_lexer
+        PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Link with the reflex static library
 target_link_libraries(${CMAKE_PROJECT_NAME}_lexer /usr/local/lib/libreflex.a)

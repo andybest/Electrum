@@ -26,6 +26,7 @@
 #include "interpreter/Interpreter.h"
 #include "types/Types.h"
 #include <memory>
+#include <interpreter/InterpreterExceptions.h>
 
 using namespace electrum;
 using std::shared_ptr;
@@ -81,4 +82,41 @@ TEST(Interpreter, if_evaluates_correct_expressions) {
 
     EXPECT_EQ(result2->tag, kTypeTagInteger);
     EXPECT_EQ(result2->integerValue, 5678);
+}
+
+TEST(Interpreter, define_stores_value) {
+    auto val = make_integer(1234);
+    auto def = make_list({make_symbol("define"), make_symbol("a"), val});
+
+    auto interp = Interpreter();
+    interp.evalExpr(def);
+
+    auto result = interp.evalExpr(make_symbol("a"));
+    EXPECT_EQ(result->tag, kTypeTagInteger);
+    EXPECT_EQ(result->integerValue, 1234);
+}
+
+
+TEST(Interpreter, unbound_symbol_lookup_throws_exception) {
+    auto interp = Interpreter();
+
+    EXPECT_THROW(interp.evalExpr(make_symbol("a")), InterpreterException);
+}
+
+TEST(Interpreter, do_executes_body_returns_last) {
+    auto expr1 = make_list({make_symbol("define"),
+                            make_symbol("a"),
+                            make_integer(1234)});
+    auto expr2 = make_integer(2345);
+    auto doForm = make_list({make_symbol("do"), expr1, expr2});
+
+    auto interp = Interpreter();
+    auto result = interp.evalExpr(doForm);
+
+    EXPECT_EQ(result->tag, kTypeTagInteger);
+    EXPECT_EQ(result->integerValue, 2345);
+
+    auto defResult = interp.evalExpr(make_symbol("a"));
+    EXPECT_EQ(defResult->tag, kTypeTagInteger);
+    EXPECT_EQ(defResult->integerValue, 1234);
 }

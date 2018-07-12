@@ -27,8 +27,12 @@
 #define ELECTRUM_COMPILER_H
 
 #include <lex.yy.h>
+#include <cstdint>
 
 namespace electrum {
+
+
+
     class Compiler {
 
     };

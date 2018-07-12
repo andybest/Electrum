@@ -22,42 +22,48 @@
  SOFTWARE.
 */
 
-#ifndef ELECTRUM_INTERPRETER_H
-#define ELECTRUM_INTERPRETER_H
+#ifndef ELECTRUM_RUNTIME_H
+#define ELECTRUM_RUNTIME_H
 
-#include <memory>
-#include "types/Types.h"
+#include <cstdint>
 
-namespace electrum {
+enum ETypeTag {
+    kETypeTagInteger,
+    kETypeTagFloat,
+    kETypeTagString,
+    kETypeTagSymbol,
+    kETypeTagBoolean
+};
 
-    using std::shared_ptr;
-    using std::make_shared;
+struct EObjectHeader {
+    uint64_t tag;
+};
 
-    class Interpreter {
-    public:
-        Interpreter();
+struct EBoolean {
+    EObjectHeader header;
+    uint8_t booleanValue;
+};
 
-        shared_ptr<ASTNode> evalExpr(shared_ptr<ASTNode> expr);
+struct EInteger {
+    EObjectHeader header;
+    int64_t intValue;
+};
 
-        shared_ptr<ASTNode> evalExpr(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
+struct EFloat {
+    EObjectHeader header;
+    double floatValue;
+};
 
-    private:
-        shared_ptr<ASTNode> evalIf(shared_ptr<ASTNode> expr);
+struct EString {
+    EObjectHeader header;
+    uint64_t length;
+    char *stringValue;
+};
 
-        shared_ptr<Environment> rootEnvironment_;
+struct ESymbol {
+    EObjectHeader header;
+    uint64_t length;
+    char *name;
+};
 
-        shared_ptr <ASTNode>
-        lookupVariable(const string name, shared_ptr <Environment> env, shared_ptr <ASTNode> expr) const;
-
-        shared_ptr<ASTNode> evalDefine(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
-
-        shared_ptr<ASTNode> evalDo(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
-
-        shared_ptr<Environment> extendEnvironment(shared_ptr<Environment> env);
-
-        void storeInEnvironment(string name, shared_ptr<ASTNode> val, shared_ptr<Environment> env);
-    };
-}
-
-
-#endif //ELECTRUM_INTERPRETER_H
+#endif //ELECTRUM_RUNTIME_H

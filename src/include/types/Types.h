@@ -29,12 +29,15 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace electrum {
 
     using std::shared_ptr;
     using std::vector;
     using std::string;
+    using std::unordered_map;
 
     enum TypeTag {
         kTypeTagInteger,
@@ -52,6 +55,22 @@ namespace electrum {
         shared_ptr<string> filename;
     };
 
+    struct ASTNode;
+
+    struct LispFunction {
+        /// List of binding names
+        vector<string> bindings;
+
+        /// If the function has a variable argument count
+        bool isVararg;
+
+        /// The binding for the rest of the arguments
+        std::string varargBinding;
+
+        /// The body of the function
+        shared_ptr<ASTNode> bodyForm;
+    };
+
     struct ASTNode {
         TypeTag tag;
         shared_ptr<SourcePosition> sourcePosition;
@@ -62,8 +81,14 @@ namespace electrum {
             bool booleanValue;
         };
 
+        shared_ptr<LispFunction> functionValue;
         shared_ptr<vector<shared_ptr<ASTNode>>> listValue;
         shared_ptr<string> stringValue;     // Used for string and symbol
+    };
+
+    struct Environment {
+        shared_ptr<Environment> parent;
+        unordered_map<std::string, shared_ptr<ASTNode>> bindings;
     };
 }
 

@@ -22,42 +22,47 @@
  SOFTWARE.
 */
 
-#ifndef ELECTRUM_INTERPRETER_H
-#define ELECTRUM_INTERPRETER_H
+#ifndef ELECTRUM_GARBAGECOLLECTOR_H
+#define ELECTRUM_GARBAGECOLLECTOR_H
+
+
+#ifdef __cplusplus
 
 #include <memory>
-#include "types/Types.h"
+#include <stackmap/api.h>
+#include <runtime/stackmap/api.h>
 
 namespace electrum {
 
     using std::shared_ptr;
     using std::make_shared;
 
-    class Interpreter {
+    class GarbageCollector {
     public:
-        Interpreter();
+        GarbageCollector(void *stackmap);
 
-        shared_ptr<ASTNode> evalExpr(shared_ptr<ASTNode> expr);
+        void collect(void *stackPointer);
 
-        shared_ptr<ASTNode> evalExpr(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
+        void *malloc(size_t size);
+
+        void free(void *ptr);
 
     private:
-        shared_ptr<ASTNode> evalIf(shared_ptr<ASTNode> expr);
-
-        shared_ptr<Environment> rootEnvironment_;
-
-        shared_ptr <ASTNode>
-        lookupVariable(const string name, shared_ptr <Environment> env, shared_ptr <ASTNode> expr) const;
-
-        shared_ptr<ASTNode> evalDefine(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
-
-        shared_ptr<ASTNode> evalDo(shared_ptr<ASTNode> expr, shared_ptr<Environment> env);
-
-        shared_ptr<Environment> extendEnvironment(shared_ptr<Environment> env);
-
-        void storeInEnvironment(string name, shared_ptr<ASTNode> val, shared_ptr<Environment> env);
+        statepoint_table_t *statepoint_table_;
     };
+
+    shared_ptr<GarbageCollector> main_collector;
 }
 
+extern "C" {
+#endif  // __cplusplus
 
-#endif //ELECTRUM_INTERPRETER_H
+/* Exported functions */
+void rt_init_gc(void *stackmap);
+
+#ifdef __cplusplus
+}
+#endif // _cplusplus
+
+
+#endif //ELECTRUM_GARBAGECOLLECTOR_H
