@@ -31,24 +31,54 @@
 #include <memory>
 #include <stackmap/api.h>
 #include <runtime/stackmap/api.h>
+#include <vector>
+#include <unordered_set>
+#include <list>
 
 namespace electrum {
 
     using std::shared_ptr;
     using std::make_shared;
 
+    /**
+     * Decides how the Garbage collector will be run, and specifically
+     * if the LLVM Stackmap will be scanned for live references.
+     */
+    enum GCMode {
+        /** Interpreter initialized and owns the GC Instance. */
+                kGCModeInterpreterOwned,
+
+        /** Compiler initialized and owns the GC instance. */
+                kGCModeCompilerOwned
+    };
+
     class GarbageCollector {
     public:
-        GarbageCollector(void *stackmap);
+        GarbageCollector(GCMode mode);
+
+        void init_stackmap(void *stackmap);
 
         void collect(void *stackPointer);
+
+        std::list<void *> pointers_to_collect();
+
+        void mark_roots();
+
+        void collect_roots();
+
+        void add_object_root(void* root);
+
+        bool remove_object_root(void* root);
 
         void *malloc(size_t size);
 
         void free(void *ptr);
 
     private:
+        GCMode collector_mode_;
+        bool scan_stack_;
         statepoint_table_t *statepoint_table_;
+        std::unordered_set<void *> object_roots_;
     };
 
     shared_ptr<GarbageCollector> main_collector;

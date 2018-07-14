@@ -27,7 +27,19 @@
 
 namespace electrum {
 
-    GarbageCollector::GarbageCollector(void *stackmap) {
+    GarbageCollector::GarbageCollector(GCMode mode): collector_mode_(mode) {
+        switch(mode) {
+            case kGCModeCompilerOwned:
+                scan_stack_ = true;
+                break;
+            case kGCModeInterpreterOwned:
+                // If the GC is owned by the interpreter, we won't have a
+                // stack map to scan
+                scan_stack_ = false;
+        }
+    }
+
+    void GarbageCollector::init_stackmap(void *stackmap) {
         statepoint_table_ = generate_table(stackmap, 0.5);
     }
 
@@ -58,6 +70,28 @@ namespace electrum {
     void GarbageCollector::free(void *ptr) {
     }
 
+    void GarbageCollector::add_object_root(void *root) {
+        assert(object_roots_.count(root) == 0);
+        object_roots_.emplace(root);
+    }
+
+    bool GarbageCollector::remove_object_root(void *root) {
+        object_roots_.erase(root);
+        return true;
+    }
+
+    std::list<void *> GarbageCollector::pointers_to_collect() {
+        return std::list<void *>();
+    }
+
+    void GarbageCollector::mark_roots() {
+
+    }
+
+    void GarbageCollector::collect_roots() {
+
+    }
+
 
 }
 
@@ -65,8 +99,8 @@ namespace electrum {
  * Initialize the garbage collector
  */
 extern "C" void rt_init_gc(void *stackmap) {
-    electrum::main_collector = std::make_shared<electrum::GarbageCollector>(
-            stackmap);
+    electrum::main_collector = std::make_shared<electrum::GarbageCollector>(electrum::kGCModeCompilerOwned);
+    electrum::main_collector->init_stackmap(stackmap);
 }
 
 /**
