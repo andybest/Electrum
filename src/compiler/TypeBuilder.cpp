@@ -22,22 +22,8 @@
  SOFTWARE.
 */
 
+#include "TypeBuilder.h"
 
-#ifndef ELECTRUM_COMPILER_H
-#define ELECTRUM_COMPILER_H
+namespace Electrum {
 
-#include <lex.yy.h>
-#include <cstdint>
-#include <memory>
-
-namespace electrum {
-
-    class Compiler {
-    public:
-        Compiler();
-    private:
-    };
 }
-
-
-#endif //ELECTRUM_COMPILER_H

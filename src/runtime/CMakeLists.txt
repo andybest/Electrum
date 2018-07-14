@@ -6,6 +6,7 @@ set(HEADER_FILES
         Runtime.h
         GarbageCollector.h
         stackmap/api.h
+        ENamespace.h
         )
 
 set(SOURCE_FILES
@@ -13,7 +14,7 @@ set(SOURCE_FILES
         GarbageCollector.cpp
         generate.c
         hash_table.c
-        )
+        ENamespace.cpp)
 
 add_library(${CMAKE_PROJECT_NAME}_runtime STATIC
         ${HEADER_FILES}

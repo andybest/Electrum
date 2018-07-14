@@ -23,35 +23,81 @@
 */
 
 #include "Runtime.h"
+#include "ENamespace.h"
 #include <cstdlib>
+#include <cstring>
 
 #define GC_MALLOC malloc
 
-EBoolean *make_boolean(uint8_t booleanValue) {
-    EBoolean *boolVal = static_cast<EBoolean *>(GC_MALLOC(sizeof(EInteger)));
-    boolVal->header.tag = kETypeTagBoolean;
-    boolVal->booleanValue = booleanValue;
-    return boolVal;
+
+bool is_object(void *val) {
+    return (reinterpret_cast<uintptr_t>(val) & TAG_MASK) == OBJECT_TAG;
 }
 
-uint64_t is_boolean(EObjectHeader *val) {
-    return static_cast<uint64_t>(val->tag == kETypeTagBoolean);
+bool is_integer(void *val) {
+    return (reinterpret_cast<uintptr_t>(val) & TAG_MASK) == INTEGER_TAG;
 }
 
-EInteger *make_integer(int64_t value) {
-    EInteger *intVal = static_cast<EInteger *>(GC_MALLOC(sizeof(EInteger)));
+bool is_boolean(void *val) {
+    return (reinterpret_cast<uintptr_t>(val) & TAG_MASK) == BOOLEAN_TAG;
+}
+
+bool is_object_with_tag(void *val, uint64_t tag) {
+    if (is_object(val)) {
+        auto header = TAG_TO_OBJECT(val);
+        return header->tag == tag;
+    }
+
+    return false;
+}
+
+extern "C" {
+
+void rt_init() {
+    electrum::init_global_namespaces();
+}
+
+void *rt_make_boolean(uint8_t booleanValue) {
+    return (booleanValue) ? TRUE_PTR : FALSE_PTR;
+}
+
+void *rt_is_boolean(void *val) {
+    return TO_TAGGED_BOOLEAN(is_boolean(val));
+}
+
+void *rt_make_integer(int64_t value) {
+
+    auto intVal = static_cast<EInteger *>(GC_MALLOC(sizeof(EInteger)));
     intVal->header.tag = kETypeTagInteger;
     intVal->intValue = value;
-    return intVal;
+    return OBJECT_TO_TAG(intVal);
 }
 
-uint64_t is_integer(EObjectHeader *val) {
-    return static_cast<uint64_t>(val->tag == kETypeTagInteger);
+void *rt_is_integer(void *val) {
+    return TO_TAGGED_BOOLEAN(is_integer(val));
 }
 
-EFloat *make_float(double value) {
-    EFloat *intVal = static_cast<EFloat *>(GC_MALLOC(sizeof(EFloat)));
-    intVal->header.tag = kETypeTagFloat;
-    intVal->floatValue = value;
-    return intVal;
+void *rt_make_float(double value) {
+    auto floatVal = static_cast<EFloat *>(GC_MALLOC(sizeof(EFloat)));
+    floatVal->header.tag = kETypeTagFloat;
+    floatVal->floatValue = value;
+    return OBJECT_TO_TAG(floatVal);
 }
+
+void *rt_is_float(void *val) {
+    return TO_TAGGED_BOOLEAN(is_object_with_tag(val, kETypeTagFloat));
+}
+
+ESymbol *rt_make_symbol(char *name) {
+    auto *symbolVal = static_cast<ESymbol *>(GC_MALLOC(sizeof(ESymbol)));
+    symbolVal->header.tag = kETypeTagSymbol;
+    symbolVal->name = static_cast<char *>(GC_MALLOC(strlen(name)));
+    strcpy(symbolVal->name, name);
+    return symbolVal;
+}
+
+void *rt_is_symbol(void *val) {
+    return TO_TAGGED_BOOLEAN(is_object_with_tag(val, kETypeTagSymbol));
+}
+
+} /* extern "C" */

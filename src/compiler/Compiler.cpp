@@ -24,3 +24,9 @@
 
 
 #include "Compiler.h"
+
+namespace electrum {
+    Compiler::Compiler() {
+        //module_ = std::make_unique<llvm::Module>("electrumModule", context_);
+    }
+}

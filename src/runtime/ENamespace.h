@@ -22,22 +22,34 @@
  SOFTWARE.
 */
 
+#ifndef ELECTRUM_NAMESPACE_H
+#define ELECTRUM_NAMESPACE_H
 
-#ifndef ELECTRUM_COMPILER_H
-#define ELECTRUM_COMPILER_H
-
-#include <lex.yy.h>
-#include <cstdint>
+#include <unordered_map>
 #include <memory>
+#include <string>
 
 namespace electrum {
 
-    class Compiler {
+    using std::unordered_map;
+    using std::make_shared;
+    using std::shared_ptr;
+
+    class ENamespace {
     public:
-        Compiler();
+        ENamespace(std::string name);
+
+        //void* lookupBindingWithName(char *binding);
+        //void* lookupBindingWithSymbol(void *symbol);
     private:
+        std::string name;
+        unordered_map<std::string, void*> mappings_;
     };
-}
+
+    shared_ptr<unordered_map<std::string, shared_ptr<ENamespace>>> global_namespaces;
+
+    void init_global_namespaces();
+};
 
 
-#endif //ELECTRUM_COMPILER_H
+#endif //ELECTRUM_NAMESPACE_H

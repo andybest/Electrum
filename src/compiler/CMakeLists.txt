@@ -11,7 +11,7 @@ set(SOURCE_FILES
         main.cpp
         Compiler.cpp
         Parser.cpp
-        Analyzer.cpp CompilerExceptions.h)
+        Analyzer.cpp CompilerExceptions.h TypeBuilder.cpp TypeBuilder.h)
 
 add_library(${CMAKE_PROJECT_NAME}c_lib STATIC
         ${HEADER_FILES}

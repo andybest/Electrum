@@ -27,7 +27,23 @@
 
 #include <cstdint>
 
-enum ETypeTag {
+#define TAG_MASK    0xFU
+#define OBJECT_TAG  0x1U
+#define INTEGER_TAG 0x0U
+#define BOOLEAN_TAG 0x3U
+#define TRUE_TAG    0x13U
+#define FALSE_TAG   0x3U
+
+#define TAG_TO_OBJECT(x)    reinterpret_cast<EObjectHeader*>(reinterpret_cast<uintptr_t>(x) & ~TAG_MASK)
+#define OBJECT_TO_TAG(x)    reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(x) & OBJECT_TAG)
+#define TAG_TO_INTEGER(x)   (reinterpret_cast<intptr_t>(x) >> 1)
+#define INTEGER_TO_TAG(x)   reinterpret_cast<void *>(x << 1)
+
+#define TRUE_PTR    reinterpret_cast<void *>(TRUE_TAG)
+#define FALSE_PTR   reinterpret_cast<void *>(FALSE_TAG)
+#define TO_TAGGED_BOOLEAN(pred)     (pred) ? TRUE_PTR : FALSE_PTR;
+
+enum ETypeTag: uint64_t {
     kETypeTagInteger,
     kETypeTagFloat,
     kETypeTagString,
@@ -65,5 +81,12 @@ struct ESymbol {
     uint64_t length;
     char *name;
 };
+
+/*EBoolean *rt_make_boolean(uint8_t booleanValue);
+uint64_t rt_is_boolean(EObjectHeader *val);
+EInteger *rt_make_integer(int64_t value);
+uint64_t rt_is_integer(EObjectHeader *val);
+EFloat *rt_make_float(double value);
+ESymbol *rt_make_symbol(char *name);*/
 
 #endif //ELECTRUM_RUNTIME_H
