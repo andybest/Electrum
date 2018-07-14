@@ -24,6 +24,7 @@
 
 #include "GarbageCollector.h"
 #include "stackmap/api.h"
+#include "Runtime.h"
 
 namespace electrum {
 
@@ -60,7 +61,8 @@ namespace electrum {
      * @return A pointer to the allocated memory
      */
     void *GarbageCollector::malloc(size_t size) {
-        return nullptr;
+        // TODO: Place in heap list
+        return std::malloc(size);
     }
 
     /**
@@ -68,6 +70,7 @@ namespace electrum {
      * @param ptr The pointer of the memory block to free
      */
     void GarbageCollector::free(void *ptr) {
+        std::free(ptr);
     }
 
     void GarbageCollector::add_object_root(void *root) {
@@ -90,6 +93,35 @@ namespace electrum {
 
     void GarbageCollector::collect_roots() {
 
+    }
+
+
+    void GarbageCollector::mark_object_root(void* obj) {
+        // Make sure the object tag bit is set
+        assert((reinterpret_cast<uintptr_t>(obj) & TAG_MASK) == OBJECT_TAG);
+        auto header = TAG_TO_OBJECT(obj);
+
+        // Mark each pointer that the object has access to
+        switch(header->tag) {
+            default: break;
+        }
+
+        header->gc_mark = 1;
+    }
+
+    void GarbageCollector::sweep_heap() {
+        for(auto it = heap_objects_.begin(); it != heap_objects_.end(); ++it) {
+            auto header = TAG_TO_OBJECT(*it);
+
+            if(!header->gc_mark) {
+                // Object is not marked, collect it.
+                heap_objects_.erase(it);
+                this->free(header);
+            } else {
+                // Object was marked, unmark it
+                header->gc_mark = 0;
+            }
+        }
     }
 
 

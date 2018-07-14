@@ -79,6 +79,11 @@ namespace electrum {
         bool scan_stack_;
         statepoint_table_t *statepoint_table_;
         std::unordered_set<void *> object_roots_;
+        std::list<void*> heap_objects_;
+
+        void mark_object_root(void *obj);
+
+        void sweep_heap();
     };
 
     shared_ptr<GarbageCollector> main_collector;

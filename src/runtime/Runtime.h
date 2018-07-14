@@ -52,7 +52,8 @@ enum ETypeTag: uint64_t {
 };
 
 struct EObjectHeader {
-    uint64_t tag;
+    uint32_t tag;
+    uint32_t gc_mark;
 };
 
 struct EBoolean {
