@@ -25,7 +25,9 @@
 #ifndef ELECTRUM_RUNTIME_H
 #define ELECTRUM_RUNTIME_H
 
-#include <cstdint>
+#include <stdint.h>
+#include <stddef.h>
+#include "GarbageCollector.h"
 
 #define TAG_MASK    0xFU
 #define OBJECT_TAG  0x1U
@@ -33,37 +35,36 @@
 #define BOOLEAN_TAG 0x3U
 #define TRUE_TAG    0x13U
 #define FALSE_TAG   0x3U
+#define NIL_TAG     0xFU
 
-#define TAG_TO_OBJECT(x)    reinterpret_cast<EObjectHeader*>(reinterpret_cast<uintptr_t>(x) & ~TAG_MASK)
-#define OBJECT_TO_TAG(x)    reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(x) & OBJECT_TAG)
+#define TAG_TO_OBJECT(x)    reinterpret_cast<EObjectHeader*>(reinterpret_cast<uintptr_t>(x) & ~((uintptr_t)TAG_MASK))
+#define OBJECT_TO_TAG(x)    reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(x) | OBJECT_TAG)
 #define TAG_TO_INTEGER(x)   (reinterpret_cast<intptr_t>(x) >> 1)
 #define INTEGER_TO_TAG(x)   reinterpret_cast<void *>(x << 1)
 
+#define NIL_PTR     reinterpret_cast<void *>(NIL_TAG)
 #define TRUE_PTR    reinterpret_cast<void *>(TRUE_TAG)
 #define FALSE_PTR   reinterpret_cast<void *>(FALSE_TAG)
-#define TO_TAGGED_BOOLEAN(pred)     (pred) ? TRUE_PTR : FALSE_PTR;
+#define TO_TAGGED_BOOLEAN(pred)     (pred) ? TRUE_PTR : FALSE_PTR
 
-enum ETypeTag: uint64_t {
-    kETypeTagInteger,
+#define GC_MALLOC rt_gc_malloc_tagged_object
+
+/**
+ * Type tags for objects
+ */
+enum ETypeTag : uint64_t {
     kETypeTagFloat,
     kETypeTagString,
     kETypeTagSymbol,
-    kETypeTagBoolean
+    kETypeTagPair,
+    kETypeTagFunction,
+    kETypeTagInterpretedFunction,
+    kETypeTagEnvironment
 };
 
 struct EObjectHeader {
     uint32_t tag;
     uint32_t gc_mark;
-};
-
-struct EBoolean {
-    EObjectHeader header;
-    uint8_t booleanValue;
-};
-
-struct EInteger {
-    EObjectHeader header;
-    int64_t intValue;
 };
 
 struct EFloat {
@@ -83,6 +84,96 @@ struct ESymbol {
     char *name;
 };
 
+struct EPair {
+    EObjectHeader header;
+    void *value;
+    void *next;
+};
+
+struct EInterpretedFunction {
+    EObjectHeader header;
+    uint64_t arity;
+
+    /** Argument names- a list of symbols */
+    void *argnames;
+
+    /** Body- A list of forms */
+    void *body;
+
+    /** Closure environment */
+    void *env;
+};
+
+struct EEnvironment {
+    EObjectHeader header;
+    void *parent;
+    /** A list comprising of symbols followed by values */
+    void *values;
+};
+
+namespace electrum {
+    bool is_object(void *val);
+
+    bool is_integer(void *val);
+
+    bool is_boolean(void *val);
+
+    bool is_object_with_tag(void *val, uint64_t tag);
+
+    void print_expr(void *expr);
+}
+
+
+//extern "C" {
+
+void rt_init();
+
+void rt_init_gc(electrum::GCMode gc_mode);
+
+void rt_deinit_gc();
+
+std::shared_ptr<electrum::GarbageCollector> rt_get_gc();
+
+void *rt_is_object(void *val);
+
+void *rt_make_boolean(int8_t booleanValue);
+
+void *rt_is_boolean(void *val);
+
+void *rt_make_integer(int64_t value);
+
+void *rt_is_integer(void *val);
+
+void *rt_make_float(double value);
+
+void *rt_is_float(void *val);
+
+double rt_float_value(void *val);
+
+void *rt_make_symbol(const char *name);
+
+void *rt_is_symbol(void *val);
+
+void *rt_make_pair(void *value, void *next);
+
+void *rt_car(void *pair);
+
+void *rt_cdr(void *pair);
+
+void *rt_set_car(void *pair, void *val);
+
+void *rt_set_cdr(void *pair, void *next);
+
+void *rt_make_interpreted_function(void *argnames, uint64_t arity, void *body, void *env);
+
+void *rt_make_environment(void *parent);
+
+void *rt_environment_add(void *env, void *binding, void *value);
+
+void *rt_environment_get(void *env, void *binding);
+
+void *rt_gc_malloc_tagged_object(size_t size);
+//}
 /*EBoolean *rt_make_boolean(uint8_t booleanValue);
 uint64_t rt_is_boolean(EObjectHeader *val);
 EInteger *rt_make_integer(int64_t value);

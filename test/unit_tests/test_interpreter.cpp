@@ -27,63 +27,91 @@
 #include "types/Types.h"
 #include <memory>
 #include <interpreter/InterpreterExceptions.h>
+#include <runtime/Runtime.h>
 
 using namespace electrum;
 using std::shared_ptr;
 using std::make_shared;
 
-#define MAKE_BOOLEAN(b) make_shared
-
-shared_ptr<ASTNode> make_boolean(bool value) {
-    auto b = make_shared<ASTNode>();
-    b->tag = kTypeTagBoolean;
-    b->booleanValue = value;
-    return b;
-}
-
-shared_ptr<ASTNode> make_symbol(std::string name) {
-    auto s = make_shared<ASTNode>();
-    s->tag = kTypeTagSymbol;
-    s->stringValue = make_shared<std::string>(name);
-    return s;
-}
-
-shared_ptr<ASTNode> make_integer(uint64_t val) {
-    auto i = make_shared<ASTNode>();
-    i->tag = kTypeTagInteger;
-    i->integerValue = val;
-    return i;
-}
-
-shared_ptr<ASTNode> make_list(std::vector<shared_ptr<ASTNode>> listVal) {
-    auto l = make_shared<ASTNode>();
-    l->tag = kTypeTagList;
-    l->listValue = make_shared<std::vector<shared_ptr<ASTNode>>>(listVal);
-    return l;
-}
 
 TEST(Interpreter, if_evaluates_correct_expressions) {
-    auto cond1 = make_boolean(true);
-    auto cond2 = make_boolean(false);
+    rt_init_gc(kGCModeInterpreterOwned);
 
-    auto subsequent = make_integer(1234);
-    auto alternative = make_integer(5678);
+    auto cond1 = rt_make_boolean(static_cast<int8_t>(true));
+    auto cond2 = rt_make_boolean(static_cast<int8_t>(false));
 
-    auto if1 = make_list({make_symbol("if"), cond1, subsequent, alternative});
-    auto if2 = make_list({make_symbol("if"), cond2, subsequent, alternative});
+    auto subsequent = rt_make_integer(1234);
+    auto alternative = rt_make_integer(5678);
+
+    auto if1 = rt_make_pair(rt_make_symbol("if"),
+                            rt_make_pair(cond1,
+                                         rt_make_pair(subsequent,
+                                                      rt_make_pair(alternative, NIL_PTR))));
+
+    auto if2 = rt_make_pair(rt_make_symbol("if"),
+                            rt_make_pair(cond2,
+                                         rt_make_pair(subsequent,
+                                                      rt_make_pair(alternative, NIL_PTR))));
 
     auto interp = Interpreter();
 
-    auto result1 = interp.evalExpr(if1);
-    auto result2 = interp.evalExpr(if2);
+    try {
+        auto result1 = interp.evalExpr(if1, nullptr);
+        auto result2 = interp.evalExpr(if2, nullptr);
+        EXPECT_TRUE(is_integer(result1));
+        EXPECT_EQ(TAG_TO_INTEGER(result1), 1234);
 
-    EXPECT_EQ(result1->tag, kTypeTagInteger);
-    EXPECT_EQ(result1->integerValue, 1234);
+        EXPECT_TRUE(is_integer(result2));
+        EXPECT_EQ(TAG_TO_INTEGER(result2), 5678);
 
-    EXPECT_EQ(result2->tag, kTypeTagInteger);
-    EXPECT_EQ(result2->integerValue, 5678);
+    } catch (InterpreterException &e) {
+        GTEST_FATAL_FAILURE_(e.what());
+    }
+
+    rt_deinit_gc();
 }
 
+TEST(Interpreter, begin_returns_last_form) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    auto form = rt_make_pair(rt_make_symbol("begin"),
+                             rt_make_pair(rt_make_integer(1234),
+                                          rt_make_pair(rt_make_integer(5678), NIL_PTR)));
+
+    auto interp = Interpreter();
+
+    try {
+        auto result = interp.evalExpr(form, nullptr);
+        EXPECT_TRUE(is_integer(result));
+        EXPECT_EQ(TAG_TO_INTEGER(result), 5678);
+    } catch (InterpreterException &e) {
+        GTEST_FATAL_FAILURE_(e.what());
+    }
+
+    rt_deinit_gc();
+}
+
+TEST(Interpreter, runs_simple_lambda) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    auto form = rt_make_pair(rt_make_pair(rt_make_symbol("lambda"),
+                                          rt_make_pair(rt_make_pair(rt_make_symbol("x"), NIL_PTR),
+                                                       rt_make_pair(rt_make_symbol("x"), NIL_PTR))),
+                             rt_make_pair(rt_make_integer(1234), NIL_PTR));
+
+    auto interp = Interpreter();
+    try {
+        auto result = interp.evalExpr(form);
+        EXPECT_TRUE(is_integer(result));
+        EXPECT_EQ(TAG_TO_INTEGER(result), 1234);
+    } catch (InterpreterException &e) {
+        GTEST_FATAL_FAILURE_(e.what());
+    }
+
+    rt_deinit_gc();
+}
+
+/*
 TEST(Interpreter, define_stores_value) {
     auto val = make_integer(1234);
     auto def = make_list({make_symbol("define"), make_symbol("a"), val});
@@ -120,3 +148,4 @@ TEST(Interpreter, do_executes_body_returns_last) {
     EXPECT_EQ(defResult->tag, kTypeTagInteger);
     EXPECT_EQ(defResult->integerValue, 1234);
 }
+*/

@@ -46,7 +46,7 @@ namespace electrum {
         unordered_map<std::string, void*> mappings_;
     };
 
-    shared_ptr<unordered_map<std::string, shared_ptr<ENamespace>>> global_namespaces;
+    static shared_ptr<unordered_map<std::string, shared_ptr<ENamespace>>> global_namespaces;
 
     void init_global_namespaces();
 };

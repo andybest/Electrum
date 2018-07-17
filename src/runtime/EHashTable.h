@@ -22,41 +22,20 @@
  SOFTWARE.
 */
 
-#ifndef ELECTRUM_INTERPRETER_H
-#define ELECTRUM_INTERPRETER_H
+#ifndef ELECTRUM_EHASHTABLE_H
+#define ELECTRUM_EHASHTABLE_H
 
-#include <memory>
-#include "types/Types.h"
+typedef struct {
+    char* key;
+    char* value;
+} EHashTableItem;
 
-namespace electrum {
-
-    using std::shared_ptr;
-    using std::make_shared;
-
-    class Interpreter {
-    public:
-        Interpreter();
-        ~Interpreter();
-
-        void *evalExpr(void *expr);
-        void *evalExpr(void *expr, void *env);
-
-    private:
-        shared_ptr<Environment> rootEnvironment_;
-
-        void *lookup_symbol(void *symbol, void *env);
-
-        void *eval_if(void *expr, void *env);
-
-        void *eval_begin(void *symbol, void *env);
-
-        void *eval_lambda(void *expr, void *env);
-
-        void *eval_interpreted_function(void *expr);
+typedef struct {
+    int size;
+    int count;
+    EHashTableItem** items;
+} EHashTable;
 
 
-    };
-}
 
-
-#endif //ELECTRUM_INTERPRETER_H
+#endif //ELECTRUM_EHASHTABLE_H

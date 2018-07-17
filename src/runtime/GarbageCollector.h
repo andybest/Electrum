@@ -29,8 +29,7 @@
 #ifdef __cplusplus
 
 #include <memory>
-#include <stackmap/api.h>
-#include <runtime/stackmap/api.h>
+#include "stackmap/api.h"
 #include <vector>
 #include <unordered_set>
 #include <list>
@@ -55,6 +54,7 @@ namespace electrum {
     class GarbageCollector {
     public:
         GarbageCollector(GCMode mode);
+        ~GarbageCollector();
 
         void init_stackmap(void *stackmap);
 
@@ -64,13 +64,15 @@ namespace electrum {
 
         void mark_roots();
 
-        void collect_roots();
+        uint64_t collect_roots();
 
         void add_object_root(void* root);
 
         bool remove_object_root(void* root);
 
         void *malloc(size_t size);
+
+        void *malloc_tagged_object(size_t size);
 
         void free(void *ptr);
 
@@ -82,11 +84,12 @@ namespace electrum {
         std::list<void*> heap_objects_;
 
         void mark_object_root(void *obj);
+        uint64_t sweep_heap();
 
-        void sweep_heap();
+
     };
 
-    shared_ptr<GarbageCollector> main_collector;
+    static shared_ptr<GarbageCollector> main_collector;
 }
 
 extern "C" {

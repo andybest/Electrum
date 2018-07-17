@@ -22,41 +22,47 @@
  SOFTWARE.
 */
 
-#ifndef ELECTRUM_INTERPRETER_H
-#define ELECTRUM_INTERPRETER_H
-
-#include <memory>
+#include "gtest/gtest.h"
+#include "compiler/Parser.h"
 #include "types/Types.h"
+#include "runtime/Runtime.h"
+#include "runtime/GarbageCollector.h"
 
-namespace electrum {
-
-    using std::shared_ptr;
-    using std::make_shared;
-
-    class Interpreter {
-    public:
-        Interpreter();
-        ~Interpreter();
-
-        void *evalExpr(void *expr);
-        void *evalExpr(void *expr, void *env);
-
-    private:
-        shared_ptr<Environment> rootEnvironment_;
-
-        void *lookup_symbol(void *symbol, void *env);
-
-        void *eval_if(void *expr, void *env);
-
-        void *eval_begin(void *symbol, void *env);
-
-        void *eval_lambda(void *expr, void *env);
-
-        void *eval_interpreted_function(void *expr);
+using namespace electrum;
 
 
-    };
+TEST(GC, does_not_collect_root_object) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    auto f = rt_make_float(1.234);
+    rt_get_gc()->add_object_root(f);
+    auto numCollected = rt_get_gc()->collect_roots();
+
+    EXPECT_EQ(numCollected, 0);
+    rt_deinit_gc();
 }
 
+TEST(GC, collects_orphaned_object) {
+    rt_init_gc(kGCModeInterpreterOwned);
 
-#endif //ELECTRUM_INTERPRETER_H
+    rt_make_float(1.234);
+    rt_make_float(2.345);
+    auto numCollected = rt_get_gc()->collect_roots();
+
+    EXPECT_EQ(numCollected, 2);
+    rt_deinit_gc();
+}
+
+TEST(GC, collects_correct_object) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    auto f1 = rt_make_float(1.234);
+    rt_make_float(2.345);
+
+    rt_get_gc()->add_object_root(f1);
+    auto numCollected = rt_get_gc()->collect_roots();
+    EXPECT_EQ(numCollected, 1);
+
+    // This should not crash
+    EXPECT_FLOAT_EQ(rt_float_value(f1), 1.234);
+}

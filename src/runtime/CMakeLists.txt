@@ -14,7 +14,7 @@ set(SOURCE_FILES
         GarbageCollector.cpp
         generate.c
         hash_table.c
-        ENamespace.cpp)
+        ENamespace.cpp EHashTable.c EHashTable.h)
 
 add_library(${CMAKE_PROJECT_NAME}_runtime STATIC
         ${HEADER_FILES}

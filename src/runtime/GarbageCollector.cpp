@@ -40,6 +40,14 @@ namespace electrum {
         }
     }
 
+    GarbageCollector::~GarbageCollector() {
+        // Free all heap objects
+        for(auto ptr: heap_objects_) {
+            auto header = TAG_TO_OBJECT(ptr);
+            this->free(header);
+        }
+    }
+
     void GarbageCollector::init_stackmap(void *stackmap) {
         statepoint_table_ = generate_table(stackmap, 0.5);
     }
@@ -63,6 +71,22 @@ namespace electrum {
     void *GarbageCollector::malloc(size_t size) {
         // TODO: Place in heap list
         return std::malloc(size);
+    }
+
+    /**
+     * Allocate garbage collected memory. Assumes that the pointer will
+     * be tagged.
+     * @param size The size of the memory block to allocate
+     * @return A pointer to the allocated memory
+     */
+    void *GarbageCollector::malloc_tagged_object(size_t size) {
+        auto ptr = std::malloc(size);
+        /* The object will be tagged by the runtime, so add the tag to the
+         * pointer for faster lookup later.
+         */
+        heap_objects_.push_front(OBJECT_TO_TAG(ptr));
+        //heap_objects_.push_back(ptr);
+        return ptr;
     }
 
     /**
@@ -91,8 +115,12 @@ namespace electrum {
 
     }
 
-    void GarbageCollector::collect_roots() {
+    uint64_t GarbageCollector::collect_roots() {
+        for(auto root: object_roots_) {
+            mark_object_root(root);
+        }
 
+        return sweep_heap();
     }
 
 
@@ -109,19 +137,26 @@ namespace electrum {
         header->gc_mark = 1;
     }
 
-    void GarbageCollector::sweep_heap() {
-        for(auto it = heap_objects_.begin(); it != heap_objects_.end(); ++it) {
+    uint64_t GarbageCollector::sweep_heap() {
+        uint64_t numCollected = 0;
+
+        auto it = heap_objects_.begin();
+        while(it != heap_objects_.end()) {
             auto header = TAG_TO_OBJECT(*it);
 
             if(!header->gc_mark) {
                 // Object is not marked, collect it.
-                heap_objects_.erase(it);
+                heap_objects_.erase(it++);
                 this->free(header);
+                ++numCollected;
             } else {
                 // Object was marked, unmark it
                 header->gc_mark = 0;
+                ++it;
             }
         }
+
+        return numCollected;
     }
 
 
@@ -151,10 +186,10 @@ extern "C" __attribute__((naked)) void rt_enter_gc() {
 
 #if __x86_64__
     asm("mov %rsp, %rdi\n"
-        "jmp rt_enter_gc_impl");
+        "jmp _rt_enter_gc_impl");
 #elif __aarch64__
     asm("mov x0, sp\n"
-        "jmp rt_enter_gc_impl");
+        "jmp _rt_enter_gc_impl");
 #else
 #error Unsupported archetecture for GC
 #endif
