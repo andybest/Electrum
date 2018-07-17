@@ -70,6 +70,7 @@ namespace electrum {
                         auto sym = static_cast<ESymbol *>(static_cast<void *>(TAG_TO_OBJECT(pair->value)));
                         auto name = std::string(sym->name);
 
+                        // Eval special forms
                         if (name == "if") {
                             theExpr = eval_if(theExpr, theEnv);
                             goto evalStart; // TCO
@@ -81,48 +82,23 @@ namespace electrum {
                         } else if (name == "define") {
                             eval_define(theExpr, theEnv);
                             return NIL_PTR;
+                        } else {
+                            // Try to apply it
+                            auto proc = evalExpr(rt_car(theExpr), theEnv);
+                            auto result = eval_apply(theExpr, proc, theEnv);
+                            theEnv = result.first;
+                            theExpr = result.second;
+
+                            goto evalStart; // TCO
                         }
                     } else {
                         // Try to apply
 
                         auto proc = evalExpr(rt_car(theExpr), theEnv);
+                        auto result = eval_apply(theExpr, proc, theEnv);
+                        theEnv = result.first;
+                        theExpr = result.second;
 
-                        if(!is_object_with_tag(proc, kETypeTagInterpretedFunction)) {
-                            throw InterpreterException("Unable to apply form", nullptr);
-                        }
-
-                        auto funcVal = static_cast<EInterpretedFunction *>(static_cast<void *>(TAG_TO_OBJECT(proc)));
-                        auto funcEnv = rt_make_environment(funcVal->env);
-
-                        auto current_arg_pair = rt_cdr(theExpr);
-                        auto current_binding = funcVal->argnames;
-
-                        while (current_binding != NIL_PTR) {
-                            if (current_arg_pair == NIL_PTR) {
-                                throw InterpreterException("Argument count mismatch", nullptr);
-                            }
-
-                            rt_environment_add(env, rt_car(current_binding), rt_car(current_arg_pair));
-
-                            current_arg_pair = rt_cdr(current_arg_pair);
-                            current_binding = rt_cdr(current_binding);
-                        }
-
-                        if (current_arg_pair != NIL_PTR) {
-                            throw InterpreterException("Argument count mismatch", nullptr);
-                        }
-
-                        auto current_body_form = funcVal->body;
-                        void *next_body_form = rt_cdr(current_body_form);
-
-                        while (next_body_form != NIL_PTR) {
-                            evalExpr(rt_car(current_body_form), funcEnv);
-                            current_body_form = next_body_form;
-                            next_body_form = rt_cdr(current_body_form);
-                        }
-
-                        theEnv = funcEnv;
-                        theExpr = rt_car(current_body_form);
                         goto evalStart; // TCO
                     }
                 }
@@ -255,8 +231,42 @@ namespace electrum {
         rt_environment_add(rootEnvironment_, binding, value);
     }
 
-    void *Interpreter::eval_interpreted_function(void *expr) {
+    std::pair<void*, void*> Interpreter::eval_apply(void *expr, void *proc, void *env) {
+        if(!is_object_with_tag(proc, kETypeTagInterpretedFunction)) {
+            throw InterpreterException("Unable to apply form", nullptr);
+        }
 
+        auto funcVal = static_cast<EInterpretedFunction *>(static_cast<void *>(TAG_TO_OBJECT(proc)));
+        auto funcEnv = rt_make_environment(funcVal->env);
+
+        auto current_arg_pair = rt_cdr(expr);
+        auto current_binding = funcVal->argnames;
+
+        while (current_binding != NIL_PTR) {
+            if (current_arg_pair == NIL_PTR) {
+                throw InterpreterException("Argument count mismatch", nullptr);
+            }
+
+            rt_environment_add(env, rt_car(current_binding), rt_car(current_arg_pair));
+
+            current_arg_pair = rt_cdr(current_arg_pair);
+            current_binding = rt_cdr(current_binding);
+        }
+
+        if (current_arg_pair != NIL_PTR) {
+            throw InterpreterException("Argument count mismatch", nullptr);
+        }
+
+        auto current_body_form = funcVal->body;
+        void *next_body_form = rt_cdr(current_body_form);
+
+        while (next_body_form != NIL_PTR) {
+            evalExpr(rt_car(current_body_form), funcEnv);
+            current_body_form = next_body_form;
+            next_body_form = rt_cdr(current_body_form);
+        }
+
+        return std::pair<void *, void *>(funcEnv, rt_car(current_body_form));
     }
 
     void *Interpreter::lookup_symbol(void *symbol, void *env) {

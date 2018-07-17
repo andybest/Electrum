@@ -116,8 +116,8 @@ TEST(Interpreter, define_stores_value) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto def = rt_make_pair(rt_make_symbol("define"),
-            rt_make_pair(rt_make_symbol("a"),
-            rt_make_pair(rt_make_integer(1234), NIL_PTR)));
+                            rt_make_pair(rt_make_symbol("a"),
+                                         rt_make_pair(rt_make_integer(1234), NIL_PTR)));
 
     auto interp = Interpreter();
 
@@ -125,6 +125,34 @@ TEST(Interpreter, define_stores_value) {
         interp.evalExpr(def);
 
         auto result = interp.evalExpr(rt_make_symbol("a"));
+        EXPECT_TRUE(is_integer(result));
+        EXPECT_EQ(TAG_TO_INTEGER(result), 1234);
+    } catch (InterpreterException &e) {
+        GTEST_FATAL_FAILURE_(e.what());
+    }
+
+    rt_deinit_gc();
+}
+
+TEST(Interpreter, evaluates_function_from_var) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    auto form = rt_make_pair(rt_make_symbol("define"),
+                             rt_make_pair(rt_make_symbol("f"),
+                                          rt_make_pair(rt_make_pair(rt_make_symbol("lambda"),
+                                                                    rt_make_pair(
+                                                                            rt_make_pair(rt_make_symbol("x"), NIL_PTR),
+                                                                            rt_make_pair(rt_make_symbol("x"),
+                                                                                         NIL_PTR))), NIL_PTR)));
+
+    auto applyForm = rt_make_pair(rt_make_symbol("f"),
+                                  rt_make_pair(rt_make_integer(1234),
+                                               NIL_PTR));
+
+    auto interp = Interpreter();
+    try {
+        interp.evalExpr(form);
+        auto result = interp.evalExpr(applyForm);
         EXPECT_TRUE(is_integer(result));
         EXPECT_EQ(TAG_TO_INTEGER(result), 1234);
     } catch (InterpreterException &e) {

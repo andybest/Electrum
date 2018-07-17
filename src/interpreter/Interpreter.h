@@ -26,6 +26,7 @@
 #define ELECTRUM_INTERPRETER_H
 
 #include <memory>
+#include <utility>
 #include "types/Types.h"
 
 namespace electrum {
@@ -55,6 +56,8 @@ namespace electrum {
         void *eval_interpreted_function(void *expr);
 
         void eval_define(void *expr, void *env);
+
+        std::pair<void *, void *> eval_apply(void *expr, void *proc, void *env);
     };
 }
 
