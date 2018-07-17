@@ -32,141 +32,14 @@
 namespace electrum {
 
     Interpreter::Interpreter() {
-
+        // TODO: Exception when GC hasn't been initialized
+        // TODO: Add root environment as GC root
+        // TODO: Runtime function for getting/making root environment
+        rootEnvironment_ = rt_make_environment(NIL_PTR);
     }
-
-    /*void* Interpreter::evalExpr(shared_ptr<ASTNode> expr, shared_ptr<Environment> env) {
-        auto theExpr = std::move(expr);
-
-        evalBegin:
-
-        switch (theExpr->tag) {
-            case kTypeTagFloat:
-                return rt_make_float(theExpr->floatValue);
-            case kTypeTagInteger:
-                return rt_make_integer(theExpr->integerValue);
-            case kTypeTagBoolean:
-                return rt_make_boolean(static_cast<int8_t>(theExpr->booleanValue));
-            case kTypeTagNil:
-                return NIL_PTR;
-            case kTypeTagString:
-                return rt_make_string(theExpr->stringValue->c_str());
-
-            case kTypeTagSymbol:
-                // Lookup in environment
-                return lookupVariable(*theExpr->stringValue, env, theExpr);
-
-            case kTypeTagList:auto list = theExpr->listValue;
-                if (list->empty()) {
-                    throw InterpreterException("Cannot evaluate empty list.", theExpr->sourcePosition);
-                }
-
-                auto firstElem = list->at(0);
-                if (firstElem->tag == kTypeTagSymbol) {
-                    auto symName = *firstElem->stringValue;
-
-                    if (symName == "if") {
-                        theExpr = evalIf(theExpr);
-                        goto evalBegin; // TCO
-                    } else if (symName == "define") {
-                        return evalDefine(theExpr, env);
-                    } else if (symName == "do") {
-                        theExpr = evalDo(theExpr, env); // TCO
-                        goto evalBegin;
-                    }
-                }
-        }
-
-        throw InterpreterException("Unrecognized form in eval.", theExpr->sourcePosition);
-    }
-
-    shared_ptr<ASTNode> Interpreter::evalIf(shared_ptr<ASTNode> expr) {
-        if (expr->listValue->size() < 3) {
-            // If must have at least a condition and subsequent
-            throw InterpreterException("If form must have at least a condition and a subsequent.",
-                                       expr->sourcePosition);
-        }
-
-        auto condition = expr->listValue->at(1);
-        auto subsequent = expr->listValue->at(2);
-
-        auto evaluatedCondition = evalExpr(condition);
-
-        if (evaluatedCondition->tag != kTypeTagBoolean) {
-            // If condition must be a boolean
-            throw InterpreterException("If condition must be a boolean", expr->sourcePosition);
-        }
-
-        if (evaluatedCondition->booleanValue) {
-            return subsequent;
-        } else {
-            if (expr->listValue->size() > 3) {
-                return expr->listValue->at(3);
-            }
-
-            auto nil = make_shared<ASTNode>();
-            nil->tag = kTypeTagNil;
-            return nil;
-        }
-    }
-
-    void Interpreter::storeInEnvironment(string name, shared_ptr<ASTNode> val, shared_ptr<Environment> env) {
-        env->bindings.insert(make_pair(name, val));
-    }
-
-    shared_ptr<Environment> Interpreter::extendEnvironment(shared_ptr<Environment> env) {
-        auto newEnv = make_shared<Environment>();
-        newEnv->parent = std::move(env);
-        return newEnv;
-    }
-
-    shared_ptr<ASTNode> Interpreter::evalDefine(shared_ptr<ASTNode> expr, shared_ptr<Environment> env) {
-        if(expr->listValue->size() != 3) {
-            throw InterpreterException("Define requires a symbol and a value.", expr->sourcePosition);
-        }
-
-        auto binding = expr->listValue->at(1);
-        auto val = evalExpr(expr->listValue->at(2), env);
-
-        if(binding->tag != kTypeTagSymbol) {
-            throw InterpreterException("Define requires the binding to be a symbol.", binding->sourcePosition);
-        }
-
-        storeInEnvironment(*binding->stringValue, val, env);
-        return val;
-    }
-
-    shared_ptr<ASTNode> Interpreter::evalDo(shared_ptr<ASTNode> expr, shared_ptr<Environment> env) {
-        if(expr->listValue->size() < 2) {
-            // Do bodies must have at least one statement
-            throw InterpreterException("Do forms must have at least one body form.", expr->sourcePosition);
-        }
-
-        for(auto it = expr->listValue->begin() + 1; it < expr->listValue->end() - 1; ++it) {
-            evalExpr(*it, env);
-        }
-
-        return *(expr->listValue->end() - 1);
-    }
-
-    shared_ptr <ASTNode>
-    Interpreter::lookupVariable(const string name, shared_ptr <Environment> env, shared_ptr <ASTNode> expr) const {
-        if (env == nullptr) {
-            std::stringstream ss;
-            ss << "Cannot find variable '" << name << "' in environment.";
-            throw InterpreterException(ss.str(), expr->sourcePosition);
-        }
-
-        auto result = env->bindings.find(name);
-        if (result != env->bindings.end()) {
-            return result->second;
-        }
-
-        return lookupVariable(name, env->parent, expr);
-    }*/
 
     void *Interpreter::evalExpr(void *expr) {
-        return evalExpr(expr, rt_make_environment(NIL_PTR));
+        return evalExpr(expr, rootEnvironment_);
     }
 
     void *Interpreter::evalExpr(void *expr, void *env) {
@@ -174,10 +47,6 @@ namespace electrum {
         void *theEnv = env;
 
         evalStart:
-
-        printf("Evaluating :");
-        print_expr(theExpr);
-        printf("\n");
 
         if (is_integer(theExpr)) {
             return theExpr;
@@ -209,9 +78,9 @@ namespace electrum {
                             goto evalStart; // TCO
                         } else if (name == "lambda") {
                             return eval_lambda(theExpr, theEnv);
-                        } else {
-                            // Lookup symbol
-                            // Eval as function
+                        } else if (name == "define") {
+                            eval_define(theExpr, theEnv);
+                            return NIL_PTR;
                         }
                     } else {
                         // Try to apply
@@ -368,6 +237,22 @@ namespace electrum {
         }
 
         return rt_make_interpreted_function(argHead, arity, body, env);
+    }
+
+    void Interpreter::eval_define(void *expr, void *env) {
+        auto binding = rt_car(rt_cdr(expr));
+
+        if(binding == NIL_PTR) {
+            throw InterpreterException("define requires a symbol to bind to!", nullptr);
+        }
+
+        if(!is_object_with_tag(binding, kETypeTagSymbol)) {
+            throw InterpreterException("define requires a symbol to bind to!", nullptr);
+        }
+
+        auto value = evalExpr(rt_car(rt_cdr(rt_cdr(expr))), env);
+
+        rt_environment_add(rootEnvironment_, binding, value);
     }
 
     void *Interpreter::eval_interpreted_function(void *expr) {

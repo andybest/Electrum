@@ -42,7 +42,7 @@ namespace electrum {
         void *evalExpr(void *expr, void *env);
 
     private:
-        shared_ptr<Environment> rootEnvironment_;
+        void *rootEnvironment_;
 
         void *lookup_symbol(void *symbol, void *env);
 
@@ -54,7 +54,7 @@ namespace electrum {
 
         void *eval_interpreted_function(void *expr);
 
-
+        void eval_define(void *expr, void *env);
     };
 }
 

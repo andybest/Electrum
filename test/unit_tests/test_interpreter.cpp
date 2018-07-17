@@ -111,20 +111,30 @@ TEST(Interpreter, runs_simple_lambda) {
     rt_deinit_gc();
 }
 
-/*
+
 TEST(Interpreter, define_stores_value) {
-    auto val = make_integer(1234);
-    auto def = make_list({make_symbol("define"), make_symbol("a"), val});
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    auto def = rt_make_pair(rt_make_symbol("define"),
+            rt_make_pair(rt_make_symbol("a"),
+            rt_make_pair(rt_make_integer(1234), NIL_PTR)));
 
     auto interp = Interpreter();
-    interp.evalExpr(def);
 
-    auto result = interp.evalExpr(make_symbol("a"));
-    EXPECT_EQ(result->tag, kTypeTagInteger);
-    EXPECT_EQ(result->integerValue, 1234);
+    try {
+        interp.evalExpr(def);
+
+        auto result = interp.evalExpr(rt_make_symbol("a"));
+        EXPECT_TRUE(is_integer(result));
+        EXPECT_EQ(TAG_TO_INTEGER(result), 1234);
+    } catch (InterpreterException &e) {
+        GTEST_FATAL_FAILURE_(e.what());
+    }
+
+    rt_deinit_gc();
 }
 
-
+/*
 TEST(Interpreter, unbound_symbol_lookup_throws_exception) {
     auto interp = Interpreter();
 

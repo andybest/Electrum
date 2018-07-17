@@ -100,14 +100,19 @@ namespace electrum {
                 case kETypeTagInterpretedFunction:
                     printf("<Interpreted Function>");
                     break;
-                case kETypeTagString:
+                case kETypeTagString: {
                     auto val = static_cast<EString *>(static_cast<void *>(header));
                     printf("%s", val->stringValue);
                     break;
+                }
 
                 default:
                     break;
             }
+        } else if(expr == NIL_PTR) {
+            printf("nil");
+        } else if(is_boolean(expr)) {
+            printf((expr == TRUE_PTR) ? "true" : "false");
         }
     }
 }
@@ -254,10 +259,6 @@ void *rt_environment_get(void *env, void *binding) {
     while (currentEnv != NIL_PTR) {
         auto envVal = static_cast<EEnvironment *>(static_cast<void *>(TAG_TO_OBJECT(currentEnv)));
         auto currentValue = envVal->values;
-
-        printf("ENV_VALS: ");
-        electrum::print_expr(envVal->values);
-        printf("\n");
 
         while (currentValue != NIL_PTR) {
             auto b = rt_car(currentValue);
