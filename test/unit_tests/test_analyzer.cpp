@@ -95,3 +95,30 @@ TEST(Analyzer, analyzesDo) {
     EXPECT_EQ(doNode->statements[1]->nodeType(), kAnalyzerNodeTypeConstant);
     EXPECT_EQ(doNode->returnValue->nodeType(), kAnalyzerNodeTypeConstant);
 }
+
+TEST(Analyzer, analyzesLambda) {
+    PARSE_STRING("(lambda (x) 1234)");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeLambda);
+    auto lambdaNode = std::dynamic_pointer_cast<LambdaAnalyzerNode>(node);
+
+    EXPECT_EQ(lambdaNode->arg_names.size(), 1);
+    EXPECT_EQ(lambdaNode->arg_names.at(0)->nodeType(), kAnalyzerNodeTypeConstant);
+
+    auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(lambdaNode->arg_names.at(0));
+    EXPECT_EQ(arg1->type, kAnalyzerConstantTypeSymbol);
+    EXPECT_EQ(*boost::get<std::shared_ptr<std::string>>(arg1->value), "x");
+
+    EXPECT_EQ(lambdaNode->body->nodeType(), kAnalyzerNodeTypeDo);
+
+    auto body = std::dynamic_pointer_cast<DoAnalyzerNode>(lambdaNode->body);
+    EXPECT_EQ(body->returnValue->nodeType(), kAnalyzerNodeTypeConstant);
+
+    auto rv = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(body->returnValue);
+
+    EXPECT_EQ(rv->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(rv->value), 1234);
+}

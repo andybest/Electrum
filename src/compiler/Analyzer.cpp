@@ -37,11 +37,9 @@ namespace electrum {
         switch (form->tag) {
             case kTypeTagInteger: return analyzeInteger(form);
             case kTypeTagFloat: return analyzeFloat(form);
-            case kTypeTagBoolean: return analyzeBoolean(form);c
+            case kTypeTagBoolean: return analyzeBoolean(form);
             case kTypeTagString: return analyzeString(form);
             case kTypeTagList: return analyzeList(form);
-
-
         }
 
         return shared_ptr<AnalyzerNode>();
@@ -173,6 +171,68 @@ namespace electrum {
 
         // Add the last statement to 'returnValue'
         node->returnValue = analyzeForm(*(listPtr->end() - 1));
+
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto listPtr = form->listValue;
+        assert(!listPtr->empty());
+
+        if (listPtr->size() < 2) {
+            // Lambda forms must contain an argument list
+            throw CompilerException("Lambda forms must have an argument list",
+                    form->sourcePosition);
+        }
+
+        if (listPtr->at(1)->tag != kTypeTagList) {
+            // Lamda arguments must be a list
+            throw CompilerException("Lambda arguments must be a list",
+                    listPtr->at(1)->sourcePosition);
+        }
+
+        auto argList = listPtr->at(1)->listValue;
+
+        std::vector<shared_ptr<AnalyzerNode>> argNames;
+
+        for(auto arg: *argList) {
+            if(arg->tag != kTypeTagSymbol) {
+                // Lambda arguments must be symbols
+                throw CompilerException("Lambda arguments must be symbols",
+                        arg->sourcePosition);
+            }
+
+            auto sym = std::make_shared<ConstantValueAnalyzerNode>();
+            sym->sourcePosition = arg->sourcePosition;
+            sym->value = arg->stringValue;
+            sym->type = kAnalyzerConstantTypeSymbol;
+            argNames.push_back(sym);
+        }
+
+        if (listPtr->size() < 3) {
+            // Lambda forms must have at least one body expression
+            throw CompilerException("Lambda forms must have at least one body expression",
+                    form->sourcePosition);
+        }
+
+        auto body = std::make_shared<DoAnalyzerNode>();
+        body->sourcePosition = listPtr->at(2)->sourcePosition;
+
+        // Add all but the last statements to 'statements'
+        for (auto it = listPtr->begin() + 2; it < listPtr->end() - 1; ++it) {
+            body->statements.push_back(analyzeForm(*it));
+        }
+
+        // Add the last statement to 'returnValue'
+        body->returnValue = analyzeForm(*(listPtr->end() - 1));
+
+
+        auto node = std::make_shared<LambdaAnalyzerNode>();
+
+        node->sourcePosition = form->sourcePosition;
+        node->arg_names = argNames;
+        node->body = body;
 
         return node;
     }

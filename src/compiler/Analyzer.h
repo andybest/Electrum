@@ -42,7 +42,8 @@ namespace electrum {
         kAnalyzerNodeTypeNone = -1,
         kAnalyzerNodeTypeIf,
         kAnalyzerNodeTypeConstant,
-        kAnalyzerNodeTypeDo
+        kAnalyzerNodeTypeDo,
+        kAnalyzerNodeTypeLambda
     };
 
     class AnalyzerNode {
@@ -79,7 +80,8 @@ namespace electrum {
         kAnalyzerConstantTypeInteger,
         kAnalyzerConstantTypeFloat,
         kAnalyzerConstantTypeBoolean,
-        kAnalyzerConstantTypeString
+        kAnalyzerConstantTypeString,
+        kAnalyzerConstantTypeSymbol
     };
 
     /*
@@ -122,6 +124,23 @@ namespace electrum {
         }
     };
 
+    class LambdaAnalyzerNode : public AnalyzerNode {
+    public:
+        /// A vector of the argument names
+        vector<shared_ptr<AnalyzerNode>> arg_names;
+
+        /// A do node representing the body
+        shared_ptr<AnalyzerNode> body;
+
+        vector<shared_ptr<AnalyzerNode>> children() override {
+            return body->children();
+        }
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeLambda;
+        }
+    };
+
     class Analyzer {
     public:
         Analyzer();
@@ -143,6 +162,8 @@ namespace electrum {
 
         shared_ptr <AnalyzerNode> analyzeDo(shared_ptr <ASTNode> form);
 
+        shared_ptr <AnalyzerNode> analyzeLambda(shared_ptr <ASTNode> form);
+
         shared_ptr <AnalyzerNode> analyzeMaybeFunctionCall(shared_ptr <ASTNode> form);
 
         shared_ptr <AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr <string> symbolName, shared_ptr <ASTNode> form);
@@ -152,7 +173,8 @@ namespace electrum {
         /// Analysis functions for special forms
         const std::unordered_map<std::string, AnalyzerFunc> specialForms  {
                 { "if", &Analyzer::analyzeIf },
-                { "do", &Analyzer::analyzeDo }
+                { "do", &Analyzer::analyzeDo },
+                { "lambda", &Analyzer::analyzeLambda }
         };
     };
 }
