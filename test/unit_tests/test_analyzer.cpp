@@ -55,6 +55,30 @@ TEST(Analyzer, analyzesConstantFloat) {
     EXPECT_FLOAT_EQ(boost::get<double>(constantNode->value), 1234.5678);
 }
 
+TEST(Analyzer, analyzesConstantBooleanTrue) {
+    PARSE_STRING("#t");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
+    auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
+    EXPECT_EQ(constantNode->type, kAnalyzerConstantTypeBoolean);
+    EXPECT_EQ(boost::get<bool>(constantNode->value), true);
+}
+
+TEST(Analyzer, analyzesConstantBooleanFalse) {
+    PARSE_STRING("#f");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
+    auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
+    EXPECT_EQ(constantNode->type, kAnalyzerConstantTypeBoolean);
+    EXPECT_EQ(boost::get<bool>(constantNode->value), false);
+}
+
 TEST(Analyzer, analyzesDo) {
     PARSE_STRING("(do 123 456 789)");
 

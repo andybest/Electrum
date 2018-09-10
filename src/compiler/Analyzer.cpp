@@ -37,6 +37,7 @@ namespace electrum {
         switch (form->tag) {
             case kTypeTagInteger: return analyzeInteger(form);
             case kTypeTagFloat: return analyzeFloat(form);
+            case kTypeTagBoolean: return analyzeBoolean(form);c
             case kTypeTagString: return analyzeString(form);
             case kTypeTagList: return analyzeList(form);
 
@@ -65,7 +66,7 @@ namespace electrum {
     shared_ptr<AnalyzerNode> Analyzer::analyzeBoolean(const shared_ptr<ASTNode> form) {
         auto node = make_shared<ConstantValueAnalyzerNode>();
         node->type = kAnalyzerConstantTypeBoolean;
-        // TODO: Implement boolean
+        node->value = form->booleanValue;
         node->sourcePosition = form->sourcePosition;
         return node;
     }

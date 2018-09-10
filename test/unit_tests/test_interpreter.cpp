@@ -35,6 +35,9 @@ using std::make_shared;
 
 
 TEST(Interpreter, if_evaluates_correct_expressions) {
+    // (if #t 1234 5678) == 1234
+    // (if #f 1234 5678) == 5678
+
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto cond1 = rt_make_boolean(static_cast<int8_t>(true));
@@ -72,6 +75,8 @@ TEST(Interpreter, if_evaluates_correct_expressions) {
 }
 
 TEST(Interpreter, begin_returns_last_form) {
+    // (begin 1234 5678) == 5678
+
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto form = rt_make_pair(rt_make_symbol("begin"),
@@ -92,6 +97,8 @@ TEST(Interpreter, begin_returns_last_form) {
 }
 
 TEST(Interpreter, runs_simple_lambda) {
+    // ((lambda (x) x) 1234) == 1234
+
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto form = rt_make_pair(rt_make_pair(rt_make_symbol("lambda"),
@@ -113,6 +120,9 @@ TEST(Interpreter, runs_simple_lambda) {
 
 
 TEST(Interpreter, define_stores_value) {
+    // (define a 1234)
+    // a == 1234
+
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto def = rt_make_pair(rt_make_symbol("define"),
@@ -135,6 +145,9 @@ TEST(Interpreter, define_stores_value) {
 }
 
 TEST(Interpreter, evaluates_function_from_var) {
+    // (define f (lambda (x) x))
+    // (f 1234) == 1234
+
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto form = rt_make_pair(rt_make_symbol("define"),
