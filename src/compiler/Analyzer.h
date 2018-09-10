@@ -135,11 +135,13 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> analyzeString(shared_ptr<ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeBoolean(const shared_ptr <ASTNode> form);
+        shared_ptr <AnalyzerNode> analyzeBoolean(shared_ptr <ASTNode> form);
 
         shared_ptr <AnalyzerNode> analyzeList(shared_ptr <ASTNode> form);
 
         shared_ptr <AnalyzerNode> analyzeIf(shared_ptr <ASTNode> form);
+
+        shared_ptr <AnalyzerNode> analyzeDo(shared_ptr <ASTNode> form);
 
         shared_ptr <AnalyzerNode> analyzeMaybeFunctionCall(shared_ptr <ASTNode> form);
 
@@ -152,8 +154,6 @@ namespace electrum {
                 { "if", &Analyzer::analyzeIf },
                 { "do", &Analyzer::analyzeDo }
         };
-
-        shared_ptr <AnalyzerNode> analyzeDo(const shared_ptr <ASTNode> form);
     };
 }
 
