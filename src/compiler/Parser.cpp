@@ -55,6 +55,8 @@ namespace electrum {
 
             ++it;
         }
+
+        throw std::exception();
     }
 
     shared_ptr<ASTNode> Parser::parseInteger(const Token &t) const {
