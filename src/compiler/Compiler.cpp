@@ -58,7 +58,8 @@ namespace electrum {
                 break;
             case kAnalyzerConstantTypeSymbol: v = make_symbol(boost::get<shared_ptr<std::string>>(node->value));
                 break;
-                //case kAnalyzerConstantTypeString:break;
+            case kAnalyzerConstantTypeString: v = make_string(boost::get<shared_ptr<std::string>>(node->value));
+                break;
             default:throw CompilerException("Unrecognized constant type", node->sourcePosition);
         }
 
@@ -113,6 +114,24 @@ namespace electrum {
 
     llvm::Value *Compiler::make_symbol(std::shared_ptr<std::string> name) {
         auto func = _module->getOrInsertFunction("rt_make_symbol",
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+
+        auto strptr = _builder->CreateGlobalStringPtr(*name);
+        return _builder->CreateCall(func, {strptr});
+    }
+
+    llvm::Value *Compiler::make_string(std::shared_ptr<std::string> str) {
+        auto func = _module->getOrInsertFunction("rt_make_string",
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+
+        auto strptr = _builder->CreateGlobalStringPtr(*str);
+        return _builder->CreateCall(func, {strptr});
+    }
+
+    llvm::Value *Compiler::make_keyword(std::shared_ptr<std::string> name) {
+        auto func = _module->getOrInsertFunction("rt_make_keyword",
                                                  llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
                                                  llvm::IntegerType::getInt8PtrTy(_context, 0));
 
