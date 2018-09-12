@@ -85,11 +85,7 @@ namespace electrum {
         auto val = make_shared<ASTNode>();
         val->tag = kTypeTagBoolean;
 
-        if (t.text == "#t" || t.text == "#true") {
-            val->booleanValue = true;
-        } else {
-            val->booleanValue = false;
-        }
+        val->booleanValue = t.text == "#t" || t.text == "#true";
 
         val->sourcePosition = make_shared<SourcePosition>();
         val->sourcePosition->line = t.line;
