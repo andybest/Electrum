@@ -174,18 +174,62 @@ double rt_float_value(void *val) {
 }
 
 void *rt_make_symbol(const char *name) {
-    auto *symbolVal = static_cast<ESymbol *>(GC_MALLOC(sizeof(ESymbol)));
+    size_t len = strlen(name);
+
+    // Allocate enough space for the string
+    auto *symbolVal = static_cast<ESymbol *>(GC_MALLOC(sizeof(ESymbol) + (sizeof(char) * len) + 1));
     symbolVal->header.tag = kETypeTagSymbol;
     symbolVal->header.gc_mark = 0;
-#warning Temporary malloc
-    symbolVal->name = static_cast<char *>(malloc(strlen(name)));
     strcpy(symbolVal->name, name);
+    symbolVal->length = (uint64_t)len;
+
+    // Add null termination
+    symbolVal->name[len] = 0;
     return OBJECT_TO_TAG(symbolVal);
 }
 
 void *rt_is_symbol(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagSymbol));
 }
+
+void *rt_make_string(const char *str) {
+    size_t len = strlen(str);
+
+    // Allocate enough space for the string
+    auto *strVal = static_cast<EString *>(GC_MALLOC(sizeof(EString) + (sizeof(char) * len) + 1));
+    strVal->header.tag = kETypeTagString;
+    strVal->header.gc_mark = 0;
+    strcpy(strVal->stringValue, str);
+    strVal->length = (uint64_t)len;
+
+    // Add null termination
+    strVal->stringValue[len] = 0;
+    return OBJECT_TO_TAG(strVal);
+}
+
+void *rt_is_string(void *val) {
+    return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagString));
+}
+
+void *rt_make_keyword(const char *str) {
+    size_t len = strlen(str);
+
+    // Allocate enough space for the string
+    auto *keywordVal = static_cast<EKeyword *>(GC_MALLOC(sizeof(EKeyword) + (sizeof(char) * len) + 1));
+    keywordVal->header.tag = kETypeTagKeyword;
+    keywordVal->header.gc_mark = 0;
+    strcpy(keywordVal->name, str);
+    keywordVal->length = (uint64_t)len;
+
+    // Add null termination
+    keywordVal->name[len] = 0;
+    return OBJECT_TO_TAG(keywordVal);
+}
+
+void *rt_is_keyword(void *val) {
+    return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagKeyword));
+}
+
 
 void *rt_make_pair(void *value, void *next) {
     auto *pairVal = static_cast<EPair *>(GC_MALLOC(sizeof(EPair)));
@@ -234,6 +278,16 @@ void *rt_make_interpreted_function(void *argnames, uint64_t arity, void *body, v
     funcVal->arity = arity;
     funcVal->body = body;
     funcVal->env = env;
+    return OBJECT_TO_TAG(funcVal);
+}
+
+void *rt_make_compiled_function(uint64_t arity, void *env, void *fp) {
+    auto funcVal = static_cast<ECompiledFunction *>(GC_MALLOC(sizeof(ECompiledFunction)));
+    funcVal->header.tag = kETypeTagFunction;
+    funcVal->header.gc_mark = 0;
+    funcVal->arity = arity;
+    funcVal->env = env;
+    funcVal->f_ptr = fp;
     return OBJECT_TO_TAG(funcVal);
 }
 

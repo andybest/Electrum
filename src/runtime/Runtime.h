@@ -76,19 +76,19 @@ struct EFloat {
 struct EString {
     EObjectHeader header;
     uint64_t length;
-    char *stringValue;
+    char stringValue[];
 };
 
 struct ESymbol {
     EObjectHeader header;
     uint64_t length;
-    char *name;
+    char name[];
 };
 
 struct EKeyword {
     EObjectHeader header;
     uint64_t length;
-    char *name;
+    char name[];
 };
 
 struct EPair {

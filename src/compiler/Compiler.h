@@ -82,6 +82,7 @@ namespace electrum {
         llvm::Value *make_float(double value);
         llvm::Value *make_boolean(bool value);
         llvm::Value *make_symbol(std::shared_ptr<std::string> name);
+        llvm::Value *make_closure(uint64_t arity, llvm::Value *environment, llvm::Value *func_ptr);
     };
 }
 

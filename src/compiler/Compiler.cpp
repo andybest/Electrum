@@ -50,11 +50,15 @@ namespace electrum {
         llvm::Value *v;
 
         switch (node->type) {
-            case kAnalyzerConstantTypeInteger: v = make_integer(boost::get<int64_t>(node->value)); break;
-            case kAnalyzerConstantTypeFloat: v = make_float(boost::get<double>(node->value)); break;
-            case kAnalyzerConstantTypeBoolean: v = make_boolean(boost::get<bool>(node->value)); break;
-            case kAnalyzerConstantTypeSymbol: v = make_symbol(boost::get<shared_ptr<std::string>>(node->value)); break;
-            //case kAnalyzerConstantTypeString:break;
+            case kAnalyzerConstantTypeInteger: v = make_integer(boost::get<int64_t>(node->value));
+                break;
+            case kAnalyzerConstantTypeFloat: v = make_float(boost::get<double>(node->value));
+                break;
+            case kAnalyzerConstantTypeBoolean: v = make_boolean(boost::get<bool>(node->value));
+                break;
+            case kAnalyzerConstantTypeSymbol: v = make_symbol(boost::get<shared_ptr<std::string>>(node->value));
+                break;
+                //case kAnalyzerConstantTypeString:break;
             default:throw CompilerException("Unrecognized constant type", node->sourcePosition);
         }
 
@@ -83,7 +87,7 @@ namespace electrum {
                                                  llvm::IntegerType::getInt64Ty(_context));
 
         return _builder->CreateCall(func,
-                                    llvm::ConstantInt::getSigned(llvm::IntegerType::getInt64Ty(_context), value));
+                                    {llvm::ConstantInt::getSigned(llvm::IntegerType::getInt64Ty(_context), value)});
     }
 
     llvm::Value *Compiler::make_float(double value) {
@@ -92,7 +96,7 @@ namespace electrum {
                                                  llvm::Type::getDoubleTy(_context));
 
         return _builder->CreateCall(func,
-                                    llvm::ConstantFP::get(llvm::Type::getDoubleTy(_context), value));
+                                    {llvm::ConstantFP::get(llvm::Type::getDoubleTy(_context), value)});
     }
 
     llvm::Value *Compiler::make_boolean(bool value) {
@@ -103,7 +107,8 @@ namespace electrum {
                                                  llvm::IntegerType::getInt8Ty(_context));
 
         return _builder->CreateCall(func,
-                                    llvm::ConstantInt::getSigned(llvm::IntegerType::getInt8Ty(_context), value ? 1 : 0));
+                                    {llvm::ConstantInt::getSigned(llvm::IntegerType::getInt8Ty(_context),
+                                                                  value ? 1 : 0)});
     }
 
     llvm::Value *Compiler::make_symbol(std::shared_ptr<std::string> name) {
@@ -112,6 +117,22 @@ namespace electrum {
                                                  llvm::IntegerType::getInt8PtrTy(_context, 0));
 
         auto strptr = _builder->CreateGlobalStringPtr(*name);
-        return _builder->CreateCall(func, strptr);
+        return _builder->CreateCall(func, {strptr});
+    }
+
+    llvm::Value *Compiler::make_closure(uint64_t arity, llvm::Value *environment, llvm::Value *func_ptr) {
+
+        // void *rt_make_compiled_function(uint64_t arity, void *env, void *fp)
+        auto func = _module->getOrInsertFunction("rt_make_compiled_function",
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt64Ty(_context),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+
+
+        return _builder->CreateCall(func,
+                                    {llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), arity),
+                                     environment,
+                                     func_ptr});
     }
 }
