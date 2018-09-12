@@ -56,6 +56,7 @@ enum ETypeTag : uint64_t {
     kETypeTagFloat,
     kETypeTagString,
     kETypeTagSymbol,
+    kETypeTagKeyword,
     kETypeTagPair,
     kETypeTagFunction,
     kETypeTagInterpretedFunction,
@@ -84,10 +85,27 @@ struct ESymbol {
     char *name;
 };
 
+struct EKeyword {
+    EObjectHeader header;
+    uint64_t length;
+    char *name;
+};
+
 struct EPair {
     EObjectHeader header;
     void *value;
     void *next;
+};
+
+struct ECompiledFunction {
+    EObjectHeader header;
+    uint64_t arity;
+
+    /** Closure environment */
+    void *env;
+
+    /** Pointer to function implementation */
+    void *f_ptr;
 };
 
 struct EInterpretedFunction {

@@ -46,7 +46,8 @@ namespace electrum {
         kTypeTagList,
         kTypeTagString,
         kTypeTagNil,
-        kTypeTagSymbol
+        kTypeTagSymbol,
+        kTypeTagKeyword
     };
 
     struct SourcePosition {
@@ -83,7 +84,7 @@ namespace electrum {
 
         shared_ptr<LispFunction> functionValue;
         shared_ptr<vector<shared_ptr<ASTNode>>> listValue;
-        shared_ptr<string> stringValue;     // Used for string and symbol
+        shared_ptr<string> stringValue;     // Used for string, symbol and keyword
     };
 
     struct Environment {

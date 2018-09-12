@@ -58,6 +58,8 @@ namespace electrum {
         shared_ptr <ASTNode> parseString(const Token &t) const;
 
         shared_ptr <ASTNode> parseBoolean(const Token &t) const;
+
+        shared_ptr<ASTNode> parseKeyword(const Token &t) const;
     };
 }
 

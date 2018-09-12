@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 # Generate the lexer files
 add_custom_command(
         OUTPUT lex.yy.cpp lex.yy.h
-        COMMAND reflex -d ${CMAKE_CURRENT_SOURCE_DIR}/electrum_lexer.l
+        COMMAND reflex ${CMAKE_CURRENT_SOURCE_DIR}/electrum_lexer.l
         DEPENDS electrum_lexer.l
         COMMENT "Generating lexer."
 )

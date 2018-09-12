@@ -29,13 +29,59 @@
 #include <lex.yy.h>
 #include <cstdint>
 #include <memory>
+#include "Analyzer.h"
+
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Value.h>
 
 namespace electrum {
 
+    struct CompilerContext {
+        std::vector<llvm::Value *> value_stack;
+
+        void push_value(llvm::Value *val) {
+            value_stack.push_back(val);
+        }
+
+        llvm::Value *pop_value() {
+            auto v = value_stack.back();
+            value_stack.pop_back();
+            return v;
+        }
+
+    };
+
     class Compiler {
+
     public:
         Compiler();
+
     private:
+
+        llvm::LLVMContext _context;
+        std::unique_ptr<llvm::Module> _module;
+        std::unique_ptr<llvm::IRBuilder<>> _builder;
+        CompilerContext _compilerContext;
+
+        /// Address space for the garbage collector
+        static const int kGCAddressSpace = 1;
+
+        CompilerContext *current_context() { return &_compilerContext; }
+
+        void compile_node(std::shared_ptr<AnalyzerNode> node);
+
+        void compile_constant(std::shared_ptr<ConstantValueAnalyzerNode> node);
+
+        void compile_lambda(std::shared_ptr<LambdaAnalyzerNode> node);
+
+        void compile_do(std::shared_ptr<DoAnalyzerNode> node);
+
+        void compile_if(std::shared_ptr<IfAnalyzerNode> node);
+
+        llvm::Value *make_integer(int64_t value);
+        llvm::Value *make_float(double value);
+        llvm::Value *make_boolean(bool value);
+        llvm::Value *make_symbol(std::shared_ptr<std::string> name);
     };
 }
 

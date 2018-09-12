@@ -89,3 +89,19 @@ TEST(Lexer, lexes_string) {
 
     ASSERT_TOKEN(tokens[0], kTokenTypeString, "\"Hello, world!\"");
 }
+
+TEST(Lexer, lexes_keyword) {
+    TOKENIZE_STRING(":foo");
+
+    EXPECT_EQ(tokens.size(), 1);
+
+    ASSERT_TOKEN(tokens[0], kTokenTypeKeyword, ":foo");
+}
+
+TEST(Lexer, lexes_does_not_lex_invalid_keyword) {
+    TOKENIZE_STRING("bar:foo");
+
+    EXPECT_EQ(tokens.size(), 1);
+
+    ASSERT_TOKEN(tokens[0], kTokenTypeSymbol, "bar:foo");
+}

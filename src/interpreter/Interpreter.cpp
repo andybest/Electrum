@@ -48,6 +48,7 @@ namespace electrum {
 
         evalStart:
 
+        // Return self-evaluating forms
         if (is_integer(theExpr)) {
             return theExpr;
         } else if (is_boolean(theExpr)) {
@@ -61,6 +62,8 @@ namespace electrum {
                 case kETypeTagFloat:
                     return theExpr;
                 case kETypeTagString:
+                    return theExpr;
+                case kETypeTagKeyword:
                     return theExpr;
                 case kETypeTagSymbol:
                     return this->lookup_symbol(theExpr, theEnv);

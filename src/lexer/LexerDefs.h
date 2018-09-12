@@ -40,6 +40,7 @@ namespace electrum {
         kTokenTypeSpliceUnquote,
         kTokenTypeUnquote,
         kTokenTypeSymbol,
+        kTokenTypeKeyword,
         kTokenTypeFloat,
         kTokenTypeInteger,
         kTokenTypeBoolean,

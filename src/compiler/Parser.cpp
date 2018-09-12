@@ -35,7 +35,7 @@ namespace electrum {
     }
 
     pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::readTokens(vector<Token> tokens,
-                                                                        vector<Token>::iterator it) const {
+                                                                          vector<Token>::iterator it) const {
         while (it != tokens.end()) {
             auto t = *it;
 
@@ -44,6 +44,7 @@ namespace electrum {
                 case kTokenTypeFloat: return make_pair(parseFloat(t), it);
                 case kTokenTypeBoolean: return make_pair(parseBoolean(t), it);
                 case kTokenTypeSymbol: return make_pair(parseSymbol(t), it);
+                case kTokenTypeKeyword: return make_pair(parseKeyword(t), it);
                 case kTokenTypeString: return make_pair(parseString(t), it);
                 case kTokenTypeLParen: {
                     return parseList(tokens, ++it);
@@ -84,7 +85,7 @@ namespace electrum {
         auto val = make_shared<ASTNode>();
         val->tag = kTypeTagBoolean;
 
-        if(t.text == "#t" || t.text == "#true") {
+        if (t.text == "#t" || t.text == "#true") {
             val->booleanValue = true;
         } else {
             val->booleanValue = false;
@@ -109,6 +110,18 @@ namespace electrum {
         return val;
     }
 
+    shared_ptr<ASTNode> Parser::parseKeyword(const Token &t) const {
+        auto val = make_shared<ASTNode>();
+        val->tag = kTypeTagKeyword;
+        val->stringValue = make_shared<string>(t.text);
+
+        val->sourcePosition = make_shared<SourcePosition>();
+        val->sourcePosition->line = t.line;
+        val->sourcePosition->column = t.column;
+        val->sourcePosition->filename = t.filename;
+        return val;
+    }
+
     shared_ptr<ASTNode> Parser::parseString(const Token &t) const {
         auto val = make_shared<ASTNode>();
 
@@ -124,7 +137,7 @@ namespace electrum {
     }
 
     pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseList(const vector<Token> tokens,
-                                                                       vector<Token>::iterator it) const {
+                                                                         vector<Token>::iterator it) const {
         auto list = make_shared<vector<shared_ptr<ASTNode>>>();
 
         while (it != tokens.end()) {

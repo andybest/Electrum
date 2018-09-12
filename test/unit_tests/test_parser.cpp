@@ -26,6 +26,13 @@ TEST(parser, parses_symbol) {
     EXPECT_EQ(*val->stringValue, "lambda");
 }
 
+TEST(parser, parses_keyword) {
+    PARSE_STRING(":foo");
+
+    EXPECT_EQ(val->tag, kTypeTagKeyword);
+    EXPECT_EQ(*val->stringValue, ":foo");
+}
+
 TEST(parser, parses_list) {
     PARSE_STRING("(1 2 3)");
 
