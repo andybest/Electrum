@@ -113,7 +113,9 @@ namespace electrum {
     shared_ptr<ASTNode> Parser::parseKeyword(const Token &t) const {
         auto val = make_shared<ASTNode>();
         val->tag = kTypeTagKeyword;
-        val->stringValue = make_shared<string>(t.text);
+
+        // Remove the colon
+        val->stringValue = make_shared<string>(t.text.substr(1, t.text.size() - 1));
 
         val->sourcePosition = make_shared<SourcePosition>();
         val->sourcePosition->line = t.line;
@@ -127,7 +129,9 @@ namespace electrum {
 
         // TODO: Parse escapes
         val->tag = kTypeTagString;
-        val->stringValue = make_shared<string>(t.text);
+
+        // Remove the opening and closing quotes
+        val->stringValue = make_shared<string>(t.text.substr(1, t.text.size() - 2));
 
         val->sourcePosition = make_shared<SourcePosition>();
         val->sourcePosition->line = t.line;

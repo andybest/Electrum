@@ -39,6 +39,7 @@ namespace electrum {
             case kTypeTagFloat: return analyzeFloat(form);
             case kTypeTagBoolean: return analyzeBoolean(form);
             case kTypeTagString: return analyzeString(form);
+            case kTypeTagKeyword: return analyzeKeyword(form);
             case kTypeTagList: return analyzeList(form);
         }
 
@@ -72,6 +73,14 @@ namespace electrum {
     shared_ptr<AnalyzerNode> Analyzer::analyzeString(const shared_ptr<ASTNode> form) {
         auto node = make_shared<ConstantValueAnalyzerNode>();
         node->type = kAnalyzerConstantTypeString;
+        node->value = form->stringValue;
+        node->sourcePosition = form->sourcePosition;
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeKeyword(const shared_ptr<ASTNode> form) {
+        auto node = make_shared<ConstantValueAnalyzerNode>();
+        node->type = kAnalyzerConstantTypeKeyword;
         node->value = form->stringValue;
         node->sourcePosition = form->sourcePosition;
         return node;

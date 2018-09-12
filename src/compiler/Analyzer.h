@@ -81,7 +81,8 @@ namespace electrum {
         kAnalyzerConstantTypeFloat,
         kAnalyzerConstantTypeBoolean,
         kAnalyzerConstantTypeString,
-        kAnalyzerConstantTypeSymbol
+        kAnalyzerConstantTypeSymbol,
+        kAnalyzerConstantTypeKeyword
     };
 
     /*
@@ -153,6 +154,8 @@ namespace electrum {
         shared_ptr<AnalyzerNode> analyzeFloat(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> analyzeString(shared_ptr<ASTNode> form);
+
+        shared_ptr<AnalyzerNode> analyzeKeyword(const shared_ptr<ASTNode> form);
 
         shared_ptr <AnalyzerNode> analyzeBoolean(shared_ptr <ASTNode> form);
 

@@ -79,6 +79,30 @@ TEST(Analyzer, analyzesConstantBooleanFalse) {
     EXPECT_EQ(boost::get<bool>(constantNode->value), false);
 }
 
+TEST(Analyzer, analyzesConstantString) {
+    PARSE_STRING("\"foo\"");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
+    auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
+    EXPECT_EQ(constantNode->type, kAnalyzerConstantTypeString);
+    EXPECT_EQ(*boost::get<std::shared_ptr<std::string>>(constantNode->value), "foo");
+}
+
+TEST(Analyzer, analyzesConstantKeyword) {
+    PARSE_STRING(":foo");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
+    auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
+    EXPECT_EQ(constantNode->type, kAnalyzerConstantTypeKeyword);
+    EXPECT_EQ(*boost::get<std::shared_ptr<std::string>>(constantNode->value), "foo");
+}
+
 TEST(Analyzer, analyzesDo) {
     PARSE_STRING("(do 123 456 789)");
 
