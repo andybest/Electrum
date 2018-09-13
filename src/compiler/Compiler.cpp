@@ -39,9 +39,13 @@ namespace electrum {
     void Compiler::compile_node(std::shared_ptr<AnalyzerNode> node) {
         switch (node->nodeType()) {
             case kAnalyzerNodeTypeConstant:compile_constant(std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node));
+                break;
             case kAnalyzerNodeTypeLambda:compile_lambda(std::dynamic_pointer_cast<LambdaAnalyzerNode>(node));
+                break;
             case kAnalyzerNodeTypeDo:compile_do(std::dynamic_pointer_cast<DoAnalyzerNode>(node));
+                break;
             case kAnalyzerNodeTypeIf:compile_if(std::dynamic_pointer_cast<IfAnalyzerNode>(node));
+                break;
             default:throw CompilerException("Unrecognized node type", node->sourcePosition);
         }
     }
