@@ -145,53 +145,41 @@ namespace electrum {
 //extern "C" {
 
 void rt_init();
-
 void rt_init_gc(electrum::GCMode gc_mode);
-
 void rt_deinit_gc();
 
 std::shared_ptr<electrum::GarbageCollector> rt_get_gc();
 
 void *rt_is_object(void *val);
 
-void *rt_make_boolean(int8_t booleanValue);
-
-void *rt_is_boolean(void *val);
+extern "C" void *rt_make_boolean(int8_t booleanValue);
+extern "C" void *rt_is_boolean(void *val);
 
 extern "C" void *rt_make_integer(int64_t value);
-
-void *rt_is_integer(void *val);
-
+extern "C" void *rt_is_integer(void *val);
 extern "C" int64_t rt_integer_value(void *val);
 
 extern "C" void *rt_make_float(double value);
-
 extern "C" void *rt_is_float(void *val);
-
 extern "C" double rt_float_value(void *val);
 
-void *rt_make_symbol(const char *name);
+extern "C" void *rt_make_symbol(const char *name);
+extern "C" void *rt_is_symbol(void *val);
 
-void *rt_is_symbol(void *val);
+extern "C" void *rt_make_string(const char *str);
+extern "C" void *rt_is_string(void *val);
+extern "C" const char *rt_string_value(void *val);
 
 void *rt_make_pair(void *value, void *next);
-
 void *rt_car(void *pair);
-
 void *rt_cdr(void *pair);
-
 void *rt_set_car(void *pair, void *val);
-
 void *rt_set_cdr(void *pair, void *next);
 
 void *rt_make_interpreted_function(void *argnames, uint64_t arity, void *body, void *env);
-
 void *rt_make_environment(void *parent);
-
 void *rt_environment_add(void *env, void *binding, void *value);
-
 void *rt_environment_get(void *env, void *binding);
-
 void *rt_gc_malloc_tagged_object(size_t size);
 //}
 /*EBoolean *rt_make_boolean(uint8_t booleanValue);

@@ -73,6 +73,8 @@ namespace electrum {
                 "jitmain",
                 _module.get());
 
+        current_context()->push_func(mainfunc);
+
         auto entry = llvm::BasicBlock::Create(_context, "entry", mainfunc);
         _builder = std::make_unique<llvm::IRBuilder<>>(_context);
 
@@ -94,6 +96,8 @@ namespace electrum {
 
         auto fp = reinterpret_cast<MainPtr>(faddr);
         auto rv = fp();
+
+        current_context()->pop_func();
 
         return rv;
     }
@@ -158,7 +162,7 @@ namespace electrum {
         auto iffalseblock = llvm::BasicBlock::Create(_context, "if_false", current_context()->current_func());
         auto endifblock = llvm::BasicBlock::Create(_context, "endif", current_context()->current_func());
 
-        _builder->CreateCondBr(cond, iftrueblock, iffalseblock);
+        _builder->CreateCondBr(cond, iffalseblock, iftrueblock);
 
         // True branch
         _builder->SetInsertPoint(iftrueblock);

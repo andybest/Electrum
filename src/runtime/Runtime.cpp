@@ -139,15 +139,15 @@ void *rt_is_object(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object(val));
 }
 
-void *rt_make_boolean(int8_t booleanValue) {
+extern "C" void *rt_make_boolean(int8_t booleanValue) {
     return (booleanValue) ? TRUE_PTR : FALSE_PTR;
 }
 
-void *rt_is_boolean(void *val) {
+extern "C" void *rt_is_boolean(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_boolean(val));
 }
 
-uint8_t rt_is_true(void *val) {
+extern "C" uint8_t rt_is_true(void *val) {
     if(!rt_is_boolean(val)) {
         // ERROR!
     }
@@ -159,7 +159,7 @@ extern "C" void *rt_make_integer(int64_t value) {
     return INTEGER_TO_TAG(value);
 }
 
-void *rt_is_integer(void *val) {
+extern "C" void *rt_is_integer(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_integer(val));
 }
 
@@ -185,7 +185,7 @@ extern "C" double rt_float_value(void *val) {
     return f->floatValue;
 }
 
-void *rt_make_symbol(const char *name) {
+extern "C" void *rt_make_symbol(const char *name) {
     size_t len = strlen(name);
 
     // Allocate enough space for the string
@@ -200,11 +200,11 @@ void *rt_make_symbol(const char *name) {
     return OBJECT_TO_TAG(symbolVal);
 }
 
-void *rt_is_symbol(void *val) {
+extern "C" void *rt_is_symbol(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagSymbol));
 }
 
-void *rt_make_string(const char *str) {
+extern "C" void *rt_make_string(const char *str) {
     size_t len = strlen(str);
 
     // Allocate enough space for the string
@@ -219,8 +219,13 @@ void *rt_make_string(const char *str) {
     return OBJECT_TO_TAG(strVal);
 }
 
-void *rt_is_string(void *val) {
+extern "C" void *rt_is_string(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagString));
+}
+
+extern "C" const char* rt_string_value(void *val) {
+    auto str = reinterpret_cast<EString *>(TAG_TO_OBJECT(val));
+    return str->stringValue;
 }
 
 void *rt_make_keyword(const char *str) {
