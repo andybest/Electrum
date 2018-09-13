@@ -66,17 +66,56 @@ namespace electrum {
         current_context()->push_value(v);
     }
 
+    void Compiler::compile_do(std::shared_ptr<DoAnalyzerNode> node) {
+        // Compile each node in the body, desregarding the result
+        for (const auto &child: node->statements) {
+            compile_node(child);
+            current_context()->pop_value();
+        }
+
+        // Compile the last node, keeping the result on the stack
+        compile_node(node->returnValue);
+    }
+
+    void Compiler::compile_if(std::shared_ptr<IfAnalyzerNode> node) {
+        // Compile the condition to the stack
+        compile_node(node->condition);
+
+        // Create stack variable to hold result
+        auto result = _builder->CreateAlloca(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                             kGCAddressSpace, nullptr, "if_result");
+
+        auto cond = _builder->CreateICmpEQ(get_boolean_value(current_context()->pop_value()),
+                                           llvm::ConstantInt::get(llvm::IntegerType::getInt8Ty(_context), 0));
+
+        auto iftrueblock = llvm::BasicBlock::Create(_context, "if_true", current_context()->current_func());
+        auto iffalseblock = llvm::BasicBlock::Create(_context, "if_false", current_context()->current_func());
+        auto endifblock = llvm::BasicBlock::Create(_context, "endif", current_context()->current_func());
+
+        _builder->CreateCondBr(cond, iftrueblock, iffalseblock);
+
+        // True branch
+        _builder->SetInsertPoint(iftrueblock);
+        compile_node(node->consequent);
+        _builder->CreateStore(current_context()->pop_value(), result);
+        _builder->CreateBr(endifblock);
+
+        // False branch
+        _builder->SetInsertPoint(iffalseblock);
+        compile_node(node->alternative);
+        _builder->CreateStore(current_context()->pop_value(), result);
+        _builder->CreateBr(endifblock);
+
+        // End if
+        _builder->SetInsertPoint(endifblock);
+        // Push the result of the if expression to the compiler stack
+        current_context()->push_value(_builder->CreateLoad(result));
+    }
+
     void Compiler::compile_lambda(std::shared_ptr<LambdaAnalyzerNode> node) {
 
     }
 
-    void Compiler::compile_do(std::shared_ptr<DoAnalyzerNode> node) {
-
-    }
-
-    void Compiler::compile_if(std::shared_ptr<IfAnalyzerNode> node) {
-
-    }
 
 #pragma mark - Helpers
 
@@ -153,5 +192,13 @@ namespace electrum {
                                     {llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), arity),
                                      environment,
                                      func_ptr});
+    }
+
+    llvm::Value *Compiler::get_boolean_value(llvm::Value *val) {
+        auto func = _module->getOrInsertFunction("rt_is_true",
+                                                 llvm::IntegerType::getInt8Ty(_context),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+
+        return _builder->CreateCall(func, {val});
     }
 }

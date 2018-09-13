@@ -38,6 +38,7 @@ namespace electrum {
 
     struct CompilerContext {
         std::vector<llvm::Value *> value_stack;
+        std::vector<llvm::Function *> func_stack;
 
         void push_value(llvm::Value *val) {
             value_stack.push_back(val);
@@ -47,6 +48,20 @@ namespace electrum {
             auto v = value_stack.back();
             value_stack.pop_back();
             return v;
+        }
+
+        void push_func(llvm::Function *func) {
+            func_stack.push_back(func);
+        }
+
+        llvm::Function *pop_func() {
+            auto f = func_stack.back();
+            func_stack.pop_back();
+            return f;
+        }
+
+        llvm::Function *current_func() {
+            return func_stack.back();
         }
 
     };
@@ -85,6 +100,7 @@ namespace electrum {
         llvm::Value *make_string(std::shared_ptr<std::string> str);
         llvm::Value *make_keyword(std::shared_ptr<std::string> name);
         llvm::Value *make_closure(uint64_t arity, llvm::Value *environment, llvm::Value *func_ptr);
+        llvm::Value *get_boolean_value(llvm::Value *val);
     };
 }
 

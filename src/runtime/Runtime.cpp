@@ -147,6 +147,14 @@ void *rt_is_boolean(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_boolean(val));
 }
 
+uint8_t rt_is_true(void *val) {
+    if(!rt_is_boolean(val)) {
+        // ERROR!
+    }
+
+    return static_cast<uint8_t>(val == TRUE_PTR);
+}
+
 void *rt_make_integer(int64_t value) {
     return INTEGER_TO_TAG(value);
 }
