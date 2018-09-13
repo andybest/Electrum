@@ -158,15 +158,17 @@ void *rt_make_boolean(int8_t booleanValue);
 
 void *rt_is_boolean(void *val);
 
-void *rt_make_integer(int64_t value);
+extern "C" void *rt_make_integer(int64_t value);
 
 void *rt_is_integer(void *val);
 
-void *rt_make_float(double value);
+extern "C" int64_t rt_integer_value(void *val);
 
-void *rt_is_float(void *val);
+extern "C" void *rt_make_float(double value);
 
-double rt_float_value(void *val);
+extern "C" void *rt_is_float(void *val);
+
+extern "C" double rt_float_value(void *val);
 
 void *rt_make_symbol(const char *name);
 

@@ -155,7 +155,7 @@ uint8_t rt_is_true(void *val) {
     return static_cast<uint8_t>(val == TRUE_PTR);
 }
 
-void *rt_make_integer(int64_t value) {
+extern "C" void *rt_make_integer(int64_t value) {
     return INTEGER_TO_TAG(value);
 }
 
@@ -163,7 +163,11 @@ void *rt_is_integer(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_integer(val));
 }
 
-void *rt_make_float(double value) {
+extern "C" int64_t rt_integer_value(void *val) {
+    return TAG_TO_INTEGER(val);
+}
+
+extern "C" void *rt_make_float(double value) {
     auto floatVal = static_cast<EFloat *>(GC_MALLOC(sizeof(EFloat)));
     floatVal->header.tag = kETypeTagFloat;
     floatVal->header.gc_mark = 0;
@@ -171,11 +175,11 @@ void *rt_make_float(double value) {
     return OBJECT_TO_TAG(floatVal);
 }
 
-void *rt_is_float(void *val) {
+extern "C" void *rt_is_float(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagFloat));
 }
 
-double rt_float_value(void *val) {
+extern "C" double rt_float_value(void *val) {
     auto header = TAG_TO_OBJECT(val);
     auto f = static_cast<EFloat *>(static_cast<void *>(header));
     return f->floatValue;

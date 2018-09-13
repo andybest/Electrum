@@ -26,15 +26,77 @@
 #include "Compiler.h"
 #include "Analyzer.h"
 #include "CompilerExceptions.h"
+#include "Parser.h"
+#include <runtime/Runtime.h>
+#include "ElectrumJit.h"
+
+#include <llvm/Support/raw_ostream.h>
+
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/JITSymbol.h>
+#include <llvm/ExecutionEngine/RTDyldMemoryManager.h>
+#include <llvm/ExecutionEngine/SectionMemoryManager.h>
+#include <llvm/ExecutionEngine/Orc/CompileUtils.h>
+#include <llvm/ExecutionEngine/Orc/IRCompileLayer.h>
+#include <llvm/ExecutionEngine/Orc/LambdaResolver.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
 
 namespace electrum {
     Compiler::Compiler() {
         //module_ = std::make_unique<llvm::Module>("electrumModule", context_);
+        llvm::InitializeNativeTarget();
+        llvm::InitializeNativeTargetAsmPrinter();
+        llvm::InitializeNativeTargetAsmParser();
     }
 
     /*void Compiler::compile_analyzer_nodes(std::vector<std::shared_ptr<AnalyzerNode>> nodes) {
 
     }*/
+
+    void *Compiler::compile_and_eval_string(std::string str) {
+        Parser p;
+        auto ast = p.readString(str);
+        Analyzer a;
+        auto node = a.analyzeForm(ast);
+
+        return compile_and_eval_node(node);
+    }
+
+    void *Compiler::compile_and_eval_node(std::shared_ptr<AnalyzerNode> node) {
+        _module = std::make_unique<llvm::Module>("test_module", _context);
+
+        auto mainfunc = llvm::Function::Create(
+                llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace), false),
+                llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                "jitmain",
+                _module.get());
+
+        auto entry = llvm::BasicBlock::Create(_context, "entry", mainfunc);
+        _builder = std::make_unique<llvm::IRBuilder<>>(_context);
+
+        _builder->SetInsertPoint(entry);
+        compile_node(node);
+
+        // Return result.
+        auto result = current_context()->pop_value();
+        _builder->CreateRet(result);
+
+        _module->print(llvm::errs(), nullptr);
+
+        ElectrumJit jit;
+        jit.addModule(std::move(_module));
+
+        auto faddr = jit.get_symbol_address("jitmain");
+
+        typedef void* (*MainPtr)();
+
+        auto fp = reinterpret_cast<MainPtr>(faddr);
+        auto rv = fp();
+
+        return rv;
+    }
 
     void Compiler::compile_node(std::shared_ptr<AnalyzerNode> node) {
         switch (node->nodeType()) {

@@ -71,6 +71,9 @@ namespace electrum {
     public:
         Compiler();
 
+        void *compile_and_eval_string(std::string str);
+        void *compile_and_eval_node(std::shared_ptr<AnalyzerNode> node);
+
     private:
 
         llvm::LLVMContext _context;

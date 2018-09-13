@@ -16,7 +16,7 @@ set(SOURCE_FILES
         hash_table.c
         ENamespace.cpp EHashTable.c EHashTable.h)
 
-add_library(${CMAKE_PROJECT_NAME}_runtime STATIC
+add_library(${CMAKE_PROJECT_NAME}_runtime SHARED
         ${HEADER_FILES}
         ${SOURCE_FILES})
 
