@@ -95,3 +95,15 @@ TEST(Compiler, compilesIf) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesDo) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("(do 123 456 789)");
+
+    EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(result), 789);
+
+    rt_deinit_gc();
+}
