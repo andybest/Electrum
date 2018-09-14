@@ -79,7 +79,7 @@ namespace electrum {
         _builder = std::make_unique<llvm::IRBuilder<>>(_context);
 
         _builder->SetInsertPoint(entry);
-        compile_node(node);
+        compile_node(std::move(node));
 
         // Return result.
         auto result = current_context()->pop_value();
@@ -92,7 +92,7 @@ namespace electrum {
 
         auto faddr = jit.get_symbol_address("jitmain");
 
-        typedef void* (*MainPtr)();
+        typedef void *(*MainPtr)();
 
         auto fp = reinterpret_cast<MainPtr>(faddr);
         auto rv = fp();
@@ -111,6 +111,8 @@ namespace electrum {
             case kAnalyzerNodeTypeDo:compile_do(std::dynamic_pointer_cast<DoAnalyzerNode>(node));
                 break;
             case kAnalyzerNodeTypeIf:compile_if(std::dynamic_pointer_cast<IfAnalyzerNode>(node));
+                break;
+            case kAnalyzerNodeTypeDef: compile_def(std::dynamic_pointer_cast<DefAnalyzerNode>(node));
                 break;
             default:throw CompilerException("Unrecognized node type", node->sourcePosition);
         }
@@ -186,8 +188,58 @@ namespace electrum {
 
     }
 
+    void Compiler::compile_def(std::shared_ptr<DefAnalyzerNode> node) {
+        auto mangled_name = mangle_symbol_name("", *node->name);
+
+        // A global reference to the var object
+        //auto glob = _module->getOrInsertGlobal("__var__" + mangled_name, llvm::IntegerType::getInt8PtrTy(_context, 0));
+
+        auto glob = new llvm::GlobalVariable(*_module,
+                llvm::IntegerType::getInt8PtrTy(_context, 0),
+                false,
+                llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                nullptr,
+                mangled_name);
+
+        glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(_context, 0)));
+
+        auto nameSym = make_symbol(node->name);
+        auto v = make_var(nameSym);
+
+        // Store var in global
+        _builder->CreateStore(glob, v, false);
+
+        // Compile value
+        compile_node(node->value);
+
+        // Set initial value for var
+        build_set_var(v, current_context()->pop_value());
+
+        current_context()->push_value(make_nil());
+
+        auto d = std::make_shared<GlobalDef>();
+        d->name = *node->name;
+        d->mangled_name = mangled_name;
+
+        current_context()->globals[*node->name] = d;
+    }
+
+    std::string Compiler::mangle_symbol_name(const std::string ns, const std::string &name) {
+        // Ignore ns for now, as we don't support yet
+        std::stringstream ss;
+        ss << "__elec__" << name << "__";
+        return ss.str();
+    }
+
 
 #pragma mark - Helpers
+
+    llvm::Value *Compiler::make_nil() {
+        auto func = _module->getOrInsertFunction("rt_make_nil",
+                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+
+        return _builder->CreateCall(func);
+    }
 
     llvm::Value *Compiler::make_integer(int64_t value) {
         // Don't put returned pointer in GC address space, as integers are tagged,
@@ -270,5 +322,22 @@ namespace electrum {
                                                  llvm::IntegerType::getInt8PtrTy(_context, 0));
 
         return _builder->CreateCall(func, {val});
+    }
+
+    llvm::Value *Compiler::make_var(llvm::Value *sym) {
+        auto func = _module->getOrInsertFunction("rt_make_var",
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+        return _builder->CreateCall(func, {sym});
+    }
+
+    void Compiler::build_set_var(llvm::Value *var, llvm::Value *newVal) {
+        auto func = _module->getOrInsertFunction("rt_set_var",
+                                                 llvm::Type::getVoidTy(_context),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+        _builder->CreateCall(func, {var, newVal});
     }
 }

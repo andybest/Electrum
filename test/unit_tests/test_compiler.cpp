@@ -107,3 +107,12 @@ TEST(Compiler, compilesDo) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesDef) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("(def a 1234)");
+
+    rt_deinit_gc();
+}

@@ -246,4 +246,53 @@ namespace electrum {
         return node;
     }
 
+    shared_ptr<AnalyzerNode> Analyzer::analyzeDef(shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto listPtr = form->listValue;
+        assert(!listPtr->empty());
+
+        if (listPtr->size() < 2) {
+            // Def forms must contain a var name
+            throw CompilerException("Def forms must have a var name",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->size() < 3) {
+            // Def forms must contain a binding value
+            throw CompilerException("Def forms must have binding value",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->size() > 3) {
+            throw CompilerException("Unexpected arguments in def form",
+                                    listPtr->at(3)->sourcePosition);
+        }
+
+        if (listPtr->at(1)->tag != kTypeTagSymbol) {
+            throw CompilerException("Def forms var name must be a symbol",
+                                    listPtr->at(1)->sourcePosition);
+        }
+
+        auto name = listPtr->at(1)->stringValue;
+        auto valueNode = analyzeForm(listPtr->at(2));
+        global_env_[*name] = valueNode;
+
+        auto node = std::make_shared<DefAnalyzerNode>();
+        node->sourcePosition = form->sourcePosition;
+        node->name = name;
+        node->value = valueNode;
+
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::initialBindingWithName(const std::string &name) {
+        auto result = global_env_.find(name);
+
+        if(result != global_env_.end()) {
+            return result->second;
+        }
+
+        return nullptr;
+    }
+
 }

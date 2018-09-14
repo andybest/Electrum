@@ -146,3 +146,24 @@ TEST(Analyzer, analyzesLambda) {
     EXPECT_EQ(rv->type, kAnalyzerConstantTypeInteger);
     EXPECT_EQ(boost::get<int64_t>(rv->value), 1234);
 }
+
+TEST(Analyzer, analyzesDefAndSavesToAnalyzerEnvironment) {
+    PARSE_STRING("(def a 1234)");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    auto envVal = an.initialBindingWithName("a");
+    EXPECT_NE(envVal, nullptr);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDef);
+
+    auto defNode = std::dynamic_pointer_cast<DefAnalyzerNode>(node);
+    auto defVal = defNode->value;
+
+    EXPECT_EQ(defVal, envVal);
+
+    auto constNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(envVal);
+    EXPECT_EQ(constNode->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(constNode->value), 1234);
+}

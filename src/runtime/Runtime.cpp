@@ -139,6 +139,10 @@ void *rt_is_object(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object(val));
 }
 
+extern "C" void *rt_make_nil() {
+    return NIL_PTR;
+}
+
 extern "C" void *rt_make_boolean(int8_t booleanValue) {
     return (booleanValue) ? TRUE_PTR : FALSE_PTR;
 }
@@ -245,6 +249,30 @@ void *rt_make_keyword(const char *str) {
 
 void *rt_is_keyword(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagKeyword));
+}
+
+extern "C" void *rt_make_var(void *sym) {
+
+    auto var = static_cast<EVar *>(GC_MALLOC(sizeof(EVar)));
+    var->header.tag = kETypeTagVar;
+    var->sym = sym;
+    var->val = NIL_PTR;
+
+    return OBJECT_TO_TAG(var);
+}
+
+extern "C" void *rt_is_var(void *v) {
+    return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(v, kETypeTagVar));
+}
+
+extern "C" void rt_set_var(void *v, void *val) {
+    auto var = reinterpret_cast<EVar *>(TAG_TO_OBJECT(v));
+    var->val = val;
+}
+
+extern "C" void *rt_deref_var(void *v) {
+    auto var = reinterpret_cast<EVar *>(TAG_TO_OBJECT(v));
+    return var->val;
 }
 
 

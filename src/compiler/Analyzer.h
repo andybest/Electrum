@@ -43,7 +43,8 @@ namespace electrum {
         kAnalyzerNodeTypeIf,
         kAnalyzerNodeTypeConstant,
         kAnalyzerNodeTypeDo,
-        kAnalyzerNodeTypeLambda
+        kAnalyzerNodeTypeLambda,
+        kAnalyzerNodeTypeDef
     };
 
     class AnalyzerNode {
@@ -142,9 +143,28 @@ namespace electrum {
         }
     };
 
+    class DefAnalyzerNode : public AnalyzerNode {
+    public:
+        /// The binding name
+        shared_ptr<std::string> name;
+
+        /// The binding value
+        shared_ptr<AnalyzerNode> value;
+
+        vector<shared_ptr<AnalyzerNode>> children() override {
+            return {value};
+        }
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeDef;
+        }
+    };
+
     class Analyzer {
     public:
         Analyzer();
+
+        shared_ptr<AnalyzerNode> initialBindingWithName(const std::string &name);
 
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
 
@@ -167,6 +187,8 @@ namespace electrum {
 
         shared_ptr <AnalyzerNode> analyzeLambda(shared_ptr <ASTNode> form);
 
+        shared_ptr <AnalyzerNode> analyzeDef(shared_ptr <ASTNode> form);
+
         shared_ptr <AnalyzerNode> analyzeMaybeFunctionCall(shared_ptr <ASTNode> form);
 
         shared_ptr <AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr <string> symbolName, shared_ptr <ASTNode> form);
@@ -177,8 +199,12 @@ namespace electrum {
         const std::unordered_map<std::string, AnalyzerFunc> specialForms  {
                 { "if", &Analyzer::analyzeIf },
                 { "do", &Analyzer::analyzeDo },
-                { "lambda", &Analyzer::analyzeLambda }
+                { "lambda", &Analyzer::analyzeLambda },
+                { "def", &Analyzer::analyzeDef }
         };
+
+        /// Holds already defined globals
+        std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_env_;
     };
 }
 

@@ -36,7 +36,14 @@
 
 namespace electrum {
 
+    struct GlobalDef {
+        std::string name;
+        std::string mangled_name;
+    };
+
     struct CompilerContext {
+
+        std::unordered_map<std::string, shared_ptr<GlobalDef>> globals;
         std::vector<llvm::Value *> value_stack;
         std::vector<llvm::Function *> func_stack;
 
@@ -72,6 +79,7 @@ namespace electrum {
         Compiler();
 
         void *compile_and_eval_string(std::string str);
+
         void *compile_and_eval_node(std::shared_ptr<AnalyzerNode> node);
 
     private:
@@ -92,18 +100,35 @@ namespace electrum {
 
         void compile_lambda(std::shared_ptr<LambdaAnalyzerNode> node);
 
+        void compile_def(std::shared_ptr<DefAnalyzerNode> node);
+
         void compile_do(std::shared_ptr<DoAnalyzerNode> node);
 
         void compile_if(std::shared_ptr<IfAnalyzerNode> node);
 
+        std::string mangle_symbol_name(std::string ns, const std::string &name);
+
+        llvm::Value *make_nil();
+
         llvm::Value *make_integer(int64_t value);
+
         llvm::Value *make_float(double value);
+
         llvm::Value *make_boolean(bool value);
+
         llvm::Value *make_symbol(std::shared_ptr<std::string> name);
+
         llvm::Value *make_string(std::shared_ptr<std::string> str);
+
         llvm::Value *make_keyword(std::shared_ptr<std::string> name);
+
         llvm::Value *make_closure(uint64_t arity, llvm::Value *environment, llvm::Value *func_ptr);
+
         llvm::Value *get_boolean_value(llvm::Value *val);
+
+        llvm::Value *make_var(llvm::Value *sym);
+
+        void build_set_var(llvm::Value *var, llvm::Value *newVal);
     };
 }
 

@@ -60,7 +60,8 @@ enum ETypeTag : uint64_t {
     kETypeTagPair,
     kETypeTagFunction,
     kETypeTagInterpretedFunction,
-    kETypeTagEnvironment
+    kETypeTagEnvironment,
+    kETypeTagVar
 };
 
 struct EObjectHeader {
@@ -95,6 +96,12 @@ struct EPair {
     EObjectHeader header;
     void *value;
     void *next;
+};
+
+struct EVar {
+    EObjectHeader header;
+    void *sym;
+    void *val;
 };
 
 struct ECompiledFunction {
@@ -169,6 +176,11 @@ extern "C" void *rt_is_symbol(void *val);
 extern "C" void *rt_make_string(const char *str);
 extern "C" void *rt_is_string(void *val);
 extern "C" const char *rt_string_value(void *val);
+
+extern "C" void *rt_make_var(void *sym);
+extern "C" void *rt_is_var(void *v);
+extern "C" void rt_set_var(void *v, void *val);
+extern "C" void *rt_deref_var(void *v);
 
 void *rt_make_pair(void *value, void *next);
 void *rt_car(void *pair);
