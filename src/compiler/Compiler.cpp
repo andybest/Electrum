@@ -28,7 +28,6 @@
 #include "CompilerExceptions.h"
 #include "Parser.h"
 #include <runtime/Runtime.h>
-#include "ElectrumJit.h"
 
 #include <llvm/Support/raw_ostream.h>
 
@@ -49,6 +48,7 @@ namespace electrum {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
+        _jit = std::make_shared<ElectrumJit>();
     }
 
     /*void Compiler::compile_analyzer_nodes(std::vector<std::shared_ptr<AnalyzerNode>> nodes) {
@@ -58,19 +58,23 @@ namespace electrum {
     void *Compiler::compile_and_eval_string(std::string str) {
         Parser p;
         auto ast = p.readString(str);
-        Analyzer a;
-        auto node = a.analyzeForm(ast);
+        auto node = _analyzer.analyzeForm(ast);
 
         return compile_and_eval_node(node);
     }
 
     void *Compiler::compile_and_eval_node(std::shared_ptr<AnalyzerNode> node) {
+        static int cnt = 0;
+
         _module = std::make_unique<llvm::Module>("test_module", _context);
+
+        std::stringstream ss;
+        ss << "jit_func_" << cnt;
 
         auto mainfunc = llvm::Function::Create(
                 llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace), false),
                 llvm::GlobalValue::LinkageTypes::ExternalLinkage,
-                "jitmain",
+                ss.str(),
                 _module.get());
 
         current_context()->push_func(mainfunc);
@@ -87,10 +91,9 @@ namespace electrum {
 
         _module->print(llvm::errs(), nullptr);
 
-        ElectrumJit jit;
-        jit.addModule(std::move(_module));
+        _jit->addModule(std::move(_module));
 
-        auto faddr = jit.get_symbol_address("jitmain");
+        auto faddr = _jit->get_symbol_address(ss.str());
 
         typedef void *(*MainPtr)();
 
@@ -98,6 +101,8 @@ namespace electrum {
         auto rv = fp();
 
         current_context()->pop_func();
+
+        ++cnt;
 
         return rv;
     }
@@ -113,6 +118,8 @@ namespace electrum {
             case kAnalyzerNodeTypeIf:compile_if(std::dynamic_pointer_cast<IfAnalyzerNode>(node));
                 break;
             case kAnalyzerNodeTypeDef: compile_def(std::dynamic_pointer_cast<DefAnalyzerNode>(node));
+                break;
+            case kAnalyzerNodeTypeVarLookup: compile_var_lookup(std::dynamic_pointer_cast<VarLookupNode>(node));
                 break;
             default:throw CompilerException("Unrecognized node type", node->sourcePosition);
         }
@@ -184,6 +191,29 @@ namespace electrum {
         current_context()->push_value(_builder->CreateLoad(result));
     }
 
+    void Compiler::compile_var_lookup(std::shared_ptr<VarLookupNode> node) {
+        if (node->is_global) {
+            auto result = current_context()->globals.find(*node->name);
+
+            if (result == current_context()->globals.end()) {
+                throw CompilerException("Fatal compiler error: no var",
+                                        node->sourcePosition);
+            }
+
+            auto def = result->second;
+
+            auto var = _module->getOrInsertGlobal(def->mangled_name,
+                                                  llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+            auto v = _builder->CreateLoad(var);
+
+            auto val = build_deref_var(v);
+            current_context()->push_value(val);
+            return;
+        }
+
+        throw CompilerException("Unsupported var type", node->sourcePosition);
+    }
+
     void Compiler::compile_lambda(std::shared_ptr<LambdaAnalyzerNode> node) {
 
     }
@@ -195,11 +225,11 @@ namespace electrum {
         //auto glob = _module->getOrInsertGlobal("__var__" + mangled_name, llvm::IntegerType::getInt8PtrTy(_context, 0));
 
         auto glob = new llvm::GlobalVariable(*_module,
-                llvm::IntegerType::getInt8PtrTy(_context, 0),
-                false,
-                llvm::GlobalValue::LinkageTypes::ExternalLinkage,
-                nullptr,
-                mangled_name);
+                                             llvm::IntegerType::getInt8PtrTy(_context, 0),
+                                             false,
+                                             llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                                             nullptr,
+                                             mangled_name);
 
         glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(_context, 0)));
 
@@ -207,7 +237,7 @@ namespace electrum {
         auto v = make_var(nameSym);
 
         // Store var in global
-        _builder->CreateStore(glob, v, false);
+        _builder->CreateStore(v, glob, false);
 
         // Compile value
         compile_node(node->value);
@@ -339,5 +369,13 @@ namespace electrum {
                                                  llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
 
         _builder->CreateCall(func, {var, newVal});
+    }
+
+    llvm::Value *Compiler::build_deref_var(llvm::Value *var) {
+        auto func = _module->getOrInsertFunction("rt_deref_var",
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+        return _builder->CreateCall(func, {var});
     }
 }

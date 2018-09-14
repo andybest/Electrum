@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <memory>
 #include "Analyzer.h"
+#include "ElectrumJit.h"
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
@@ -88,6 +89,8 @@ namespace electrum {
         std::unique_ptr<llvm::Module> _module;
         std::unique_ptr<llvm::IRBuilder<>> _builder;
         CompilerContext _compilerContext;
+        Analyzer _analyzer;
+        std::shared_ptr<ElectrumJit> _jit;
 
         /// Address space for the garbage collector
         static const int kGCAddressSpace = 1;
@@ -105,6 +108,8 @@ namespace electrum {
         void compile_do(std::shared_ptr<DoAnalyzerNode> node);
 
         void compile_if(std::shared_ptr<IfAnalyzerNode> node);
+
+        void compile_var_lookup(std::shared_ptr<VarLookupNode> node);
 
         std::string mangle_symbol_name(std::string ns, const std::string &name);
 
@@ -129,6 +134,8 @@ namespace electrum {
         llvm::Value *make_var(llvm::Value *sym);
 
         void build_set_var(llvm::Value *var, llvm::Value *newVal);
+
+        llvm::Value *build_deref_var(llvm::Value *var);
     };
 }
 

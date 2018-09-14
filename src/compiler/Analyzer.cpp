@@ -40,10 +40,27 @@ namespace electrum {
             case kTypeTagBoolean: return analyzeBoolean(form);
             case kTypeTagString: return analyzeString(form);
             case kTypeTagKeyword: return analyzeKeyword(form);
+            case kTypeTagSymbol: return analyzeSymbol(form);
             case kTypeTagList: return analyzeList(form);
         }
 
         return shared_ptr<AnalyzerNode>();
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
+        auto symName = form->stringValue;
+
+        auto globalResult = global_env_.find(*symName);
+        if(globalResult != global_env_.end()) {
+            auto node = make_shared<VarLookupNode>();
+            node->sourcePosition = form->sourcePosition;
+            node->name = form->stringValue;
+            node->is_global = true;
+            return node;
+        }
+
+        throw CompilerException("Unbound variable '" + *symName + "'",
+                form->sourcePosition);
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeInteger(const shared_ptr<ASTNode> form) {

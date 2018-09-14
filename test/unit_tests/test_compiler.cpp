@@ -112,7 +112,16 @@ TEST(Compiler, compilesDef) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compile_and_eval_string("(def a 1234)");
+    auto result = c.compile_and_eval_string("(do (def a 1234) a)");
+
+    EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(result), 1234);
+
+    c.compile_and_eval_string("(def b \"foo\")");
+    auto result2 = c.compile_and_eval_string("b");
+
+    EXPECT_EQ(rt_is_string(result2), TRUE_PTR);
+    EXPECT_STREQ(rt_string_value(result2), "foo");
 
     rt_deinit_gc();
 }

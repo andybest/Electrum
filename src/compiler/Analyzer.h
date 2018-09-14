@@ -44,7 +44,8 @@ namespace electrum {
         kAnalyzerNodeTypeConstant,
         kAnalyzerNodeTypeDo,
         kAnalyzerNodeTypeLambda,
-        kAnalyzerNodeTypeDef
+        kAnalyzerNodeTypeDef,
+        kAnalyzerNodeTypeVarLookup
     };
 
     class AnalyzerNode {
@@ -160,6 +161,19 @@ namespace electrum {
         }
     };
 
+    class VarLookupNode : public AnalyzerNode {
+    public:
+        /// The binding name
+        shared_ptr<std::string> name;
+
+        /// Is it a global variable?
+        bool is_global;
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeVarLookup;
+        }
+    };
+
     class Analyzer {
     public:
         Analyzer();
@@ -169,7 +183,9 @@ namespace electrum {
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
 
     private:
-        shared_ptr<AnalyzerNode> analyzeInteger(shared_ptr<ASTNode> shared_ptr);
+        shared_ptr<AnalyzerNode> analyzeSymbol(shared_ptr<ASTNode> form);
+
+        shared_ptr<AnalyzerNode> analyzeInteger(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> analyzeFloat(shared_ptr<ASTNode> form);
 
