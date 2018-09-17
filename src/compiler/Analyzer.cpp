@@ -220,7 +220,8 @@ namespace electrum {
 
         auto argList = listPtr->at(1)->listValue;
 
-        std::vector<shared_ptr<AnalyzerNode>> argNames;
+        std::vector<shared_ptr<AnalyzerNode>> argNameNodes;
+        std::vector<shared_ptr<std::string>> argNames;
 
         for(auto arg: *argList) {
             if(arg->tag != kTypeTagSymbol) {
@@ -233,7 +234,9 @@ namespace electrum {
             sym->sourcePosition = arg->sourcePosition;
             sym->value = arg->stringValue;
             sym->type = kAnalyzerConstantTypeSymbol;
-            argNames.push_back(sym);
+            argNameNodes.push_back(sym);
+
+            argNames.push_back(arg->stringValue);
         }
 
         if (listPtr->size() < 3) {
@@ -258,6 +261,7 @@ namespace electrum {
 
         node->sourcePosition = form->sourcePosition;
         node->arg_names = argNames;
+        node->arg_name_nodes = argNameNodes;
         node->body = body;
 
         return node;

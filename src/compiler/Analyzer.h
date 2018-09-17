@@ -130,7 +130,9 @@ namespace electrum {
     class LambdaAnalyzerNode : public AnalyzerNode {
     public:
         /// A vector of the argument names
-        vector<shared_ptr<AnalyzerNode>> arg_names;
+        vector<shared_ptr<AnalyzerNode>> arg_name_nodes;
+
+        vector<shared_ptr<std::string>> arg_names;
 
         /// A do node representing the body
         shared_ptr<AnalyzerNode> body;

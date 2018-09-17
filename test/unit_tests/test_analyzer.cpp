@@ -130,9 +130,9 @@ TEST(Analyzer, analyzesLambda) {
     auto lambdaNode = std::dynamic_pointer_cast<LambdaAnalyzerNode>(node);
 
     EXPECT_EQ(lambdaNode->arg_names.size(), 1);
-    EXPECT_EQ(lambdaNode->arg_names.at(0)->nodeType(), kAnalyzerNodeTypeConstant);
+    EXPECT_EQ(lambdaNode->arg_name_nodes.at(0)->nodeType(), kAnalyzerNodeTypeConstant);
 
-    auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(lambdaNode->arg_names.at(0));
+    auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(lambdaNode->arg_name_nodes.at(0));
     EXPECT_EQ(arg1->type, kAnalyzerConstantTypeSymbol);
     EXPECT_EQ(*boost::get<std::shared_ptr<std::string>>(arg1->value), "x");
 

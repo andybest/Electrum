@@ -125,3 +125,12 @@ TEST(Compiler, compilesDef) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesBasicLambda)  {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("(lambda (x) 1234)");
+
+    rt_deinit_gc();
+}

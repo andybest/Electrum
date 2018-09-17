@@ -43,10 +43,20 @@ namespace electrum {
     };
 
     struct CompilerContext {
-
-        std::unordered_map<std::string, shared_ptr<GlobalDef>> globals;
         std::vector<llvm::Value *> value_stack;
         std::vector<llvm::Function *> func_stack;
+
+        /// The global var bindings
+        std::unordered_map<std::string, shared_ptr<GlobalDef>> global_bindings;
+
+        /** Global function bindings. Functions that end up here will be
+         * called statically, rather than going through var -> closure
+         * indirection.
+         */
+       // std::unordered_map<std::string, shared_ptr<GlobalDef>> global_func_bindings;
+
+        /// The local bindings for the current level in the AST
+        std::vector<std::unordered_map<std::string, llvm::Value*>> local_bindings;
 
         void push_value(llvm::Value *val) {
             value_stack.push_back(val);
@@ -70,6 +80,18 @@ namespace electrum {
 
         llvm::Function *current_func() {
             return func_stack.back();
+        }
+
+        void push_local_environment() {
+            local_bindings.emplace_back();
+        }
+
+        void push_local_environment(const std::unordered_map<std::string, llvm::Value*> &new_env) {
+            local_bindings.push_back(new_env);
+        }
+
+        void pop_local_environment() {
+            local_bindings.pop_back();
         }
 
     };

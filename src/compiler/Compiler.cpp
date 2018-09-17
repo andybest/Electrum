@@ -193,9 +193,9 @@ namespace electrum {
 
     void Compiler::compile_var_lookup(std::shared_ptr<VarLookupNode> node) {
         if (node->is_global) {
-            auto result = current_context()->globals.find(*node->name);
+            auto result = current_context()->global_bindings.find(*node->name);
 
-            if (result == current_context()->globals.end()) {
+            if (result == current_context()->global_bindings.end()) {
                 throw CompilerException("Fatal compiler error: no var",
                                         node->sourcePosition);
             }
@@ -215,14 +215,80 @@ namespace electrum {
     }
 
     void Compiler::compile_lambda(std::shared_ptr<LambdaAnalyzerNode> node) {
+        // TODO: This is temporary
+        static int cnt = 0;
 
+        auto insert_block = _builder->GetInsertBlock();
+        auto insert_point = _builder->GetInsertPoint();
+
+        std::stringstream ss;
+        ss << "lambda_" << cnt;
+
+        std::vector<llvm::Type *> argTypes;
+
+        argTypes.reserve(node->arg_names.size() + 1);
+        for (int i = 0; i < node->arg_names.size(); ++i) {
+            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+        }
+
+        // Add extra arg for environment
+        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+
+        auto lambdaType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                  argTypes,
+                                                  false);
+
+        auto lambda = llvm::Function::Create(
+                lambdaType,
+                llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                ss.str(),
+                _module.get());
+
+
+        auto entryBlock = llvm::BasicBlock::Create(_context, "entry", lambda);
+        _builder->SetInsertPoint(entryBlock);
+
+        // TODO: args
+
+        std::unordered_map<std::string, llvm::Value *> local_env;
+        int argNum = 0;
+        auto arg_it = lambda->args().begin();
+        for (auto &arg_name : node->arg_names) {
+            auto &arg = *arg_it;
+            arg.setName(*arg_name);
+
+            local_env[*arg_name] = &arg;
+
+            ++argNum;
+            ++arg_it;
+        }
+
+        // Push the arguments onto the environment stack so that the compiler
+        // can look them up later
+        current_context()->push_local_environment(local_env);
+
+        // Compile the body of the function
+        compile_node(node->body);
+        _builder->CreateRet(current_context()->pop_value());
+
+        // Scope ended, pop the arguments from the environment stack
+        current_context()->pop_local_environment();
+
+        // Restore back to previous insert point
+        _builder->SetInsertPoint(insert_block, insert_point);
+
+
+        auto closure = make_closure(node->arg_names.size(),
+                                    make_nil(),
+                                    lambda);
+
+        current_context()->push_value(closure);
     }
 
     void Compiler::compile_def(std::shared_ptr<DefAnalyzerNode> node) {
         auto mangled_name = mangle_symbol_name("", *node->name);
-
-        // A global reference to the var object
-        //auto glob = _module->getOrInsertGlobal("__var__" + mangled_name, llvm::IntegerType::getInt8PtrTy(_context, 0));
 
         auto glob = new llvm::GlobalVariable(*_module,
                                              llvm::IntegerType::getInt8PtrTy(_context, 0),
@@ -251,7 +317,7 @@ namespace electrum {
         d->name = *node->name;
         d->mangled_name = mangled_name;
 
-        current_context()->globals[*node->name] = d;
+        current_context()->global_bindings[*node->name] = d;
     }
 
     std::string Compiler::mangle_symbol_name(const std::string ns, const std::string &name) {
@@ -331,8 +397,6 @@ namespace electrum {
     }
 
     llvm::Value *Compiler::make_closure(uint64_t arity, llvm::Value *environment, llvm::Value *func_ptr) {
-
-        // void *rt_make_compiled_function(uint64_t arity, void *env, void *fp)
         auto func = _module->getOrInsertFunction("rt_make_compiled_function",
                                                  llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
                                                  llvm::IntegerType::getInt64Ty(_context),
