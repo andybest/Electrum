@@ -116,11 +116,11 @@ namespace electrum {
                 auto maybeSpecial = maybeAnalyzeSpecialForm(firstItemForm->stringValue, form);
                 if (maybeSpecial) {
                     return maybeSpecial;
-                } else {
-                    // The node isn't a special form, so it might be a function call.
-                    return analyzeMaybeFunctionCall(form);
                 }
             }
+
+            // The node isn't a special form, so it might be a function call.
+            return analyzeMaybeInvoke(form);
         }
 
         // The list isn't a special form or a function call.
@@ -143,8 +143,25 @@ namespace electrum {
         return nullptr;
     }
 
-    shared_ptr<AnalyzerNode> Analyzer::analyzeMaybeFunctionCall(const shared_ptr<ASTNode> form) {
-        return nullptr;
+    shared_ptr<AnalyzerNode> Analyzer::analyzeMaybeInvoke(const shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto listPtr = form->listValue;
+        assert(!listPtr->empty());
+
+        auto node = std::make_shared<MaybeInvokeAnalyzerNode>();
+        node->args.reserve(listPtr->size() - 1);
+
+        bool first = true;
+        for(auto a: *listPtr) {
+            if(first) {
+                node->fn = analyzeForm(listPtr->at(0));
+                first = false;
+            } else {
+                node->args.push_back(analyzeForm(a));
+            }
+        }
+
+        return node;
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeIf(const shared_ptr<ASTNode> form) {

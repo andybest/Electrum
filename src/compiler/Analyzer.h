@@ -45,7 +45,8 @@ namespace electrum {
         kAnalyzerNodeTypeDo,
         kAnalyzerNodeTypeLambda,
         kAnalyzerNodeTypeDef,
-        kAnalyzerNodeTypeVarLookup
+        kAnalyzerNodeTypeVarLookup,
+        kAnalyzerNodeTypeMaybeInvoke
     };
 
     class AnalyzerNode {
@@ -176,6 +177,29 @@ namespace electrum {
         }
     };
 
+    class MaybeInvokeAnalyzerNode : public AnalyzerNode{
+    public:
+        /// Function to call
+        shared_ptr<AnalyzerNode> fn;
+
+        /// Function call arguments
+        std::vector<shared_ptr<AnalyzerNode>> args;
+
+        vector<shared_ptr<AnalyzerNode>> children() override {
+            vector<shared_ptr<AnalyzerNode>> c = {fn};
+
+            for(auto a: args) {
+                c.push_back(a);
+            }
+
+            return c;
+        }
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeMaybeInvoke;
+        }
+    };
+
     class Analyzer {
     public:
         Analyzer();
@@ -207,7 +231,7 @@ namespace electrum {
 
         shared_ptr <AnalyzerNode> analyzeDef(shared_ptr <ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeMaybeFunctionCall(shared_ptr <ASTNode> form);
+        shared_ptr <AnalyzerNode> analyzeMaybeInvoke(const shared_ptr <ASTNode> form);
 
         shared_ptr <AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr <string> symbolName, shared_ptr <ASTNode> form);
 

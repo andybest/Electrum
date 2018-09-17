@@ -147,6 +147,27 @@ TEST(Analyzer, analyzesLambda) {
     EXPECT_EQ(boost::get<int64_t>(rv->value), 1234);
 }
 
+TEST(Analuzer, analyzesInvoke) {
+    PARSE_STRING("((lambda (x y) 42) 1 2)");
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeMaybeInvoke);
+    auto invokeNode = std::dynamic_pointer_cast<MaybeInvokeAnalyzerNode>(node);
+
+    EXPECT_EQ(invokeNode->args.size(), 2);
+
+    std::vector<int64_t> expected = { 1, 2 };
+    int i = 0;
+    for(auto a: invokeNode->args) {
+        EXPECT_EQ(a->nodeType(), kAnalyzerNodeTypeConstant);
+        auto cNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(a);
+        EXPECT_EQ(cNode->type, kAnalyzerConstantTypeInteger);
+        EXPECT_EQ(boost::get<int64_t>(cNode->value), expected[i]);
+        ++i;
+    }
+}
+
 TEST(Analyzer, analyzesDefAndSavesToAnalyzerEnvironment) {
     PARSE_STRING("(def a 1234)");
 
