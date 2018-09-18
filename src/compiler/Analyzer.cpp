@@ -42,6 +42,7 @@ namespace electrum {
             case kTypeTagKeyword: return analyzeKeyword(form);
             case kTypeTagSymbol: return analyzeSymbol(form);
             case kTypeTagList: return analyzeList(form);
+            case kTypeTagNil: return analyzeNil(form);
         }
 
         return shared_ptr<AnalyzerNode>();
@@ -90,6 +91,14 @@ namespace electrum {
     shared_ptr<AnalyzerNode> Analyzer::analyzeString(const shared_ptr<ASTNode> form) {
         auto node = make_shared<ConstantValueAnalyzerNode>();
         node->type = kAnalyzerConstantTypeString;
+        node->value = form->stringValue;
+        node->sourcePosition = form->sourcePosition;
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeNil(const shared_ptr<ASTNode> form) {
+        auto node = make_shared<ConstantValueAnalyzerNode>();
+        node->type = kAnalyzerConstantTypeNil;
         node->value = form->stringValue;
         node->sourcePosition = form->sourcePosition;
         return node;
@@ -152,7 +161,7 @@ namespace electrum {
         node->args.reserve(listPtr->size() - 1);
 
         bool first = true;
-        for(auto a: *listPtr) {
+        for(const auto &a: *listPtr) {
             if(first) {
                 node->fn = analyzeForm(listPtr->at(0));
                 first = false;

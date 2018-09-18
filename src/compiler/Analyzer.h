@@ -85,7 +85,8 @@ namespace electrum {
         kAnalyzerConstantTypeBoolean,
         kAnalyzerConstantTypeString,
         kAnalyzerConstantTypeSymbol,
-        kAnalyzerConstantTypeKeyword
+        kAnalyzerConstantTypeKeyword,
+        kAnalyzerConstantTypeNil
     };
 
     /*
@@ -217,7 +218,9 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> analyzeString(shared_ptr<ASTNode> form);
 
-        shared_ptr<AnalyzerNode> analyzeKeyword(const shared_ptr<ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeNil(const shared_ptr<ASTNode> form);
+
+        shared_ptr<AnalyzerNode> analyzeKeyword(shared_ptr<ASTNode> form);
 
         shared_ptr <AnalyzerNode> analyzeBoolean(shared_ptr <ASTNode> form);
 
@@ -231,7 +234,7 @@ namespace electrum {
 
         shared_ptr <AnalyzerNode> analyzeDef(shared_ptr <ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeMaybeInvoke(const shared_ptr <ASTNode> form);
+        shared_ptr <AnalyzerNode> analyzeMaybeInvoke(shared_ptr <ASTNode> form);
 
         shared_ptr <AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr <string> symbolName, shared_ptr <ASTNode> form);
 

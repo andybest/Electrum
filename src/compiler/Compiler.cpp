@@ -139,6 +139,8 @@ namespace electrum {
                 break;
             case kAnalyzerConstantTypeString: v = make_string(boost::get<shared_ptr<std::string>>(node->value));
                 break;
+            case kAnalyzerConstantTypeNil: v = make_nil();
+                break;
             default:throw CompilerException("Unrecognized constant type", node->sourcePosition);
         }
 
@@ -249,8 +251,6 @@ namespace electrum {
 
         auto entryBlock = llvm::BasicBlock::Create(_context, "entry", lambda);
         _builder->SetInsertPoint(entryBlock);
-
-        // TODO: args
 
         std::unordered_map<std::string, llvm::Value *> local_env;
         int argNum = 0;
