@@ -326,7 +326,7 @@ void *rt_make_interpreted_function(void *argnames, uint64_t arity, void *body, v
     return OBJECT_TO_TAG(funcVal);
 }
 
-void *rt_make_compiled_function(uint64_t arity, void *env, void *fp) {
+extern "C" void *rt_make_compiled_function(uint64_t arity, void *env, void *fp) {
     auto funcVal = static_cast<ECompiledFunction *>(GC_MALLOC(sizeof(ECompiledFunction)));
     funcVal->header.tag = kETypeTagFunction;
     funcVal->header.gc_mark = 0;
@@ -334,6 +334,28 @@ void *rt_make_compiled_function(uint64_t arity, void *env, void *fp) {
     funcVal->env = env;
     funcVal->f_ptr = fp;
     return OBJECT_TO_TAG(funcVal);
+}
+
+extern "C" uint64_t rt_compiled_function_get_arity(void *func) {
+    auto header = TAG_TO_OBJECT(func);
+
+    if (header->tag != kETypeTagFunction) {
+        // TODO: Exception
+    }
+
+    auto f = static_cast<ECompiledFunction*>(static_cast<void*>(header));
+    return f->arity;
+}
+
+extern "C" void *rt_compiled_function_get_ptr(void *func) {
+    auto header = TAG_TO_OBJECT(func);
+
+    if (header->tag != kETypeTagFunction) {
+        // TODO: Exception
+    }
+
+    auto f = static_cast<ECompiledFunction*>(static_cast<void*>(header));
+    return f->f_ptr;
 }
 
 void *rt_make_environment(void *parent) {

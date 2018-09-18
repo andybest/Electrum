@@ -130,7 +130,9 @@ TEST(Compiler, compilesBasicLambda)  {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compile_and_eval_string("(lambda (x) 1234)");
+    auto result = c.compile_and_eval_string("(do (def l (lambda (x) 1234)) (l 5678))");
 
+    EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(result), 1234);
     rt_deinit_gc();
 }

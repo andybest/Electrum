@@ -66,7 +66,9 @@ namespace electrum {
     void *Compiler::compile_and_eval_node(std::shared_ptr<AnalyzerNode> node) {
         static int cnt = 0;
 
-        _module = std::make_unique<llvm::Module>("test_module", _context);
+        std::stringstream moduless;
+        moduless << "test_module_" << cnt;
+        _module = std::make_unique<llvm::Module>(moduless.str(), _context);
 
         std::stringstream ss;
         ss << "jit_func_" << cnt;
@@ -83,11 +85,12 @@ namespace electrum {
         _builder = std::make_unique<llvm::IRBuilder<>>(_context);
 
         _builder->SetInsertPoint(entry);
-        compile_node(std::move(node));
+        compile_node(node);
 
         // Return result.
         auto result = current_context()->pop_value();
         _builder->CreateRet(result);
+        current_context()->pop_func();
 
         _module->print(llvm::errs(), nullptr);
 
@@ -99,8 +102,6 @@ namespace electrum {
 
         auto fp = reinterpret_cast<MainPtr>(faddr);
         auto rv = fp();
-
-        current_context()->pop_func();
 
         ++cnt;
 
@@ -120,6 +121,8 @@ namespace electrum {
             case kAnalyzerNodeTypeDef: compile_def(std::dynamic_pointer_cast<DefAnalyzerNode>(node));
                 break;
             case kAnalyzerNodeTypeVarLookup: compile_var_lookup(std::dynamic_pointer_cast<VarLookupNode>(node));
+                break;
+            case kAnalyzerNodeTypeMaybeInvoke: compile_maybe_invoke(std::dynamic_pointer_cast<MaybeInvokeAnalyzerNode>(node));
                 break;
             default:throw CompilerException("Unrecognized node type", node->sourcePosition);
         }
@@ -320,6 +323,38 @@ namespace electrum {
         current_context()->global_bindings[*node->name] = d;
     }
 
+    void Compiler::compile_maybe_invoke(std::shared_ptr<MaybeInvokeAnalyzerNode> node) {
+        compile_node(node->fn);
+        auto fn = current_context()->pop_value();
+
+        std::vector<llvm::Value*> args;
+        args.reserve(node->args.size() + 1);
+
+        for(const auto &a: node->args) {
+            compile_node(a);
+            args.push_back(current_context()->pop_value());
+        }
+
+        // Environment
+        args.push_back(make_nil());
+
+        std::vector<llvm::Type*> argTypes;
+        for(int i = 0; i < node->args.size() + 1; ++i) {
+            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        }
+
+        auto fn_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                               argTypes,
+                                               false);
+
+        auto fn_ptr = _builder->CreateFPCast(build_get_lambda_ptr(fn),
+                llvm::PointerType::get(fn_type, 0));
+
+        auto result = _builder->CreateCall(fn_ptr, args);
+
+        current_context()->push_value(result);
+    }
+
     std::string Compiler::mangle_symbol_name(const std::string ns, const std::string &name) {
         // Ignore ns for now, as we don't support yet
         std::stringstream ss;
@@ -441,5 +476,11 @@ namespace electrum {
                                                  llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
 
         return _builder->CreateCall(func, {var});
+    }
+
+    llvm::Value *Compiler::build_get_lambda_ptr(llvm::Value *fn) {
+        auto func = _module->getOrInsertFunction("rt_compiled_function_get_ptr",
+                llvm::IntegerType::getInt8PtrTy(_context, 0));
+        return _builder->CreateCall(func, {fn});
     }
 }

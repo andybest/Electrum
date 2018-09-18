@@ -133,6 +133,8 @@ namespace electrum {
 
         void compile_var_lookup(std::shared_ptr<VarLookupNode> node);
 
+        void compile_maybe_invoke(std::shared_ptr<MaybeInvokeAnalyzerNode> node);
+
         std::string mangle_symbol_name(std::string ns, const std::string &name);
 
         llvm::Value *make_nil();
@@ -158,6 +160,8 @@ namespace electrum {
         void build_set_var(llvm::Value *var, llvm::Value *newVal);
 
         llvm::Value *build_deref_var(llvm::Value *var);
+
+        llvm::Value *build_get_lambda_ptr(llvm::Value *fn);
     };
 }
 
