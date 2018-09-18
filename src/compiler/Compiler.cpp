@@ -148,7 +148,7 @@ namespace electrum {
     }
 
     void Compiler::compile_do(std::shared_ptr<DoAnalyzerNode> node) {
-        // Compile each node in the body, desregarding the result
+        // Compile each node in the body, disregarding the result
         for (const auto &child: node->statements) {
             compile_node(child);
             current_context()->pop_value();
