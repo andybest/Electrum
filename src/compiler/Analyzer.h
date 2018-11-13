@@ -52,7 +52,10 @@ namespace electrum {
     class AnalyzerNode {
     public:
         shared_ptr<SourcePosition> sourcePosition;
-        virtual vector<shared_ptr<AnalyzerNode>> children() { return {}; };
+        vector <shared_ptr<AnalyzerNode>> closed_overs;
+
+        virtual vector <shared_ptr<AnalyzerNode>> children() { return {}; };
+
         virtual AnalyzerNodeType nodeType() = 0;
     };
 
@@ -67,7 +70,7 @@ namespace electrum {
         shared_ptr<AnalyzerNode> consequent;
         shared_ptr<AnalyzerNode> alternative;
 
-        vector<shared_ptr<AnalyzerNode>> children() override {
+        vector <shared_ptr<AnalyzerNode>> children() override {
             return {condition, consequent, alternative};
         }
 
@@ -114,11 +117,11 @@ namespace electrum {
     class DoAnalyzerNode : public AnalyzerNode {
     public:
         /// A vector of all statements in the do form, except the return value
-        vector<shared_ptr<AnalyzerNode>> statements;
+        vector <shared_ptr<AnalyzerNode>> statements;
         /// The last value in the do form
         shared_ptr<AnalyzerNode> returnValue;
 
-        vector<shared_ptr<AnalyzerNode>> children() override {
+        vector <shared_ptr<AnalyzerNode>> children() override {
             auto rv = vector<shared_ptr<AnalyzerNode>>(statements);
             rv.push_back(returnValue);
             return rv;
@@ -132,14 +135,14 @@ namespace electrum {
     class LambdaAnalyzerNode : public AnalyzerNode {
     public:
         /// A vector of the argument names
-        vector<shared_ptr<AnalyzerNode>> arg_name_nodes;
+        vector <shared_ptr<AnalyzerNode>> arg_name_nodes;
 
-        vector<shared_ptr<std::string>> arg_names;
+        vector <shared_ptr<std::string>> arg_names;
 
         /// A do node representing the body
         shared_ptr<AnalyzerNode> body;
 
-        vector<shared_ptr<AnalyzerNode>> children() override {
+        vector <shared_ptr<AnalyzerNode>> children() override {
             return body->children();
         }
 
@@ -156,7 +159,7 @@ namespace electrum {
         /// The binding value
         shared_ptr<AnalyzerNode> value;
 
-        vector<shared_ptr<AnalyzerNode>> children() override {
+        vector <shared_ptr<AnalyzerNode>> children() override {
             return {value};
         }
 
@@ -178,7 +181,7 @@ namespace electrum {
         }
     };
 
-    class MaybeInvokeAnalyzerNode : public AnalyzerNode{
+    class MaybeInvokeAnalyzerNode : public AnalyzerNode {
     public:
         /// Function to call
         shared_ptr<AnalyzerNode> fn;
@@ -186,10 +189,10 @@ namespace electrum {
         /// Function call arguments
         std::vector<shared_ptr<AnalyzerNode>> args;
 
-        vector<shared_ptr<AnalyzerNode>> children() override {
+        vector <shared_ptr<AnalyzerNode>> children() override {
             vector<shared_ptr<AnalyzerNode>> c = {fn};
 
-            for(auto a: args) {
+            for (auto a: args) {
                 c.push_back(a);
             }
 
@@ -209,6 +212,8 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
 
+        vector <shared_ptr<AnalyzerNode>> closedOversForNode(const shared_ptr<AnalyzerNode> node);
+
     private:
         shared_ptr<AnalyzerNode> analyzeSymbol(shared_ptr<ASTNode> form);
 
@@ -222,34 +227,45 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> analyzeKeyword(shared_ptr<ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeBoolean(shared_ptr <ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeBoolean(shared_ptr<ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeList(shared_ptr <ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeList(shared_ptr<ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeIf(shared_ptr <ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeIf(shared_ptr<ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeDo(shared_ptr <ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeDo(shared_ptr<ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeLambda(shared_ptr <ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeLambda(shared_ptr<ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeDef(shared_ptr <ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeDef(shared_ptr<ASTNode> form);
 
-        shared_ptr <AnalyzerNode> analyzeMaybeInvoke(shared_ptr <ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeMaybeInvoke(shared_ptr<ASTNode> form);
 
-        shared_ptr <AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr <string> symbolName, shared_ptr <ASTNode> form);
+        shared_ptr<AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr<string> symbolName, shared_ptr<ASTNode> form);
 
         typedef shared_ptr<AnalyzerNode> (Analyzer::*AnalyzerFunc)(shared_ptr<ASTNode>);
 
+        void push_local_env();
+
+        void pop_local_env();
+
+        shared_ptr<AnalyzerNode> lookup_in_local_env(std::string name);
+
+        void store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue);
+
+
         /// Analysis functions for special forms
-        const std::unordered_map<std::string, AnalyzerFunc> specialForms  {
-                { "if", &Analyzer::analyzeIf },
-                { "do", &Analyzer::analyzeDo },
-                { "lambda", &Analyzer::analyzeLambda },
-                { "def", &Analyzer::analyzeDef }
+        const std::unordered_map<std::string, AnalyzerFunc> specialForms{
+                {"if",     &Analyzer::analyzeIf},
+                {"do",     &Analyzer::analyzeDo},
+                {"lambda", &Analyzer::analyzeLambda},
+                {"def",    &Analyzer::analyzeDef}
         };
 
         /// Holds already defined globals
         std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_env_;
+
+        std::vector<std::unordered_map<std::string, shared_ptr<AnalyzerNode>>> local_envs_;
     };
 }
 

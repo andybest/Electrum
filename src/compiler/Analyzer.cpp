@@ -48,8 +48,31 @@ namespace electrum {
         return shared_ptr<AnalyzerNode>();
     }
 
+    vector<shared_ptr<AnalyzerNode>> Analyzer::closedOversForNode(const shared_ptr<AnalyzerNode> node) {
+        vector<shared_ptr<AnalyzerNode>> closed_overs;
+
+        switch(node->nodeType()) {
+
+            default: break;
+        }
+
+        for(auto child: node->children()) {
+            for(auto v: closedOversForNode(child)) {
+                closed_overs.push_back(v);
+            }
+        }
+    }
+
     shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
         auto symName = form->stringValue;
+
+        if(lookup_in_local_env(*symName) != nullptr) {
+            auto node = make_shared<VarLookupNode>();
+            node->sourcePosition = form->sourcePosition;
+            node->name = form->stringValue;
+            node->is_global = false;
+            return node;
+        }
 
         auto globalResult = global_env_.find(*symName);
         if(globalResult != global_env_.end()) {
@@ -265,6 +288,12 @@ namespace electrum {
             argNames.push_back(arg->stringValue);
         }
 
+        push_local_env();
+
+        for(int i = 0; i < argNames.size(); ++i) {
+            store_in_local_env(*argNames[i], std::make_shared<ConstantValueAnalyzerNode>());
+        }
+
         if (listPtr->size() < 3) {
             // Lambda forms must have at least one body expression
             throw CompilerException("Lambda forms must have at least one body expression",
@@ -289,6 +318,8 @@ namespace electrum {
         node->arg_names = argNames;
         node->arg_name_nodes = argNameNodes;
         node->body = body;
+
+        pop_local_env();
 
         return node;
     }
@@ -340,6 +371,36 @@ namespace electrum {
         }
 
         return nullptr;
+    }
+
+    void Analyzer::push_local_env() {
+        local_envs_.push_back({});
+    }
+
+    void Analyzer::pop_local_env() {
+        local_envs_.pop_back();
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::lookup_in_local_env(std::string name) {
+        for(auto it = local_envs_.rbegin(); it != local_envs_.rend(); ++it) {
+            auto env = *it;
+
+            auto result = env.find(name);
+
+            if(result != env.end()) {
+                return result->second;
+            }
+        }
+
+        return nullptr;
+    }
+
+    void Analyzer::store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue) {
+        local_envs_.at(local_envs_.size() - 1)[name] = initialValue;
+    }
+
+    void Analyzer::collect_closed_overs(shared_ptr<AnalyzerNode> node) {
+
     }
 
 }

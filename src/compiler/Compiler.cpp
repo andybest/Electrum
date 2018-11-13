@@ -216,6 +216,12 @@ namespace electrum {
             return;
         }
 
+        auto result = current_context()->lookup_in_local_environment(*node->name);
+        if(result != nullptr) {
+            current_context()->push_value(result);
+            return;
+        }
+
         throw CompilerException("Unsupported var type", node->sourcePosition);
     }
 
@@ -271,6 +277,7 @@ namespace electrum {
         // Push the arguments onto the environment stack so that the compiler
         // can look them up later
         current_context()->push_local_environment(local_env);
+        current_context()->push_func(lambda);
 
         // Compile the body of the function
         compile_node(node->body);
@@ -278,6 +285,7 @@ namespace electrum {
 
         // Scope ended, pop the arguments from the environment stack
         current_context()->pop_local_environment();
+        current_context()->pop_func();
 
         // Restore back to previous insert point
         _builder->SetInsertPoint(insert_block, insert_point);

@@ -94,6 +94,19 @@ namespace electrum {
             local_bindings.pop_back();
         }
 
+        llvm::Value *lookup_in_local_environment(const std::string name) {
+            for(auto it = local_bindings.rbegin(); it != local_bindings.rend(); ++it) {
+                auto env = *it;
+                auto result = env.find(name);
+
+                if(result != env.end()) {
+                    return result->second;
+                }
+            }
+
+            return nullptr;
+        }
+
     };
 
     class Compiler {

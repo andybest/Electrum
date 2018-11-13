@@ -130,9 +130,30 @@ TEST(Compiler, compilesBasicLambda)  {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compile_and_eval_string("(do (def l (lambda (x) 1234)) (l 5678))");
+    auto def = c.compile_and_eval_string("(def l (lambda (x) x))");
+    auto result1 = c.compile_and_eval_string("(l 1234)");
+    auto result2 = c.compile_and_eval_string("(l 5.678)");
 
-    EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
-    EXPECT_EQ(rt_integer_value(result), 1234);
+    EXPECT_EQ(rt_is_integer(result1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(result1), 1234);
+
+    EXPECT_EQ(rt_is_float(result2), TRUE_PTR);
+    EXPECT_FLOAT_EQ(rt_float_value(result2), 5.678);
+    rt_deinit_gc();
+}
+
+TEST(Compiler, compilesLambdaWithBranch)  {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto def = c.compile_and_eval_string("(def b (lambda (x) (if x 1234 5.678)))");
+    auto result1 = c.compile_and_eval_string("(b #t)");
+    auto result2 = c.compile_and_eval_string("(b #f)");
+
+    EXPECT_EQ(rt_is_integer(result1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(result1), 1234);
+
+    EXPECT_EQ(rt_is_float(result2), TRUE_PTR);
+    EXPECT_FLOAT_EQ(rt_float_value(result2), 5.678);
     rt_deinit_gc();
 }
