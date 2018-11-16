@@ -188,3 +188,7 @@ TEST(Analyzer, analyzesDefAndSavesToAnalyzerEnvironment) {
     EXPECT_EQ(constNode->type, kAnalyzerConstantTypeInteger);
     EXPECT_EQ(boost::get<int64_t>(constNode->value), 1234);
 }
+
+TEST(Analyzer, collectsClosedOversInLambda) {
+    PARSE_STRING("(f a b)");
+}

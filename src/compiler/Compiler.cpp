@@ -48,7 +48,7 @@ namespace electrum {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
-        _jit = std::make_shared<ElectrumJit>();
+        _jit = std::make_shared<ElectrumJit>(_es);
     }
 
     /*void Compiler::compile_analyzer_nodes(std::vector<std::shared_ptr<AnalyzerNode>> nodes) {

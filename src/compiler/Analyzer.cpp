@@ -399,8 +399,15 @@ namespace electrum {
         local_envs_.at(local_envs_.size() - 1)[name] = initialValue;
     }
 
-    void Analyzer::collect_closed_overs(shared_ptr<AnalyzerNode> node) {
+    bool Analyzer::is_closed_over(string name) {
+        // Var can only be a closed over if it is at least one level down in scope
+        if(local_envs_.size() < 2) {
+            return false;
+        }
 
+        for(auto it = --local_envs_.end(); it >= local_envs_.begin(); --it) {
+
+        }
     }
 
 }

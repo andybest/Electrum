@@ -34,6 +34,7 @@
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
+#include <llvm/ExecutionEngine/Orc/Core.h>
 
 namespace electrum {
 
@@ -121,6 +122,7 @@ namespace electrum {
     private:
 
         llvm::LLVMContext _context;
+        llvm::orc::ExecutionSession _es;
         std::unique_ptr<llvm::Module> _module;
         std::unique_ptr<llvm::IRBuilder<>> _builder;
         CompilerContext _compilerContext;

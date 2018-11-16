@@ -33,5 +33,9 @@ target_include_directories(${CMAKE_PROJECT_NAME}_lexer
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR})
 
+target_include_directories(${CMAKE_PROJECT_NAME}_lexer
+        PUBLIC
+        /usr/local/include)
+
 # Link with the reflex static library
 target_link_libraries(${CMAKE_PROJECT_NAME}_lexer /usr/local/lib/libreflex.a)

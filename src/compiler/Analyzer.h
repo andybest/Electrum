@@ -37,6 +37,7 @@ namespace electrum {
     using std::shared_ptr;
     using std::make_shared;
     using std::string;
+    using std::unordered_map;
 
     enum AnalyzerNodeType {
         kAnalyzerNodeTypeNone = -1,
@@ -49,9 +50,11 @@ namespace electrum {
         kAnalyzerNodeTypeMaybeInvoke
     };
 
+
     class AnalyzerNode {
     public:
         shared_ptr<SourcePosition> sourcePosition;
+
         vector <shared_ptr<AnalyzerNode>> closed_overs;
 
         virtual vector <shared_ptr<AnalyzerNode>> children() { return {}; };
@@ -253,6 +256,7 @@ namespace electrum {
 
         void store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue);
 
+        bool is_closed_over(string name);
 
         /// Analysis functions for special forms
         const std::unordered_map<std::string, AnalyzerFunc> specialForms{
@@ -265,7 +269,7 @@ namespace electrum {
         /// Holds already defined globals
         std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_env_;
 
-        std::vector<std::unordered_map<std::string, shared_ptr<AnalyzerNode>>> local_envs_;
+        vector<unordered_map<string, shared_ptr<AnalyzerNode>>> local_envs_;
     };
 }
 
