@@ -147,7 +147,7 @@ TEST(Analyzer, analyzesLambda) {
     EXPECT_EQ(boost::get<int64_t>(rv->value), 1234);
 }
 
-TEST(Analuzer, analyzesInvoke) {
+TEST(Analyzer, analyzesInvoke) {
     PARSE_STRING("((lambda (x y) 42) 1 2)");
     Analyzer an;
     auto node = an.analyzeForm(val);
