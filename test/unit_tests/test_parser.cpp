@@ -9,38 +9,38 @@
 
 using namespace electrum;
 
-TEST(parser, parses_integer) {
+TEST(Parser, parses_integer) {
     PARSE_STRING("1");
     ASSERT_INT(val, 1);
 }
 
-TEST(parser, parses_float) {
+TEST(Parser, parses_float) {
     PARSE_STRING("1.2345");
     ASSERT_FLOAT(val, 1.2345);
 }
 
-TEST(parser, parses_symbol) {
+TEST(Parser, parses_symbol) {
     PARSE_STRING("lambda");
 
     EXPECT_EQ(val->tag, kTypeTagSymbol);
     EXPECT_EQ(*val->stringValue, "lambda");
 }
 
-TEST(parser, parses_string) {
+TEST(Parser, parses_string) {
     PARSE_STRING("\"foo\"");
 
     EXPECT_EQ(val->tag, kTypeTagString);
     EXPECT_EQ(*val->stringValue, "foo");
 }
 
-TEST(parser, parses_keyword) {
+TEST(Parser, parses_keyword) {
     PARSE_STRING(":foo");
 
     EXPECT_EQ(val->tag, kTypeTagKeyword);
     EXPECT_EQ(*val->stringValue, "foo");
 }
 
-TEST(parser, parses_list) {
+TEST(Parser, parses_list) {
     PARSE_STRING("(1 2 3)");
 
     EXPECT_EQ(val->tag, kTypeTagList);
@@ -51,7 +51,7 @@ TEST(parser, parses_list) {
     ASSERT_INT(val->listValue->at(2), 3);
 }
 
-TEST(parser, parses_nested_list) {
+TEST(Parser, parses_nested_list) {
     PARSE_STRING("((1 2) 3 (4 (5)))");
 
     EXPECT_EQ(val->tag, kTypeTagList);
