@@ -26,6 +26,7 @@
 #include <memory>
 #include "Analyzer.h"
 #include "CompilerExceptions.h"
+#include <algorithm>
 
 namespace electrum {
 
@@ -48,25 +49,59 @@ namespace electrum {
         return shared_ptr<AnalyzerNode>();
     }
 
-    vector<shared_ptr<AnalyzerNode>> Analyzer::closedOversForNode(const shared_ptr<AnalyzerNode> node) {
-        vector<shared_ptr<AnalyzerNode>> closed_overs;
-
-        switch(node->nodeType()) {
-
-            default: break;
+    vector<string> Analyzer::closedOversForNode(const shared_ptr<AnalyzerNode> node) {
+        if (node->collected_closed_overs) {
+            return node->closed_overs;
         }
 
-        for(auto child: node->children()) {
-            for(auto v: closedOversForNode(child)) {
+        vector<string> closed_overs;
+
+        for (auto child: node->children()) {
+            for (auto v: closedOversForNode(child)) {
                 closed_overs.push_back(v);
             }
         }
+
+        switch (node->nodeType()) {
+            case kAnalyzerNodeTypeLambda: {
+                // If it's a lambda node, remove the lambda's args from the collected closed overs
+                // of the child nodes.
+                auto lambdaNode = std::dynamic_pointer_cast<LambdaAnalyzerNode>(node);
+
+                closed_overs.erase(
+                        std::remove_if(closed_overs.begin(),
+                                       closed_overs.end(),
+                                       [&lambdaNode](auto c) {
+                                           for (auto n: lambdaNode->arg_names) {
+                                               if (*n == c) {
+                                                   return true;
+                                               }
+                                           }
+                                           return false;
+                                       }),
+                        closed_overs.end());
+                break;
+            }
+            case kAnalyzerNodeTypeVarLookup: {
+                auto varNode = std::dynamic_pointer_cast<VarLookupNode>(node);
+                if(!varNode->is_global) {
+                    closed_overs.push_back(*varNode->name);
+                }
+                break;
+            }
+            default: break;
+        }
+
+        node->closed_overs = closed_overs;
+        node->collected_closed_overs = true;
+
+        return closed_overs;
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
         auto symName = form->stringValue;
 
-        if(lookup_in_local_env(*symName) != nullptr) {
+        if (lookup_in_local_env(*symName) != nullptr) {
             auto node = make_shared<VarLookupNode>();
             node->sourcePosition = form->sourcePosition;
             node->name = form->stringValue;
@@ -75,7 +110,7 @@ namespace electrum {
         }
 
         auto globalResult = global_env_.find(*symName);
-        if(globalResult != global_env_.end()) {
+        if (globalResult != global_env_.end()) {
             auto node = make_shared<VarLookupNode>();
             node->sourcePosition = form->sourcePosition;
             node->name = form->stringValue;
@@ -84,7 +119,7 @@ namespace electrum {
         }
 
         throw CompilerException("Unbound variable '" + *symName + "'",
-                form->sourcePosition);
+                                form->sourcePosition);
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeInteger(const shared_ptr<ASTNode> form) {
@@ -184,8 +219,8 @@ namespace electrum {
         node->args.reserve(listPtr->size() - 1);
 
         bool first = true;
-        for(const auto &a: *listPtr) {
-            if(first) {
+        for (const auto &a: *listPtr) {
+            if (first) {
                 node->fn = analyzeForm(listPtr->at(0));
                 first = false;
             } else {
@@ -258,13 +293,13 @@ namespace electrum {
         if (listPtr->size() < 2) {
             // Lambda forms must contain an argument list
             throw CompilerException("Lambda forms must have an argument list",
-                    form->sourcePosition);
+                                    form->sourcePosition);
         }
 
         if (listPtr->at(1)->tag != kTypeTagList) {
             // Lamda arguments must be a list
             throw CompilerException("Lambda arguments must be a list",
-                    listPtr->at(1)->sourcePosition);
+                                    listPtr->at(1)->sourcePosition);
         }
 
         auto argList = listPtr->at(1)->listValue;
@@ -272,11 +307,11 @@ namespace electrum {
         std::vector<shared_ptr<AnalyzerNode>> argNameNodes;
         std::vector<shared_ptr<std::string>> argNames;
 
-        for(auto arg: *argList) {
-            if(arg->tag != kTypeTagSymbol) {
+        for (auto arg: *argList) {
+            if (arg->tag != kTypeTagSymbol) {
                 // Lambda arguments must be symbols
                 throw CompilerException("Lambda arguments must be symbols",
-                        arg->sourcePosition);
+                                        arg->sourcePosition);
             }
 
             auto sym = std::make_shared<ConstantValueAnalyzerNode>();
@@ -290,14 +325,14 @@ namespace electrum {
 
         push_local_env();
 
-        for(int i = 0; i < argNames.size(); ++i) {
+        for (int i = 0; i < argNames.size(); ++i) {
             store_in_local_env(*argNames[i], std::make_shared<ConstantValueAnalyzerNode>());
         }
 
         if (listPtr->size() < 3) {
             // Lambda forms must have at least one body expression
             throw CompilerException("Lambda forms must have at least one body expression",
-                    form->sourcePosition);
+                                    form->sourcePosition);
         }
 
         auto body = std::make_shared<DoAnalyzerNode>();
@@ -366,7 +401,7 @@ namespace electrum {
     shared_ptr<AnalyzerNode> Analyzer::initialBindingWithName(const std::string &name) {
         auto result = global_env_.find(name);
 
-        if(result != global_env_.end()) {
+        if (result != global_env_.end()) {
             return result->second;
         }
 
@@ -382,12 +417,12 @@ namespace electrum {
     }
 
     shared_ptr<AnalyzerNode> Analyzer::lookup_in_local_env(std::string name) {
-        for(auto it = local_envs_.rbegin(); it != local_envs_.rend(); ++it) {
+        for (auto it = local_envs_.rbegin(); it != local_envs_.rend(); ++it) {
             auto env = *it;
 
             auto result = env.find(name);
 
-            if(result != env.end()) {
+            if (result != env.end()) {
                 return result->second;
             }
         }
@@ -401,11 +436,11 @@ namespace electrum {
 
     bool Analyzer::is_closed_over(string name) {
         // Var can only be a closed over if it is at least one level down in scope
-        if(local_envs_.size() < 2) {
+        if (local_envs_.size() < 2) {
             return false;
         }
 
-        for(auto it = --local_envs_.end(); it >= local_envs_.begin(); --it) {
+        for (auto it = --local_envs_.end(); it >= local_envs_.begin(); --it) {
 
         }
     }

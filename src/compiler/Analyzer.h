@@ -55,7 +55,9 @@ namespace electrum {
     public:
         shared_ptr<SourcePosition> sourcePosition;
 
-        vector <shared_ptr<AnalyzerNode>> closed_overs;
+        vector<string> closed_overs;
+        
+        bool collected_closed_overs;
 
         virtual vector <shared_ptr<AnalyzerNode>> children() { return {}; };
 
@@ -215,7 +217,7 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
 
-        vector <shared_ptr<AnalyzerNode>> closedOversForNode(const shared_ptr<AnalyzerNode> node);
+        vector <string> closedOversForNode(shared_ptr<AnalyzerNode> node);
 
     private:
         shared_ptr<AnalyzerNode> analyzeSymbol(shared_ptr<ASTNode> form);
@@ -226,7 +228,7 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> analyzeString(shared_ptr<ASTNode> form);
 
-        shared_ptr<AnalyzerNode> analyzeNil(const shared_ptr<ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeNil(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> analyzeKeyword(shared_ptr<ASTNode> form);
 

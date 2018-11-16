@@ -44,6 +44,9 @@ std::string tokenTypeName(TokenType type) {
         case kTokenTypeFloat: return "kTokenTypeFloat";
         case kTokenTypeInteger: return "kTokenTypeInteger";
         case kTokenTypeEOF: return "kTokenTypeEOF";
+        case kTokenTypeKeyword: return "kTokenTypeKeyword";
+        case kTokenTypeString: return "kTokenTypeString";
+        case kTokenTypeBoolean: return "kTokenTypeBoolen";
     }
 }
 
