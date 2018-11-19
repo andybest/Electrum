@@ -88,9 +88,10 @@ STRING              \"([^\\\"]|\\\")*\"
 {FLOAT}             { return kTokenTypeFloat; }
 {INTEGER}           { return kTokenTypeInteger; }
 {BOOLEAN}           { return kTokenTypeBoolean; }
+{STRING}            { return kTokenTypeString; }
 {IDENTIFIER}        { return kTokenTypeSymbol; }
 {KEYWORD}           { return kTokenTypeKeyword; }
-{STRING}            { return kTokenTypeString; }
+
 
 <<EOF>>             { return kTokenTypeEOF; }
 
