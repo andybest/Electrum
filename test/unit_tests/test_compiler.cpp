@@ -157,3 +157,14 @@ TEST(Compiler, compilesLambdaWithBranch)  {
     EXPECT_FLOAT_EQ(rt_float_value(result2), 5.678);
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesLambdaWithCapturedEnvironment) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("(((lambda (x) (lambda () x)) 1234))");
+    EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(result), 1234);
+
+    rt_deinit_gc();
+}

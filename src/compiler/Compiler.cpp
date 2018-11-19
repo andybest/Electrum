@@ -59,6 +59,7 @@ namespace electrum {
         Parser p;
         auto ast = p.readString(str);
         auto node = _analyzer.analyzeForm(ast);
+        _analyzer.closedOversForNode(node);
 
         return compile_and_eval_node(node);
     }
@@ -243,7 +244,7 @@ namespace electrum {
 
         }
 
-        // Add extra arg for environment
+        // Add extra arg for closure, in order to ger environment values
         argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
 
 
@@ -274,6 +275,14 @@ namespace electrum {
             ++arg_it;
         }
 
+        //++arg_it;
+        for(uint64_t i = 0; i < node->closed_overs.size(); i++) {
+            auto &arg = *arg_it;
+            arg.setName("environment");
+
+            local_env[node->closed_overs[i]] = build_lambda_get_env(&arg, i);
+        }
+
         // Push the arguments onto the environment stack so that the compiler
         // can look them up later
         current_context()->push_local_environment(local_env);
@@ -292,8 +301,12 @@ namespace electrum {
 
 
         auto closure = make_closure(node->arg_names.size(),
-                                    make_nil(),
-                                    lambda);
+                                    lambda,
+                                    node->closed_overs.size());
+
+        for(uint64_t i = 0; i < node->closed_overs.size(); i++) {
+            build_lambda_set_env(closure, i, current_context()->lookup_in_local_environment(node->closed_overs[i]));
+        }
 
         current_context()->push_value(closure);
     }
@@ -343,13 +356,14 @@ namespace electrum {
             args.push_back(current_context()->pop_value());
         }
 
-        // Environment
-        args.push_back(make_nil());
+        args.push_back(fn);
 
         std::vector<llvm::Type*> argTypes;
-        for(int i = 0; i < node->args.size() + 1; ++i) {
+        for(uint64_t i = 0; i < node->args.size() + 1; ++i) {
             argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
         }
+
+        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
 
         auto fn_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
                                                argTypes,
@@ -439,18 +453,18 @@ namespace electrum {
         return _builder->CreateCall(func, {strptr});
     }
 
-    llvm::Value *Compiler::make_closure(uint64_t arity, llvm::Value *environment, llvm::Value *func_ptr) {
+    llvm::Value *Compiler::make_closure(uint64_t arity, llvm::Value *func_ptr, uint64_t envSize) {
         auto func = _module->getOrInsertFunction("rt_make_compiled_function",
                                                  llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
                                                  llvm::IntegerType::getInt64Ty(_context),
                                                  llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+                                                 llvm::IntegerType::getInt64Ty(_context));
 
 
         return _builder->CreateCall(func,
                                     {llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), arity),
-                                     environment,
-                                     func_ptr});
+                                     func_ptr,
+                                     llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), envSize)});
     }
 
     llvm::Value *Compiler::get_boolean_value(llvm::Value *val) {
@@ -490,5 +504,28 @@ namespace electrum {
         auto func = _module->getOrInsertFunction("rt_compiled_function_get_ptr",
                 llvm::IntegerType::getInt8PtrTy(_context, 0));
         return _builder->CreateCall(func, {fn});
+    }
+
+    llvm::Value *Compiler::build_lambda_set_env(llvm::Value *fn, uint64_t idx, llvm::Value *val) {
+        auto func = _module->getOrInsertFunction("rt_compiled_function_set_env",
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt64Ty(_context),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+        llvm::Value *idxVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), idx);
+
+        return _builder->CreateCall(func, {fn, idxVal, val});
+    }
+
+    llvm::Value *Compiler::build_lambda_get_env(llvm::Value *fn, uint64_t idx) {
+        auto func = _module->getOrInsertFunction("rt_compiled_function_get_env",
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt64Ty(_context));
+
+        llvm::Value *idxVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), idx);
+
+        return _builder->CreateCall(func, {fn, idxVal});
     }
 }

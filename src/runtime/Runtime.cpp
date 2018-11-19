@@ -89,16 +89,14 @@ namespace electrum {
                     printf("%s", val->name);
                     break;
                 }
-                case kETypeTagPair:
-                    print_pair(expr);
+                case kETypeTagPair:print_pair(expr);
                     break;
                 case kETypeTagFloat: {
                     auto val = static_cast<EFloat *>(static_cast<void *>(header));
                     printf("%f", val->floatValue);
                     break;
                 }
-                case kETypeTagInterpretedFunction:
-                    printf("<Interpreted Function>");
+                case kETypeTagInterpretedFunction:printf("<Interpreted Function>");
                     break;
                 case kETypeTagString: {
                     auto val = static_cast<EString *>(static_cast<void *>(header));
@@ -106,12 +104,11 @@ namespace electrum {
                     break;
                 }
 
-                default:
-                    break;
+                default:break;
             }
-        } else if(expr == NIL_PTR) {
+        } else if (expr == NIL_PTR) {
             printf("nil");
-        } else if(is_boolean(expr)) {
+        } else if (is_boolean(expr)) {
             printf((expr == TRUE_PTR) ? "true" : "false");
         }
     }
@@ -152,7 +149,7 @@ extern "C" void *rt_is_boolean(void *val) {
 }
 
 extern "C" uint8_t rt_is_true(void *val) {
-    if(!rt_is_boolean(val)) {
+    if (!rt_is_boolean(val)) {
         // ERROR!
     }
 
@@ -197,7 +194,7 @@ extern "C" void *rt_make_symbol(const char *name) {
     symbolVal->header.tag = kETypeTagSymbol;
     symbolVal->header.gc_mark = 0;
     strcpy(symbolVal->name, name);
-    symbolVal->length = (uint64_t)len;
+    symbolVal->length = (uint64_t) len;
 
     // Add null termination
     symbolVal->name[len] = 0;
@@ -216,7 +213,7 @@ extern "C" void *rt_make_string(const char *str) {
     strVal->header.tag = kETypeTagString;
     strVal->header.gc_mark = 0;
     strcpy(strVal->stringValue, str);
-    strVal->length = (uint64_t)len;
+    strVal->length = (uint64_t) len;
 
     // Add null termination
     strVal->stringValue[len] = 0;
@@ -227,7 +224,7 @@ extern "C" void *rt_is_string(void *val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagString));
 }
 
-extern "C" const char* rt_string_value(void *val) {
+extern "C" const char *rt_string_value(void *val) {
     auto str = reinterpret_cast<EString *>(TAG_TO_OBJECT(val));
     return str->stringValue;
 }
@@ -240,7 +237,7 @@ void *rt_make_keyword(const char *str) {
     keywordVal->header.tag = kETypeTagKeyword;
     keywordVal->header.gc_mark = 0;
     strcpy(keywordVal->name, str);
-    keywordVal->length = (uint64_t)len;
+    keywordVal->length = (uint64_t) len;
 
     // Add null termination
     keywordVal->name[len] = 0;
@@ -326,13 +323,13 @@ void *rt_make_interpreted_function(void *argnames, uint64_t arity, void *body, v
     return OBJECT_TO_TAG(funcVal);
 }
 
-extern "C" void *rt_make_compiled_function(uint64_t arity, void *env, void *fp) {
-    auto funcVal = static_cast<ECompiledFunction *>(GC_MALLOC(sizeof(ECompiledFunction)));
+extern "C" void *rt_make_compiled_function(uint64_t arity, void *fp, uint64_t env_size) {
+    auto funcVal = static_cast<ECompiledFunction *>(GC_MALLOC(sizeof(ECompiledFunction) + (sizeof(void *) * env_size)));
     funcVal->header.tag = kETypeTagFunction;
     funcVal->header.gc_mark = 0;
     funcVal->arity = arity;
-    funcVal->env = env;
     funcVal->f_ptr = fp;
+    funcVal->env_size = env_size;
     return OBJECT_TO_TAG(funcVal);
 }
 
@@ -343,7 +340,7 @@ extern "C" uint64_t rt_compiled_function_get_arity(void *func) {
         // TODO: Exception
     }
 
-    auto f = static_cast<ECompiledFunction*>(static_cast<void*>(header));
+    auto f = static_cast<ECompiledFunction *>(static_cast<void *>(header));
     return f->arity;
 }
 
@@ -354,8 +351,19 @@ extern "C" void *rt_compiled_function_get_ptr(void *func) {
         // TODO: Exception
     }
 
-    auto f = static_cast<ECompiledFunction*>(static_cast<void*>(header));
+    auto f = static_cast<ECompiledFunction *>(static_cast<void *>(header));
     return f->f_ptr;
+}
+
+extern "C" void *rt_compiled_function_set_env(void *func, uint64_t index, void *value) {
+    auto funcVal = static_cast<ECompiledFunction *>(static_cast<void *>(TAG_TO_OBJECT(func)));
+    funcVal->env[index] = value;
+    return funcVal;
+}
+
+extern "C" void *rt_compiled_function_get_env(void *func, uint64_t index) {
+    auto funcVal = static_cast<ECompiledFunction *>(static_cast<void *>(TAG_TO_OBJECT(func)));
+    return funcVal->env[index];
 }
 
 void *rt_make_environment(void *parent) {

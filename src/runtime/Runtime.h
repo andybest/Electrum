@@ -108,11 +108,13 @@ struct ECompiledFunction {
     EObjectHeader header;
     uint64_t arity;
 
-    /** Closure environment */
-    void *env;
-
     /** Pointer to function implementation */
     void *f_ptr;
+
+    uint64_t env_size;
+
+    /** Closure environment */
+    void* env[];
 };
 
 struct EInterpretedFunction {

@@ -166,7 +166,7 @@ namespace electrum {
 
         llvm::Value *make_keyword(std::shared_ptr<std::string> name);
 
-        llvm::Value *make_closure(uint64_t arity, llvm::Value *environment, llvm::Value *func_ptr);
+        llvm::Value *make_closure(uint64_t arity, llvm::Value *func_ptr, uint64_t envSize);
 
         llvm::Value *get_boolean_value(llvm::Value *val);
 
@@ -177,6 +177,10 @@ namespace electrum {
         llvm::Value *build_deref_var(llvm::Value *var);
 
         llvm::Value *build_get_lambda_ptr(llvm::Value *fn);
+
+        llvm::Value *build_lambda_set_env(llvm::Value *fn, uint64_t idx, llvm::Value *val);
+
+        llvm::Value *build_lambda_get_env(llvm::Value *fn, uint64_t idx);
     };
 }
 
