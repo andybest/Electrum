@@ -258,8 +258,6 @@ namespace electrum {
 
         void store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue);
 
-        bool is_closed_over(string name);
-
         /// Analysis functions for special forms
         const std::unordered_map<std::string, AnalyzerFunc> specialForms{
                 {"if",     &Analyzer::analyzeIf},

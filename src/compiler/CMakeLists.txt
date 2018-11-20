@@ -7,17 +7,14 @@ set(HEADER_FILES
         Parser.h
         Analyzer.h
         ElectrumJit.h
-        CompilerExceptions.h
-        TypeBuilder.h)
+        CompilerExceptions.h)
 
 set(SOURCE_FILES
         main.cpp
         Compiler.cpp
         Parser.cpp
         Analyzer.cpp
-        TypeBuilder.cpp
-        ElectrumJit.cpp
-        )
+        ElectrumJit.cpp)
 
 add_library(${CMAKE_PROJECT_NAME}c_lib STATIC
         ${HEADER_FILES}
