@@ -53,6 +53,8 @@ namespace electrum {
 
     class AnalyzerNode {
     public:
+        virtual ~AnalyzerNode() {};
+        
         shared_ptr<SourcePosition> sourcePosition;
 
         vector<string> closed_overs;
@@ -212,50 +214,31 @@ namespace electrum {
     class Analyzer {
     public:
         Analyzer();
-
         shared_ptr<AnalyzerNode> initialBindingWithName(const std::string &name);
-
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
-
         vector <string> closedOversForNode(shared_ptr<AnalyzerNode> node);
 
     private:
         shared_ptr<AnalyzerNode> analyzeSymbol(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeInteger(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeFloat(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeString(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeNil(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeKeyword(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeBoolean(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeList(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeIf(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeDo(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeLambda(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeDef(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> analyzeMaybeInvoke(shared_ptr<ASTNode> form);
-
         shared_ptr<AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr<string> symbolName, shared_ptr<ASTNode> form);
 
         typedef shared_ptr<AnalyzerNode> (Analyzer::*AnalyzerFunc)(shared_ptr<ASTNode>);
 
         void push_local_env();
-
         void pop_local_env();
-
         shared_ptr<AnalyzerNode> lookup_in_local_env(std::string name);
-
         void store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue);
 
         /// Analysis functions for special forms
@@ -268,7 +251,6 @@ namespace electrum {
 
         /// Holds already defined globals
         std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_env_;
-
         vector<unordered_map<string, shared_ptr<AnalyzerNode>>> local_envs_;
     };
 }
