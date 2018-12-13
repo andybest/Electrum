@@ -7,14 +7,16 @@ set(HEADER_FILES
         Parser.h
         Analyzer.h
         ElectrumJit.h
-        CompilerExceptions.h)
+        CompilerExceptions.h
+        JitMemoryManager.h)
 
 set(SOURCE_FILES
         main.cpp
         Compiler.cpp
         Parser.cpp
         Analyzer.cpp
-        ElectrumJit.cpp)
+        ElectrumJit.cpp
+        JitMemoryManager.cpp)
 
 add_library(${CMAKE_PROJECT_NAME}c_lib STATIC
         ${HEADER_FILES}
@@ -37,6 +39,7 @@ llvm_map_components_to_libnames(llvm_libs
         executionengine
         Analysis
         Core
+        CodeGen
         ExecutionEngine
         InstCombine
         IRReader

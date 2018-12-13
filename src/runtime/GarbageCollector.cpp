@@ -59,8 +59,8 @@ namespace electrum {
     void GarbageCollector::collect(void *stackPointer) {
         auto return_address = *static_cast<uint64_t *>(stackPointer);
 
-        auto frame_info = lookup_return_address(statepoint_table_,
-                                                return_address);
+        /*auto frame_info = lookup_return_address(statepoint_table_,
+                                                return_address);*/
     }
 
     /**

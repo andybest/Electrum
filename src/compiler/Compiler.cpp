@@ -31,6 +31,8 @@
 
 #include <llvm/Support/raw_ostream.h>
 
+#include <llvm/CodeGen/GCs.h>
+#include <llvm/CodeGen/GCStrategy.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/JITSymbol.h>
 #include <llvm/ExecutionEngine/RTDyldMemoryManager.h>
@@ -48,6 +50,7 @@ namespace electrum {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
+        llvm::linkStatepointExampleGC();
         _jit = std::make_shared<ElectrumJit>(_es);
     }
 
@@ -80,6 +83,22 @@ namespace electrum {
                 ss.str(),
                 _module.get());
 
+        mainfunc->setGC("statepoint-example");
+
+        auto gcfunc = llvm::Function::Create(
+                llvm::FunctionType::get(llvm::Type::getVoidTy(_context), false),
+                llvm::GlobalValue::LinkageTypes::InternalLinkage,
+                "gc.safepoint_poll",
+                _module.get());
+        auto gcEntry = llvm::BasicBlock::Create(_context, "entry", gcfunc);
+        llvm::IRBuilder<> b(_context);
+        b.SetInsertPoint(gcEntry);
+
+        auto dogc = _module->getOrInsertFunction("rt_enter_gc",
+                                                 llvm::Type::getVoidTy(_context));
+        auto inst = b.CreateCall(dogc);
+        b.CreateRet(nullptr);
+
         current_context()->push_func(mainfunc);
 
         auto entry = llvm::BasicBlock::Create(_context, "entry", mainfunc);
@@ -92,8 +111,6 @@ namespace electrum {
         auto result = current_context()->pop_value();
         _builder->CreateRet(result);
         current_context()->pop_func();
-
-        _module->print(llvm::errs(), nullptr);
 
         _jit->addModule(std::move(_module));
 
@@ -258,6 +275,7 @@ namespace electrum {
                 ss.str(),
                 _module.get());
 
+        lambda->setGC("statepoint-example");
 
         auto entryBlock = llvm::BasicBlock::Create(_context, "entry", lambda);
         _builder->SetInsertPoint(entryBlock);
@@ -372,6 +390,7 @@ namespace electrum {
         auto fn_ptr = _builder->CreateFPCast(build_get_lambda_ptr(fn),
                 llvm::PointerType::get(fn_type, 0));
 
+        //auto result = _builder->CreateGCStatepointCall(0, 0, fn_ptr, args, nullptr, nullptr);
         auto result = _builder->CreateCall(fn_ptr, args);
 
         current_context()->push_value(result);

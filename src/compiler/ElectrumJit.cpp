@@ -23,14 +23,36 @@
 */
 
 #include "ElectrumJit.h"
+#include <memory>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/IR/Verifier.h>
 
 namespace electrum {
+
+    static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Module> module) {
+        auto fpm = std::make_unique<llvm::legacy::FunctionPassManager>(module.get());
+
+        
+        //fpm->add(llvm::createPlaceSafepointsPass());
+        //fpm->add(llvm::createRewriteStatepointsForGCLegacyPass());
+        fpm->doInitialization();
+
+        for (auto &f: *module) {
+            fpm->run(f);
+        }
+
+        module->print(llvm::errs(), nullptr);
+
+        return module;
+    }
+
     ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession &es)
             : es_(es),
               resolver_(createLegacyLookupResolver(
                       es_,
                       [this](const std::string &Name) -> llvm::JITSymbol {
-                          if (auto Sym = compile_layer_.findSymbol(Name, false))
+                          if (auto Sym = optimize_layer_.findSymbol(Name, false))
                               return Sym;
                           else if (auto Err = Sym.takeError())
                               return std::move(Err);
@@ -45,9 +67,12 @@ namespace electrum {
               object_layer_(es_,
                             [this](llvm::orc::VModuleKey) {
                                 return llvm::orc::RTDyldObjectLinkingLayer::Resources{
-                                        std::make_shared<llvm::SectionMemoryManager>(), resolver_};
+                                        std::make_shared<JitMemoryManager>(), resolver_};
                             }),
-              compile_layer_(object_layer_, llvm::orc::SimpleCompiler(*target_machine_)) {
+              compile_layer_(object_layer_, llvm::orc::SimpleCompiler(*target_machine_)),
+              optimize_layer_(compile_layer_, [this](std::unique_ptr<llvm::Module> M) {
+                  return optimize_module(std::move(M));
+              }){
         llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
     }
 
@@ -55,7 +80,7 @@ namespace electrum {
 
     llvm::orc::VModuleKey ElectrumJit::addModule(std::unique_ptr<llvm::Module> module) {
         auto k = es_.allocateVModule();
-        llvm::cantFail(compile_layer_.addModule(k, std::move(module)));
+        llvm::cantFail(optimize_layer_.addModule(k, std::move(module)));
         return k;
     }
 
@@ -63,7 +88,7 @@ namespace electrum {
         std::string mangled_name;
         llvm::raw_string_ostream mangled_name_stream(mangled_name);
         llvm::Mangler::getNameWithPrefix(mangled_name_stream, name, data_layout_);
-        return compile_layer_.findSymbol(name, false);
+        return optimize_layer_.findSymbol(name, false);
     }
 
     llvm::JITTargetAddress ElectrumJit::get_symbol_address(const std::string &name) {
@@ -71,6 +96,8 @@ namespace electrum {
     }
 
     void ElectrumJit::remove_module(llvm::orc::VModuleKey h) {
-        llvm::cantFail(compile_layer_.removeModule(h));
+        llvm::cantFail(optimize_layer_.removeModule(h));
     }
+
+
 }
