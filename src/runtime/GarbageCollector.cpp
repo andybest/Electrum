@@ -22,6 +22,7 @@
  SOFTWARE.
 */
 
+#include <iostream>
 #include "GarbageCollector.h"
 #include "stackmap/api.h"
 #include "Runtime.h"
@@ -50,6 +51,7 @@ namespace electrum {
 
     void GarbageCollector::init_stackmap(void *stackmap) {
         statepoint_table_ = generate_table(stackmap, 0.5);
+        std::cout << "Init statepoint table" << std::endl;
     }
 
     /**
@@ -59,8 +61,10 @@ namespace electrum {
     void GarbageCollector::collect(void *stackPointer) {
         auto return_address = *static_cast<uint64_t *>(stackPointer);
 
-        /*auto frame_info = lookup_return_address(statepoint_table_,
-                                                return_address);*/
+        auto frame_info = lookup_return_address(statepoint_table_,
+                                                return_address);
+
+        std::cout << frame_info->numSlots << std::endl;
     }
 
     /**
@@ -166,8 +170,14 @@ namespace electrum {
  * Initialize the garbage collector
  */
 extern "C" void rt_init_gc(void *stackmap) {
-    electrum::main_collector = std::make_shared<electrum::GarbageCollector>(electrum::kGCModeCompilerOwned);
+    //electrum::main_collector = std::make_shared<electrum::GarbageCollector>(electrum::kGCModeCompilerOwned);
+    electrum::main_collector = new electrum::GarbageCollector(electrum::kGCModeCompilerOwned);
     electrum::main_collector->init_stackmap(stackmap);
+}
+
+extern "C" void rt_gc_init_stackmap(void *stackmap) {
+    auto collector = rt_get_gc();
+    collector->init_stackmap(stackmap);
 }
 
 /**
@@ -175,7 +185,8 @@ extern "C" void rt_init_gc(void *stackmap) {
  * @param stackPointer The stack pointer, as provided by rt_enter_gc()
  */
 extern "C" void rt_enter_gc_impl(void *stackPointer) {
-    electrum::main_collector->collect(stackPointer);
+    auto collector = rt_get_gc();
+    collector->collect(stackPointer);
 }
 
 /**

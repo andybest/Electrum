@@ -27,20 +27,23 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/IR/Verifier.h>
+#include <iostream>
 
 namespace electrum {
 
     static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Module> module) {
         auto fpm = std::make_unique<llvm::legacy::FunctionPassManager>(module.get());
 
-        
-        //fpm->add(llvm::createPlaceSafepointsPass());
-        //fpm->add(llvm::createRewriteStatepointsForGCLegacyPass());
+        fpm->add(llvm::createPlaceSafepointsPass());
         fpm->doInitialization();
 
         for (auto &f: *module) {
             fpm->run(f);
         }
+
+        llvm::legacy::PassManager pm;
+        pm.add(llvm::createRewriteStatepointsForGCLegacyPass());
+        pm.run(*module);
 
         module->print(llvm::errs(), nullptr);
 
@@ -67,13 +70,18 @@ namespace electrum {
               object_layer_(es_,
                             [this](llvm::orc::VModuleKey) {
                                 return llvm::orc::RTDyldObjectLinkingLayer::Resources{
-                                        std::make_shared<JitMemoryManager>(), resolver_};
+                                        std::make_shared<JitMemoryManager>([this](void *stackMapPtr) {
+                                            std::cout << "Found stack map: " << stackMapPtr << std::endl;
+                                            this->stack_map_ptr_ = stackMapPtr;
+                                        }), resolver_};
                             }),
               compile_layer_(object_layer_, llvm::orc::SimpleCompiler(*target_machine_)),
               optimize_layer_(compile_layer_, [this](std::unique_ptr<llvm::Module> M) {
                   return optimize_module(std::move(M));
-              }){
+              }) {
         llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
+
+        object_layer_.setProcessAllSections(true);
     }
 
     llvm::TargetMachine &ElectrumJit::getTargetMachine() { return *target_machine_; }

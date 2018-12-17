@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by Andy Best on 2018-12-13.
 //
@@ -21,9 +23,17 @@ namespace electrum {
                                                    StringRef SectionName,
                                                    bool isReadOnly) {
         std::cout << SectionName.str() << std::endl;
-        return SectionMemoryManager::allocateDataSection(Size, Alignment, SectionID, SectionName, isReadOnly);
+        auto section_ptr =  SectionMemoryManager::allocateDataSection(Size, Alignment, SectionID, SectionName, isReadOnly);
+
+        if(SectionName == ".llvm_stackmaps" || SectionName == "__llvm_stackmaps") {
+            stackMapPtr_ = section_ptr;
+            stackMapCB(stackMapPtr_);
+        }
+
+        return section_ptr;
     }
 
-    JitMemoryManager::JitMemoryManager(): SectionMemoryManager(nullptr) {
+    JitMemoryManager::JitMemoryManager(std::function<void(void *)> stackmap_cb) : SectionMemoryManager(nullptr) {
+        this->stackMapCB = std::move(stackmap_cb);
     }
 }

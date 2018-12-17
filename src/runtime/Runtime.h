@@ -157,7 +157,7 @@ void rt_init();
 void rt_init_gc(electrum::GCMode gc_mode);
 void rt_deinit_gc();
 
-std::shared_ptr<electrum::GarbageCollector> rt_get_gc();
+electrum::GarbageCollector *rt_get_gc();
 
 void *rt_is_object(void *val);
 

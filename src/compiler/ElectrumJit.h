@@ -68,6 +68,7 @@ namespace electrum {
 
         llvm::orc::JITCompileCallbackManager *compile_callback_mgr_;
         std::unique_ptr<llvm::orc::IndirectStubsManager> indirect_stubs_mgr_;
+        void *stack_map_ptr_;
 
     public:
         using MyRemote = llvm::orc::remote::OrcRemoteTargetClient;
@@ -83,6 +84,10 @@ namespace electrum {
         llvm::JITTargetAddress get_symbol_address(const std::string &name);
 
         void remove_module(llvm::orc::VModuleKey h);
+
+        void *get_stack_map_pointer() {
+            return stack_map_ptr_;
+        }
     };
 
 }

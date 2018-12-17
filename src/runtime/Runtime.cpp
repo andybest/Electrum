@@ -121,14 +121,15 @@ void rt_init() {
 }
 
 void rt_init_gc(electrum::GCMode gc_mode) {
-    electrum::main_collector = std::make_shared<electrum::GarbageCollector>(gc_mode);
+     //electrum::main_collector = std::make_shared<electrum::GarbageCollector>(gc_mode);
+     electrum::main_collector = new electrum::GarbageCollector(gc_mode);
 }
 
 void rt_deinit_gc() {
     electrum::main_collector = nullptr;
 }
 
-std::shared_ptr<electrum::GarbageCollector> rt_get_gc() {
+electrum::GarbageCollector *rt_get_gc() {
     return electrum::main_collector;
 }
 

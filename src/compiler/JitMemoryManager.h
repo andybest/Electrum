@@ -7,6 +7,8 @@
 
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include "llvm/ADT/StringRef.h"
+#include "ElectrumJit.h"
+#include <memory>
 
 namespace electrum {
     using llvm::SectionMemoryManager;
@@ -15,7 +17,7 @@ namespace electrum {
     class JitMemoryManager : public SectionMemoryManager {
 
     public:
-        JitMemoryManager();
+        JitMemoryManager(std::function<void(void*)>);
 
         uint8_t *allocateCodeSection(uintptr_t Size, unsigned Alignment,
                                      unsigned SectionID,
@@ -25,8 +27,13 @@ namespace electrum {
                                      unsigned SectionID, StringRef SectionName,
                                      bool isReadOnly) override;
 
+        void *getStackMapPtr() {
+            return stackMapPtr_;
+        }
+
     private:
         void *stackMapPtr_;
+        std::function<void(void *)> stackMapCB;
     };
 }
 

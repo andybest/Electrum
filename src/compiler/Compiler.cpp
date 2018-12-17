@@ -85,17 +85,18 @@ namespace electrum {
 
         mainfunc->setGC("statepoint-example");
 
-        auto gcfunc = llvm::Function::Create(
-                llvm::FunctionType::get(llvm::Type::getVoidTy(_context), false),
-                llvm::GlobalValue::LinkageTypes::InternalLinkage,
-                "gc.safepoint_poll",
-                _module.get());
+        auto gcType = llvm::FunctionType::get(llvm::Type::getVoidTy(_context), false);
+        auto gcfunc = llvm::dyn_cast<llvm::Function>(_module->getOrInsertFunction("gc.safepoint_poll", gcType));
+
+        gcfunc->addFnAttr(llvm::Attribute::NoUnwind);
+
         auto gcEntry = llvm::BasicBlock::Create(_context, "entry", gcfunc);
         llvm::IRBuilder<> b(_context);
         b.SetInsertPoint(gcEntry);
 
         auto dogc = _module->getOrInsertFunction("rt_enter_gc",
                                                  llvm::Type::getVoidTy(_context));
+        //b.CreateGCStatepointCall(2863311530, 0, dogc, nullptr, nullptr, nullptr);
         auto inst = b.CreateCall(dogc);
         b.CreateRet(nullptr);
 
@@ -115,6 +116,7 @@ namespace electrum {
         _jit->addModule(std::move(_module));
 
         auto faddr = _jit->get_symbol_address(ss.str());
+        rt_gc_init_stackmap(_jit->get_stack_map_pointer());
 
         typedef void *(*MainPtr)();
 

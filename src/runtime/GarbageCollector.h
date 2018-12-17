@@ -89,7 +89,7 @@ namespace electrum {
 
     };
 
-    static shared_ptr<GarbageCollector> main_collector;
+    static GarbageCollector *main_collector;
 }
 
 extern "C" {
@@ -97,6 +97,7 @@ extern "C" {
 
 /* Exported functions */
 void rt_init_gc(void *stackmap);
+void rt_gc_init_stackmap(void *stackmap);
 
 #ifdef __cplusplus
 }
