@@ -23,6 +23,7 @@
 */
 
 #include <iostream>
+#include <cstdio>
 #include "GarbageCollector.h"
 #include "stackmap/api.h"
 #include "Runtime.h"
@@ -51,9 +52,9 @@ namespace electrum {
 
     void GarbageCollector::init_stackmap(void *stackmap) {
         statepoint_table_ = generate_table(stackmap, 0.5);
-        std::cout << "Init statepoint table" << std::endl;
     }
 
+    std::cout << "Init statepoint table" << std::endl;
     /**
      * Maybe perform a garbage collection pass
      * @param stackPointer The stack pointer of the call point
@@ -64,7 +65,28 @@ namespace electrum {
         auto frame_info = lookup_return_address(statepoint_table_,
                                                 return_address);
 
-        std::cout << frame_info->numSlots << std::endl;
+        auto stackIndex = reinterpret_cast<uintptr_t>(stackPointer);
+        stackIndex += sizeof(void*);
+
+        while(frame_info != nullptr) {
+            for(uint16_t i = 0; i < frame_info->numSlots; i++) {
+                auto pointerSlot = frame_info->slots[i];
+                if(pointerSlot.kind >= 0) {
+                    std::cout << "Derived pointer, skipping" << std::endl;
+                    continue;
+                }
+
+                auto ptr = reinterpret_cast<void**>(stackIndex + pointerSlot.offset);
+                std::cout << "Pointer: " << *ptr << std::endl;
+                print_expr(*ptr);
+            }
+
+            // Move to next frame
+            stackIndex = stackIndex + frame_info->frameSize;
+            return_address = *reinterpret_cast<uint64_t *>(stackIndex);
+            stackIndex += sizeof(void*);
+            frame_info = lookup_return_address(statepoint_table_, return_address);
+        }
     }
 
     /**

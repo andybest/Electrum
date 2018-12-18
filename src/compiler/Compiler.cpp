@@ -282,6 +282,9 @@ namespace electrum {
         auto entryBlock = llvm::BasicBlock::Create(_context, "entry", lambda);
         _builder->SetInsertPoint(entryBlock);
 
+        auto stackPtr = _builder->CreateAlloca(llvm::PointerType::getInt8PtrTy(_context, kGCAddressSpace));
+        _builder->CreateStore(make_float(1.234), stackPtr);
+
         std::unordered_map<std::string, llvm::Value *> local_env;
         int argNum = 0;
         auto arg_it = lambda->args().begin();

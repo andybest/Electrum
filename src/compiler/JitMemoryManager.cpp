@@ -22,7 +22,7 @@ namespace electrum {
                                                    unsigned SectionID,
                                                    StringRef SectionName,
                                                    bool isReadOnly) {
-        std::cout << SectionName.str() << std::endl;
+        //std::cout << SectionName.str() << std::endl;
         auto section_ptr =  SectionMemoryManager::allocateDataSection(Size, Alignment, SectionID, SectionName, isReadOnly);
 
         if(SectionName == ".llvm_stackmaps" || SectionName == "__llvm_stackmaps") {

@@ -79,38 +79,64 @@ namespace electrum {
 
     void print_expr(void *expr) {
         if (is_integer(expr)) {
-            printf("%li", TAG_TO_INTEGER(expr));
+            printf("Int:\t%li", TAG_TO_INTEGER(expr));
         } else if (is_object(expr)) {
             auto header = TAG_TO_OBJECT(expr);
 
             switch (header->tag) {
                 case kETypeTagSymbol: {
                     auto val = static_cast<ESymbol *>(static_cast<void *>(header));
-                    printf("%s", val->name);
+                    printf("Symbol:\t%s", val->name);
                     break;
                 }
-                case kETypeTagPair:print_pair(expr);
+                case kETypeTagPair:
+                    print_pair(expr);
                     break;
                 case kETypeTagFloat: {
                     auto val = static_cast<EFloat *>(static_cast<void *>(header));
-                    printf("%f", val->floatValue);
+                    printf("Float:\t%f", val->floatValue);
                     break;
                 }
-                case kETypeTagInterpretedFunction:printf("<Interpreted Function>");
+                case kETypeTagInterpretedFunction:
+                    printf("<Interpreted Function>");
                     break;
                 case kETypeTagString: {
                     auto val = static_cast<EString *>(static_cast<void *>(header));
-                    printf("%s", val->stringValue);
+                    printf("String:\t%s", val->stringValue);
+                    break;
+                }
+                case kETypeTagEnvironment:
+                    printf("Function Environment");
+                    break;
+                case kETypeTagFunction:
+                    printf("Closure");
+                    break;
+                case kETypeTagVar: {
+                    auto val = static_cast<EVar *>(static_cast<void *>(header));
+                    printf("Var");
+                    printf("\t");
+                    print_expr(val->sym);
+                    printf("\t");
+                    print_expr(val->val);
+                    break;
+                }
+                case kETypeTagKeyword: {
+                    auto val = static_cast<EString *>(static_cast<void *>(header));
+                    printf("Keyword:\t%s", val->stringValue);
                     break;
                 }
 
-                default:break;
+
+                default:
+                    break;
             }
         } else if (expr == NIL_PTR) {
-            printf("nil");
+            printf("NIL PTR");
         } else if (is_boolean(expr)) {
-            printf((expr == TRUE_PTR) ? "true" : "false");
+            printf((expr == TRUE_PTR) ? "Boolean: true" : "Boolean: false");
         }
+
+        printf("\n");
     }
 }
 
@@ -121,8 +147,8 @@ void rt_init() {
 }
 
 void rt_init_gc(electrum::GCMode gc_mode) {
-     //electrum::main_collector = std::make_shared<electrum::GarbageCollector>(gc_mode);
-     electrum::main_collector = new electrum::GarbageCollector(gc_mode);
+    //electrum::main_collector = std::make_shared<electrum::GarbageCollector>(gc_mode);
+    electrum::main_collector = new electrum::GarbageCollector(gc_mode);
 }
 
 void rt_deinit_gc() {
