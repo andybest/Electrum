@@ -148,6 +148,10 @@ namespace electrum {
     bool is_object_with_tag(void *val, uint64_t tag);
 
     void print_expr(void *expr);
+
+    std::string kind_for_obj(void *obj);
+
+    std::string description_for_obj(void *obj);
 }
 
 
@@ -195,6 +199,7 @@ void *rt_make_environment(void *parent);
 void *rt_environment_add(void *env, void *binding, void *value);
 void *rt_environment_get(void *env, void *binding);
 void *rt_gc_malloc_tagged_object(size_t size);
+extern "C" void rt_gc_add_root(void *obj);
 //}
 /*EBoolean *rt_make_boolean(uint8_t booleanValue);
 uint64_t rt_is_boolean(EObjectHeader *val);

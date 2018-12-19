@@ -34,6 +34,7 @@
 #include <unordered_set>
 #include <list>
 
+
 namespace electrum {
 
     using std::shared_ptr;
@@ -60,15 +61,11 @@ namespace electrum {
 
         void collect(void *stackPointer);
 
-        std::list<void *> pointers_to_collect();
-
-        void mark_roots();
-
-        uint64_t collect_roots();
+        void traverse_object(void *obj);
 
         void add_object_root(void* root);
 
-        bool remove_object_root(void* root);
+        bool remove_object_root(void *root);
 
         void *malloc(size_t size);
 
@@ -81,12 +78,8 @@ namespace electrum {
         bool scan_stack_;
         statepoint_table_t *statepoint_table_;
         std::unordered_set<void *> object_roots_;
-        std::list<void*> heap_objects_;
-
-        void mark_object_root(void *obj);
+        std::vector<void*> heap_objects_;
         uint64_t sweep_heap();
-
-
     };
 
     static GarbageCollector *main_collector;
@@ -96,7 +89,6 @@ extern "C" {
 #endif  // __cplusplus
 
 /* Exported functions */
-void rt_init_gc(void *stackmap);
 void rt_gc_init_stackmap(void *stackmap);
 
 #ifdef __cplusplus

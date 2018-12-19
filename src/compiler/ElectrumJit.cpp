@@ -45,7 +45,7 @@ namespace electrum {
         pm.add(llvm::createRewriteStatepointsForGCLegacyPass());
         pm.run(*module);
 
-        //module->print(llvm::errs(), nullptr);
+        module->print(llvm::errs(), nullptr);
 
         return module;
     }

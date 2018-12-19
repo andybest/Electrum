@@ -23,15 +23,15 @@
 */
 
 #include <iostream>
-#include <cstdio>
+#include <stack>
 #include "GarbageCollector.h"
 #include "stackmap/api.h"
 #include "Runtime.h"
 
 namespace electrum {
 
-    GarbageCollector::GarbageCollector(GCMode mode): collector_mode_(mode) {
-        switch(mode) {
+    GarbageCollector::GarbageCollector(GCMode mode) : collector_mode_(mode) {
+        switch (mode) {
             case kGCModeCompilerOwned:
                 scan_stack_ = true;
                 break;
@@ -44,7 +44,7 @@ namespace electrum {
 
     GarbageCollector::~GarbageCollector() {
         // Free all heap objects
-        for(auto ptr: heap_objects_) {
+        for (auto ptr: heap_objects_) {
             auto header = TAG_TO_OBJECT(ptr);
             this->free(header);
         }
@@ -54,39 +54,152 @@ namespace electrum {
         statepoint_table_ = generate_table(stackmap, 0.5);
     }
 
-    std::cout << "Init statepoint table" << std::endl;
     /**
      * Maybe perform a garbage collection pass
      * @param stackPointer The stack pointer of the call point
      */
     void GarbageCollector::collect(void *stackPointer) {
+        std::cout << "GC: Collect" << std::endl;
+
         auto return_address = *static_cast<uint64_t *>(stackPointer);
 
         auto frame_info = lookup_return_address(statepoint_table_,
                                                 return_address);
 
         auto stackIndex = reinterpret_cast<uintptr_t>(stackPointer);
-        stackIndex += sizeof(void*);
+        stackIndex += sizeof(void *);
 
-        while(frame_info != nullptr) {
-            for(uint16_t i = 0; i < frame_info->numSlots; i++) {
+        std::cout << "GC: Marking stack" << std::endl;
+        while (frame_info != nullptr) {
+            for (uint16_t i = 0; i < frame_info->numSlots; i++) {
                 auto pointerSlot = frame_info->slots[i];
-                if(pointerSlot.kind >= 0) {
+                if (pointerSlot.kind >= 0) {
                     std::cout << "Derived pointer, skipping" << std::endl;
                     continue;
                 }
 
-                auto ptr = reinterpret_cast<void**>(stackIndex + pointerSlot.offset);
-                std::cout << "Pointer: " << *ptr << std::endl;
-                print_expr(*ptr);
+                auto ptr = reinterpret_cast<void **>(stackIndex + pointerSlot.offset);
+
+                // Mark if it is an object
+                if (is_object(*ptr)) {
+                    traverse_object(TAG_TO_OBJECT(*ptr));
+                }
             }
 
             // Move to next frame
             stackIndex = stackIndex + frame_info->frameSize;
             return_address = *reinterpret_cast<uint64_t *>(stackIndex);
-            stackIndex += sizeof(void*);
+            stackIndex += sizeof(void *);
             frame_info = lookup_return_address(statepoint_table_, return_address);
         }
+
+        std::cout << "GC: Marking roots" << std::endl;
+        // Mark roots
+        for (auto it: object_roots_) {
+            if (is_object(it)) {
+                std::cout << "GC: Marking object root " << kind_for_obj(it) << " " << it << " "
+                          << description_for_obj(it)
+                          << std::endl;
+                traverse_object(TAG_TO_OBJECT(it));
+            } else {
+                std::cout << "Non object in root? " << it << std::endl;
+            }
+        }
+
+        sweep_heap();
+    }
+
+    void GarbageCollector::traverse_object(void *vobj) {
+        auto obj = TAG_TO_OBJECT(vobj);
+
+        // Skip if the object has already been seen
+        if (obj->gc_mark) {
+            std::cout << "GC: Skipping object " << kind_for_obj(OBJECT_TO_TAG(obj)) << " " << obj << " "
+                      << description_for_obj(OBJECT_TO_TAG(obj)) << std::endl;
+            return;
+        }
+
+        std::vector<EObjectHeader *> st;
+        st.push_back(obj);
+
+        while (!st.empty()) {
+            obj = st.back();
+            st.pop_back();
+
+            if (obj->gc_mark) {
+                std::cout << "GC: Skipping object " << kind_for_obj(OBJECT_TO_TAG(obj)) << " " << obj << " "
+                          << description_for_obj(OBJECT_TO_TAG(obj)) << std::endl;
+                return;
+            }
+
+            // Mark this object
+            obj->gc_mark = 1;
+            std::cout << "GC: Marking object " << kind_for_obj(OBJECT_TO_TAG(obj)) << " " << obj << " "
+                      << description_for_obj(OBJECT_TO_TAG(obj)) << std::endl;
+
+            switch (obj->tag) {
+                case kETypeTagFloat:
+                    break;
+                case kETypeTagKeyword:
+                    break;
+                case kETypeTagString:
+                    break;
+                case kETypeTagSymbol:
+                    break;
+
+                case kETypeTagPair: {
+                    auto pair = reinterpret_cast<EPair *>(reinterpret_cast<void *>(obj));
+
+                    if (is_object(pair->value)) {
+                        st.push_back(TAG_TO_OBJECT(pair->value));
+                    }
+
+                    if (is_object(pair->next)) {
+                        st.push_back(TAG_TO_OBJECT(pair->next));
+                    }
+
+                    break;
+                }
+
+                case kETypeTagVar: {
+                    auto var = reinterpret_cast<EVar *>(reinterpret_cast<void *>(obj));
+
+                    if (is_object(var->sym)) {
+                        st.push_back(TAG_TO_OBJECT(var->sym));
+                    }
+
+                    if (is_object(var->val)) {
+                        st.push_back(TAG_TO_OBJECT(var->val));
+                    }
+
+                    break;
+                }
+
+                case kETypeTagFunction: {
+                    auto fn = reinterpret_cast<ECompiledFunction *>(reinterpret_cast<void *>(obj));
+
+                    for (uint64_t i = 0; i < fn->env_size; i++) {
+                        auto e = fn->env[i];
+                        if (is_object(e)) {
+                            st.push_back(TAG_TO_OBJECT(e));
+                        }
+                    }
+
+                    break;
+                }
+
+                case kETypeTagInterpretedFunction: {
+                    auto fn = reinterpret_cast<EInterpretedFunction *>(reinterpret_cast<void *>(obj));
+
+                    break;
+                }
+
+                default:
+                    break;
+            }
+        }
+
+
     }
 
     /**
@@ -110,7 +223,7 @@ namespace electrum {
         /* The object will be tagged by the runtime, so add the tag to the
          * pointer for faster lookup later.
          */
-        heap_objects_.push_front(OBJECT_TO_TAG(ptr));
+        heap_objects_.push_back(OBJECT_TO_TAG(ptr));
         //heap_objects_.push_back(ptr);
         return ptr;
     }
@@ -124,8 +237,16 @@ namespace electrum {
     }
 
     void GarbageCollector::add_object_root(void *root) {
+        if (!is_object(root)) {
+            std::cout << "GC: Skipping non object " << kind_for_obj(root) << " " << root << " " << description_for_obj(root)
+                      << std::endl;
+            return;
+        }
+
         assert(object_roots_.count(root) == 0);
         object_roots_.emplace(root);
+        std::cout << "GC: Adding object root " << kind_for_obj(root) << " " << root << " " << description_for_obj(root)
+                  << std::endl;
     }
 
     bool GarbageCollector::remove_object_root(void *root) {
@@ -133,46 +254,19 @@ namespace electrum {
         return true;
     }
 
-    std::list<void *> GarbageCollector::pointers_to_collect() {
-        return std::list<void *>();
-    }
-
-    void GarbageCollector::mark_roots() {
-
-    }
-
-    uint64_t GarbageCollector::collect_roots() {
-        for(auto root: object_roots_) {
-            mark_object_root(root);
-        }
-
-        return sweep_heap();
-    }
-
-
-    void GarbageCollector::mark_object_root(void* obj) {
-        // Make sure the object tag bit is set
-        assert((reinterpret_cast<uintptr_t>(obj) & TAG_MASK) == OBJECT_TAG);
-        auto header = TAG_TO_OBJECT(obj);
-
-        // Mark each pointer that the object has access to
-        switch(header->tag) {
-            default: break;
-        }
-
-        header->gc_mark = 1;
-    }
-
     uint64_t GarbageCollector::sweep_heap() {
         uint64_t numCollected = 0;
 
         auto it = heap_objects_.begin();
-        while(it != heap_objects_.end()) {
+        while (it != heap_objects_.end()) {
             auto header = TAG_TO_OBJECT(*it);
 
-            if(!header->gc_mark) {
+            if (!header->gc_mark) {
+                std::cout << "GC: Freeing object " << kind_for_obj(*it) << " " << *it << " " << description_for_obj(*it)
+                          << std::endl;
+
                 // Object is not marked, collect it.
-                heap_objects_.erase(it++);
+                it = heap_objects_.erase(it);
                 this->free(header);
                 ++numCollected;
             } else {
@@ -184,8 +278,6 @@ namespace electrum {
 
         return numCollected;
     }
-
-
 }
 
 /**
@@ -200,6 +292,11 @@ extern "C" void rt_init_gc(void *stackmap) {
 extern "C" void rt_gc_init_stackmap(void *stackmap) {
     auto collector = rt_get_gc();
     collector->init_stackmap(stackmap);
+}
+
+extern "C" void rt_gc_add_root(void *obj) {
+    auto collector = rt_get_gc();
+    collector->add_object_root(obj);
 }
 
 /**

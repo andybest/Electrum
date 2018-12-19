@@ -27,6 +27,7 @@
 #include "GarbageCollector.h"
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 
 namespace electrum {
 
@@ -75,6 +76,93 @@ namespace electrum {
         }
 
         printf(")");
+    }
+
+    std::string kind_for_obj(void *obj) {
+        if(is_integer(obj)) {
+            return "INTEGER";
+        } else if(obj == NIL_PTR) {
+            return "NIL";
+        } else if(is_boolean(obj)) {
+            return "BOOLEAN";
+        } else if(!is_object(obj)) {
+            return "";
+        }
+
+        auto header = TAG_TO_OBJECT(obj);
+
+        switch(header->tag) {
+            case kETypeTagInterpretedFunction: return "INT_FUNC";
+            case kETypeTagFunction: return "CLOSURE";
+            case kETypeTagVar: return "VAR";
+            case kETypeTagPair: return "PAIR";
+            case kETypeTagSymbol: return "SYMBOL";
+            case kETypeTagKeyword: return "KEYWORD";
+            case kETypeTagFloat: return "FLOAT";
+            case kETypeTagEnvironment: return "ENVIRONMENT";
+            case kETypeTagString: return "STRING";
+        }
+
+        return "";
+    }
+
+    std::string description_for_obj(void *obj) {
+        std::stringstream ss;
+
+        if (is_integer(obj)) {
+            ss << TAG_TO_INTEGER(obj);
+        } else if (is_object(obj)) {
+            auto header = TAG_TO_OBJECT(obj);
+
+            switch (header->tag) {
+                case kETypeTagSymbol: {
+                    auto val = static_cast<ESymbol *>(static_cast<void *>(header));
+                    ss << val->name;
+                    break;
+                }
+                case kETypeTagPair:
+                    ss << "()";
+                    break;
+                case kETypeTagFloat: {
+                    auto val = static_cast<EFloat *>(static_cast<void *>(header));
+                    ss << val->floatValue << "f";
+                    break;
+                }
+                case kETypeTagInterpretedFunction:
+                    ss << "<Interpreted Function>";
+                    break;
+                case kETypeTagString: {
+                    auto val = static_cast<EString *>(static_cast<void *>(header));
+                    ss << "\"" << val->stringValue << "\"";
+                    break;
+                }
+                case kETypeTagEnvironment:
+                    ss << "<Environment>";
+                    break;
+                case kETypeTagFunction:
+                    ss << "<Closure>";
+                    break;
+                case kETypeTagVar: {
+                    auto val = static_cast<EVar *>(static_cast<void *>(header));
+                    ss << "<Var " << description_for_obj(val->sym) << " : " << description_for_obj(val->val) << ">";
+                    break;
+                }
+                case kETypeTagKeyword: {
+                    auto val = static_cast<EString *>(static_cast<void *>(header));
+                    ss << ":" << val->stringValue;
+                    break;
+                }
+
+                default:
+                    break;
+            }
+        } else if (obj == NIL_PTR) {
+            ss << "NIL";
+        } else if (is_boolean(obj)) {
+            ss << ((obj == TRUE_PTR) ? "TRUE" : "FALSE");
+        }
+
+        return ss.str();
     }
 
     void print_expr(void *expr) {
@@ -149,9 +237,12 @@ void rt_init() {
 void rt_init_gc(electrum::GCMode gc_mode) {
     //electrum::main_collector = std::make_shared<electrum::GarbageCollector>(gc_mode);
     electrum::main_collector = new electrum::GarbageCollector(gc_mode);
+    printf("GC: Init\n");
 }
 
 void rt_deinit_gc() {
+    printf("GC: Deinit\n");
+    delete(electrum::main_collector);
     electrum::main_collector = nullptr;
 }
 
@@ -278,6 +369,7 @@ void *rt_is_keyword(void *val) {
 extern "C" void *rt_make_var(void *sym) {
 
     auto var = static_cast<EVar *>(GC_MALLOC(sizeof(EVar)));
+    var->header.gc_mark = 0;
     var->header.tag = kETypeTagVar;
     var->sym = sym;
     var->val = NIL_PTR;

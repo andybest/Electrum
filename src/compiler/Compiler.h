@@ -181,6 +181,8 @@ namespace electrum {
         llvm::Value *build_lambda_set_env(llvm::Value *fn, uint64_t idx, llvm::Value *val);
 
         llvm::Value *build_lambda_get_env(llvm::Value *fn, uint64_t idx);
+
+        llvm::Value *build_gc_add_root(llvm::Value *obj);
     };
 }
 

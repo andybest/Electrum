@@ -64,6 +64,7 @@ namespace electrum {
         auto node = _analyzer.analyzeForm(ast);
         _analyzer.closedOversForNode(node);
 
+        std::cout << "Compiling: " << str << std::endl;
         return compile_and_eval_node(node);
     }
 
@@ -96,8 +97,7 @@ namespace electrum {
 
         auto dogc = _module->getOrInsertFunction("rt_enter_gc",
                                                  llvm::Type::getVoidTy(_context));
-        //b.CreateGCStatepointCall(2863311530, 0, dogc, nullptr, nullptr, nullptr);
-        auto inst = b.CreateCall(dogc);
+        b.CreateCall(dogc);
         b.CreateRet(nullptr);
 
         current_context()->push_func(mainfunc);
@@ -110,6 +110,10 @@ namespace electrum {
 
         // Return result.
         auto result = current_context()->pop_value();
+
+        // TODO: Figure out what to do with return values rather than adding as a root
+        build_gc_add_root(result);
+
         _builder->CreateRet(result);
         current_context()->pop_func();
 
@@ -282,9 +286,6 @@ namespace electrum {
         auto entryBlock = llvm::BasicBlock::Create(_context, "entry", lambda);
         _builder->SetInsertPoint(entryBlock);
 
-        auto stackPtr = _builder->CreateAlloca(llvm::PointerType::getInt8PtrTy(_context, kGCAddressSpace));
-        _builder->CreateStore(make_float(1.234), stackPtr);
-
         std::unordered_map<std::string, llvm::Value *> local_env;
         int argNum = 0;
         auto arg_it = lambda->args().begin();
@@ -348,6 +349,8 @@ namespace electrum {
 
         auto nameSym = make_symbol(node->name);
         auto v = make_var(nameSym);
+
+        build_gc_add_root(v);
 
         // Store var in global
         _builder->CreateStore(v, glob, false);
@@ -551,5 +554,13 @@ namespace electrum {
         llvm::Value *idxVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), idx);
 
         return _builder->CreateCall(func, {fn, idxVal});
+    }
+
+    llvm::Value *Compiler::build_gc_add_root(llvm::Value *obj) {
+        auto func = _module->getOrInsertFunction("rt_gc_add_root",
+                                                 llvm::Type::getVoidTy(_context),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+        return _builder->CreateCall(func, {obj});
     }
 }
