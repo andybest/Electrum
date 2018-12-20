@@ -227,3 +227,22 @@ TEST(Analyzer, doesNotTreatGlobalVarAsClosedOver) {
 
     EXPECT_EQ(lambdaNode->closed_overs.size(), 0);
 }
+
+TEST(Analyzer, analyzesDefFFIFn) {
+    PARSE_STRING("(def-ffi-fn* binding c_func :el (:el :el))");
+    
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+    
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDefFFIFunction);
+    auto ffiNode = std::dynamic_pointer_cast<DefFFIFunctionNode>(node);
+
+    EXPECT_EQ(*ffiNode->binding, "binding");
+    EXPECT_EQ(*ffiNode->func_name, "c_func");
+
+    EXPECT_EQ(ffiNode->return_type, kFFITypeElectrumValue);
+
+    EXPECT_EQ(ffiNode->arg_types.size(), 2);
+    EXPECT_EQ(ffiNode->arg_types[0], kFFITypeElectrumValue);
+    EXPECT_EQ(ffiNode->arg_types[1], kFFITypeElectrumValue);
+}

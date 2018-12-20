@@ -47,7 +47,8 @@ namespace electrum {
         kAnalyzerNodeTypeLambda,
         kAnalyzerNodeTypeDef,
         kAnalyzerNodeTypeVarLookup,
-        kAnalyzerNodeTypeMaybeInvoke
+        kAnalyzerNodeTypeMaybeInvoke,
+        kAnalyzerNodeTypeDefFFIFunction
     };
 
 
@@ -210,6 +211,37 @@ namespace electrum {
             return kAnalyzerNodeTypeMaybeInvoke;
         }
     };
+    
+    enum FFIType: int64_t {
+        kFFITypeUnknown = -1,
+        kFFITypeElectrumValue
+    };
+    
+    static FFIType ffi_type_from_keyword(string input) {
+        if(input == "el") {
+            return kFFITypeElectrumValue;
+        }
+        
+        return kFFITypeUnknown;
+    }
+    
+    class DefFFIFunctionNode : public AnalyzerNode {
+    public:
+        /// Binding name
+        shared_ptr<string> binding;
+        
+        /// Function name
+        shared_ptr<string> func_name;
+        
+        /// Return type
+        FFIType return_type;
+        
+        vector<FFIType> arg_types;
+        
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeDefFFIFunction;
+        }
+    };
 
     class Analyzer {
     public:
@@ -232,7 +264,9 @@ namespace electrum {
         shared_ptr<AnalyzerNode> analyzeLambda(shared_ptr<ASTNode> form);
         shared_ptr<AnalyzerNode> analyzeDef(shared_ptr<ASTNode> form);
         shared_ptr<AnalyzerNode> analyzeMaybeInvoke(shared_ptr<ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeDefFFIFn(shared_ptr<ASTNode> form);
         shared_ptr<AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr<string> symbolName, shared_ptr<ASTNode> form);
+        
 
         typedef shared_ptr<AnalyzerNode> (Analyzer::*AnalyzerFunc)(shared_ptr<ASTNode>);
 
@@ -246,7 +280,8 @@ namespace electrum {
                 {"if",     &Analyzer::analyzeIf},
                 {"do",     &Analyzer::analyzeDo},
                 {"lambda", &Analyzer::analyzeLambda},
-                {"def",    &Analyzer::analyzeDef}
+                {"def",    &Analyzer::analyzeDef},
+                {"def-ffi-fn*", &Analyzer::analyzeDefFFIFn}
         };
 
         /// Holds already defined globals
