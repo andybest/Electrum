@@ -32,8 +32,7 @@ namespace electrum {
 
     GarbageCollector::GarbageCollector(GCMode mode) : collector_mode_(mode) {
         switch (mode) {
-            case kGCModeCompilerOwned:
-                scan_stack_ = true;
+            case kGCModeCompilerOwned:scan_stack_ = true;
                 break;
             case kGCModeInterpreterOwned:
                 // If the GC is owned by the interpreter, we won't have a
@@ -51,7 +50,18 @@ namespace electrum {
     }
 
     void GarbageCollector::init_stackmap(void *stackmap) {
-        statepoint_table_ = generate_table(stackmap, 0.5);
+        statepoint_tables_.push_back(generate_table(stackmap, 0.5));
+    }
+
+    frame_info_t *GarbageCollector::get_frame_info(uint64_t return_address) {
+        for(auto statepoint_table: statepoint_tables_) {
+            auto f_info = lookup_return_address(statepoint_table, return_address);
+            if(f_info) {
+                return f_info;
+            }
+        }
+
+        return nullptr;
     }
 
     /**
@@ -63,8 +73,7 @@ namespace electrum {
 
         auto return_address = *static_cast<uint64_t *>(stackPointer);
 
-        auto frame_info = lookup_return_address(statepoint_table_,
-                                                return_address);
+        auto frame_info = get_frame_info(return_address);
 
         auto stackIndex = reinterpret_cast<uintptr_t>(stackPointer);
         stackIndex += sizeof(void *);
@@ -90,7 +99,7 @@ namespace electrum {
             stackIndex = stackIndex + frame_info->frameSize;
             return_address = *reinterpret_cast<uint64_t *>(stackIndex);
             stackIndex += sizeof(void *);
-            frame_info = lookup_return_address(statepoint_table_, return_address);
+            frame_info = get_frame_info(return_address);
         }
 
         std::cout << "GC: Marking roots" << std::endl;
@@ -138,14 +147,10 @@ namespace electrum {
                       << description_for_obj(OBJECT_TO_TAG(obj)) << std::endl;
 
             switch (obj->tag) {
-                case kETypeTagFloat:
-                    break;
-                case kETypeTagKeyword:
-                    break;
-                case kETypeTagString:
-                    break;
-                case kETypeTagSymbol:
-                    break;
+                case kETypeTagFloat:break;
+                case kETypeTagKeyword:break;
+                case kETypeTagString:break;
+                case kETypeTagSymbol:break;
 
                 case kETypeTagPair: {
                     auto pair = reinterpret_cast<EPair *>(reinterpret_cast<void *>(obj));
@@ -194,8 +199,7 @@ namespace electrum {
                     break;
                 }
 
-                default:
-                    break;
+                default:break;
             }
         }
 
@@ -238,7 +242,8 @@ namespace electrum {
 
     void GarbageCollector::add_object_root(void *root) {
         if (!is_object(root)) {
-            std::cout << "GC: Skipping non object " << kind_for_obj(root) << " " << root << " " << description_for_obj(root)
+            std::cout << "GC: Skipping non object " << kind_for_obj(root) << " " << root << " "
+                      << description_for_obj(root)
                       << std::endl;
             return;
         }
