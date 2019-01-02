@@ -34,7 +34,6 @@
 #include <unordered_set>
 #include <list>
 
-
 namespace electrum {
 
     using std::shared_ptr;
@@ -54,7 +53,7 @@ namespace electrum {
 
     class GarbageCollector {
     public:
-        GarbageCollector(GCMode mode);
+        explicit GarbageCollector(GCMode mode);
         ~GarbageCollector();
 
         void init_stackmap(void *stackmap);
