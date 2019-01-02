@@ -45,7 +45,7 @@ namespace electrum {
         pm.add(llvm::createRewriteStatepointsForGCLegacyPass());
         pm.run(*module);
 
-        module->print(llvm::errs(), nullptr);
+        //module->print(llvm::errs(), nullptr);
 
         return module;
     }
@@ -71,7 +71,6 @@ namespace electrum {
                             [this](llvm::orc::VModuleKey) {
                                 return llvm::orc::RTDyldObjectLinkingLayer::Resources{
                                         std::make_shared<JitMemoryManager>([this](void *stackMapPtr) {
-                                            std::cout << "Found stack map: " << stackMapPtr << std::endl;
                                             this->stack_map_ptr_ = stackMapPtr;
                                         }), resolver_};
                             }),

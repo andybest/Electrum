@@ -235,13 +235,10 @@ void rt_init() {
 }
 
 void rt_init_gc(electrum::GCMode gc_mode) {
-    //electrum::main_collector = std::make_shared<electrum::GarbageCollector>(gc_mode);
     electrum::main_collector = new electrum::GarbageCollector(gc_mode);
-    printf("GC: Init\n");
 }
 
 void rt_deinit_gc() {
-    printf("GC: Deinit\n");
     delete(electrum::main_collector);
     electrum::main_collector = nullptr;
 }
