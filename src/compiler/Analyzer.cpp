@@ -84,7 +84,7 @@ namespace electrum {
             }
             case kAnalyzerNodeTypeVarLookup: {
                 auto varNode = std::dynamic_pointer_cast<VarLookupNode>(node);
-                if(!varNode->is_global) {
+                if (!varNode->is_global) {
                     closed_overs.push_back(*varNode->name);
                 }
                 break;
@@ -394,6 +394,86 @@ namespace electrum {
         node->sourcePosition = form->sourcePosition;
         node->name = name;
         node->value = valueNode;
+
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeDefFFIFn(shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto listPtr = form->listValue;
+        assert(!listPtr->empty());
+
+        if (listPtr->size() < 2) {
+            throw CompilerException("def-ffi-fn* forms must have a binding name",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->size() < 3) {
+            throw CompilerException("def-ffi-fn* forms must have a external function name",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->size() < 4) {
+            throw CompilerException("def-ffi-fn* forms must have a return type",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->size() < 5) {
+            throw CompilerException("def-ffi-fn* forms must have a list of argument types",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->at(1)->tag != kTypeTagSymbol) {
+            throw CompilerException("def-ffi-fn* binding must be a symbol",
+                                    listPtr->at(1)->sourcePosition);
+        }
+        auto binding = listPtr->at(1)->stringValue;
+
+        if (listPtr->at(2)->tag != kTypeTagSymbol) {
+            throw CompilerException("def-ffi-fn* function name must be a symbol",
+                                    listPtr->at(2)->sourcePosition);
+        }
+        auto fn_name = listPtr->at(2)->stringValue;
+
+        if (listPtr->at(3)->tag != kTypeTagKeyword) {
+            throw CompilerException("def-ffi-fn* return type must be a keyword",
+                                    listPtr->at(3)->sourcePosition);
+        }
+        auto ret_type = ffi_type_from_keyword(*listPtr->at(3)->stringValue);
+
+        if (ret_type == kFFITypeUnknown) {
+            throw CompilerException("Unknown FFI type",
+                                    listPtr->at(3)->sourcePosition);
+        }
+
+        if (listPtr->at(4)->tag != kTypeTagList) {
+            throw CompilerException("def-ffi-fn* argument types must be a list",
+                                    listPtr->at(4)->sourcePosition);
+        }
+        auto arg_types = listPtr->at(4)->listValue;
+
+        vector<FFIType> args;
+        args.reserve(arg_types->size());
+
+        for (auto argPtr: *arg_types) {
+            if (argPtr->tag != kTypeTagKeyword) {
+                throw CompilerException("def-ffi-fn* arg type must be a keyword",
+                                        argPtr->sourcePosition);
+            }
+
+            auto argType = ffi_type_from_keyword(*argPtr->stringValue);
+            if (argType == kFFITypeUnknown) {
+                throw CompilerException("Unknown FFI type",
+                                        argPtr->sourcePosition);
+            }
+            args.push_back(argType);
+        }
+
+        auto node = make_shared<DefFFIFunctionNode>();
+        node->binding = binding;
+        node->func_name = fn_name;
+        node->return_type = ret_type;
+        node->arg_types = args;
 
         return node;
     }
