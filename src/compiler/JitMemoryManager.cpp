@@ -12,8 +12,6 @@ namespace electrum {
                                                    unsigned Alignment,
                                                    unsigned SectionID,
                                                    llvm::StringRef SectionName) {
-
-        std::cout << SectionName.str() << std::endl;
         return SectionMemoryManager::allocateCodeSection(Size, Alignment, SectionID, SectionName);
     }
 
@@ -22,7 +20,6 @@ namespace electrum {
                                                    unsigned SectionID,
                                                    StringRef SectionName,
                                                    bool isReadOnly) {
-        //std::cout << SectionName.str() << std::endl;
         auto section_ptr =  SectionMemoryManager::allocateDataSection(Size, Alignment, SectionID, SectionName, isReadOnly);
 
         if(SectionName == ".llvm_stackmaps" || SectionName == "__llvm_stackmaps") {

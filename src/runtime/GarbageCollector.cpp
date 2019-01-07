@@ -32,8 +32,7 @@ namespace electrum {
 
     GarbageCollector::GarbageCollector(GCMode mode) : collector_mode_(mode) {
         switch (mode) {
-            case kGCModeCompilerOwned:
-                scan_stack_ = true;
+            case kGCModeCompilerOwned:scan_stack_ = true;
                 break;
             case kGCModeInterpreterOwned:
                 // If the GC is owned by the interpreter, we won't have a
@@ -51,7 +50,18 @@ namespace electrum {
     }
 
     void GarbageCollector::init_stackmap(void *stackmap) {
-        statepoint_table_ = generate_table(stackmap, 0.5);
+        statepoint_tables_.push_back(generate_table(stackmap, 0.5));
+    }
+
+    frame_info_t *GarbageCollector::get_frame_info(uint64_t return_address) {
+        for(auto statepoint_table: statepoint_tables_) {
+            auto f_info = lookup_return_address(statepoint_table, return_address);
+            if(f_info) {
+                return f_info;
+            }
+        }
+
+        return nullptr;
     }
 
     /**
@@ -59,22 +69,17 @@ namespace electrum {
      * @param stackPointer The stack pointer of the call point
      */
     void GarbageCollector::collect(void *stackPointer) {
-        std::cout << "GC: Collect" << std::endl;
-
         auto return_address = *static_cast<uint64_t *>(stackPointer);
 
-        auto frame_info = lookup_return_address(statepoint_table_,
-                                                return_address);
+        auto frame_info = get_frame_info(return_address);
 
         auto stackIndex = reinterpret_cast<uintptr_t>(stackPointer);
         stackIndex += sizeof(void *);
 
-        std::cout << "GC: Marking stack" << std::endl;
         while (frame_info != nullptr) {
             for (uint16_t i = 0; i < frame_info->numSlots; i++) {
                 auto pointerSlot = frame_info->slots[i];
                 if (pointerSlot.kind >= 0) {
-                    std::cout << "Derived pointer, skipping" << std::endl;
                     continue;
                 }
 
@@ -90,19 +95,13 @@ namespace electrum {
             stackIndex = stackIndex + frame_info->frameSize;
             return_address = *reinterpret_cast<uint64_t *>(stackIndex);
             stackIndex += sizeof(void *);
-            frame_info = lookup_return_address(statepoint_table_, return_address);
+            frame_info = get_frame_info(return_address);
         }
-
-        std::cout << "GC: Marking roots" << std::endl;
+        ;
         // Mark roots
         for (auto it: object_roots_) {
             if (is_object(it)) {
-                std::cout << "GC: Marking object root " << kind_for_obj(it) << " " << it << " "
-                          << description_for_obj(it)
-                          << std::endl;
                 traverse_object(TAG_TO_OBJECT(it));
-            } else {
-                std::cout << "Non object in root? " << it << std::endl;
             }
         }
 
@@ -114,8 +113,6 @@ namespace electrum {
 
         // Skip if the object has already been seen
         if (obj->gc_mark) {
-            std::cout << "GC: Skipping object " << kind_for_obj(OBJECT_TO_TAG(obj)) << " " << obj << " "
-                      << description_for_obj(OBJECT_TO_TAG(obj)) << std::endl;
             return;
         }
 
@@ -127,25 +124,17 @@ namespace electrum {
             st.pop_back();
 
             if (obj->gc_mark) {
-                std::cout << "GC: Skipping object " << kind_for_obj(OBJECT_TO_TAG(obj)) << " " << obj << " "
-                          << description_for_obj(OBJECT_TO_TAG(obj)) << std::endl;
                 return;
             }
 
             // Mark this object
             obj->gc_mark = 1;
-            std::cout << "GC: Marking object " << kind_for_obj(OBJECT_TO_TAG(obj)) << " " << obj << " "
-                      << description_for_obj(OBJECT_TO_TAG(obj)) << std::endl;
 
             switch (obj->tag) {
-                case kETypeTagFloat:
-                    break;
-                case kETypeTagKeyword:
-                    break;
-                case kETypeTagString:
-                    break;
-                case kETypeTagSymbol:
-                    break;
+                case kETypeTagFloat:break;
+                case kETypeTagKeyword:break;
+                case kETypeTagString:break;
+                case kETypeTagSymbol:break;
 
                 case kETypeTagPair: {
                     auto pair = reinterpret_cast<EPair *>(reinterpret_cast<void *>(obj));
@@ -194,8 +183,7 @@ namespace electrum {
                     break;
                 }
 
-                default:
-                    break;
+                default:break;
             }
         }
 
@@ -224,7 +212,6 @@ namespace electrum {
          * pointer for faster lookup later.
          */
         heap_objects_.push_back(OBJECT_TO_TAG(ptr));
-        //heap_objects_.push_back(ptr);
         return ptr;
     }
 
@@ -238,15 +225,11 @@ namespace electrum {
 
     void GarbageCollector::add_object_root(void *root) {
         if (!is_object(root)) {
-            std::cout << "GC: Skipping non object " << kind_for_obj(root) << " " << root << " " << description_for_obj(root)
-                      << std::endl;
             return;
         }
 
         assert(object_roots_.count(root) == 0);
         object_roots_.emplace(root);
-        std::cout << "GC: Adding object root " << kind_for_obj(root) << " " << root << " " << description_for_obj(root)
-                  << std::endl;
     }
 
     bool GarbageCollector::remove_object_root(void *root) {
@@ -262,9 +245,6 @@ namespace electrum {
             auto header = TAG_TO_OBJECT(*it);
 
             if (!header->gc_mark) {
-                std::cout << "GC: Freeing object " << kind_for_obj(*it) << " " << *it << " " << description_for_obj(*it)
-                          << std::endl;
-
                 // Object is not marked, collect it.
                 it = heap_objects_.erase(it);
                 this->free(header);
@@ -313,7 +293,6 @@ extern "C" void rt_enter_gc_impl(void *stackPointer) {
  * as an argument
  */
 extern "C" __attribute__((naked)) void rt_enter_gc() {
-
 #if __x86_64__
     asm("mov %rsp, %rdi\n"
         "jmp _rt_enter_gc_impl");

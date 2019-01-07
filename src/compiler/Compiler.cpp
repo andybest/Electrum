@@ -54,17 +54,12 @@ namespace electrum {
         _jit = std::make_shared<ElectrumJit>(_es);
     }
 
-    /*void Compiler::compile_analyzer_nodes(std::vector<std::shared_ptr<AnalyzerNode>> nodes) {
-
-    }*/
-
     void *Compiler::compile_and_eval_string(std::string str) {
         Parser p;
         auto ast = p.readString(str);
         auto node = _analyzer.analyzeForm(ast);
         _analyzer.closedOversForNode(node);
 
-        std::cout << "Compiling: " << str << std::endl;
         return compile_and_eval_node(node);
     }
 
@@ -146,7 +141,8 @@ namespace electrum {
                 break;
             case kAnalyzerNodeTypeVarLookup: compile_var_lookup(std::dynamic_pointer_cast<VarLookupNode>(node));
                 break;
-            case kAnalyzerNodeTypeMaybeInvoke: compile_maybe_invoke(std::dynamic_pointer_cast<MaybeInvokeAnalyzerNode>(node));
+            case kAnalyzerNodeTypeMaybeInvoke:
+                compile_maybe_invoke(std::dynamic_pointer_cast<MaybeInvokeAnalyzerNode>(node));
                 break;
             default:throw CompilerException("Unrecognized node type", node->sourcePosition);
         }
@@ -241,7 +237,7 @@ namespace electrum {
         }
 
         auto result = current_context()->lookup_in_local_environment(*node->name);
-        if(result != nullptr) {
+        if (result != nullptr) {
             current_context()->push_value(result);
             return;
         }
@@ -300,7 +296,7 @@ namespace electrum {
         }
 
         //++arg_it;
-        for(uint64_t i = 0; i < node->closed_overs.size(); i++) {
+        for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
             auto &arg = *arg_it;
             arg.setName("environment");
 
@@ -328,7 +324,7 @@ namespace electrum {
                                     lambda,
                                     node->closed_overs.size());
 
-        for(uint64_t i = 0; i < node->closed_overs.size(); i++) {
+        for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
             build_lambda_set_env(closure, i, current_context()->lookup_in_local_environment(node->closed_overs[i]));
         }
 
@@ -374,18 +370,18 @@ namespace electrum {
         compile_node(node->fn);
         auto fn = current_context()->pop_value();
 
-        std::vector<llvm::Value*> args;
+        std::vector<llvm::Value *> args;
         args.reserve(node->args.size() + 1);
 
-        for(const auto &a: node->args) {
+        for (const auto &a: node->args) {
             compile_node(a);
             args.push_back(current_context()->pop_value());
         }
 
         args.push_back(fn);
 
-        std::vector<llvm::Type*> argTypes;
-        for(uint64_t i = 0; i < node->args.size() + 1; ++i) {
+        std::vector<llvm::Type *> argTypes;
+        for (uint64_t i = 0; i < node->args.size() + 1; ++i) {
             argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
         }
 
@@ -396,7 +392,7 @@ namespace electrum {
                                                false);
 
         auto fn_ptr = _builder->CreateFPCast(build_get_lambda_ptr(fn),
-                llvm::PointerType::get(fn_type, 0));
+                                             llvm::PointerType::get(fn_type, 0));
 
         //auto result = _builder->CreateGCStatepointCall(0, 0, fn_ptr, args, nullptr, nullptr);
         auto result = _builder->CreateCall(fn_ptr, args);
@@ -529,7 +525,7 @@ namespace electrum {
 
     llvm::Value *Compiler::build_get_lambda_ptr(llvm::Value *fn) {
         auto func = _module->getOrInsertFunction("rt_compiled_function_get_ptr",
-                llvm::IntegerType::getInt8PtrTy(_context, 0));
+                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
         return _builder->CreateCall(func, {fn});
     }
 

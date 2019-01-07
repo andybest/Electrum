@@ -34,7 +34,6 @@
 #include <unordered_set>
 #include <list>
 
-
 namespace electrum {
 
     using std::shared_ptr;
@@ -54,10 +53,12 @@ namespace electrum {
 
     class GarbageCollector {
     public:
-        GarbageCollector(GCMode mode);
+        explicit GarbageCollector(GCMode mode);
         ~GarbageCollector();
 
         void init_stackmap(void *stackmap);
+
+        frame_info_t *get_frame_info(uint64_t return_address);
 
         void collect(void *stackPointer);
 
@@ -74,9 +75,9 @@ namespace electrum {
         void free(void *ptr);
 
     private:
+        std::vector<statepoint_table_t *> statepoint_tables_;
         GCMode collector_mode_;
         bool scan_stack_;
-        statepoint_table_t *statepoint_table_;
         std::unordered_set<void *> object_roots_;
         std::vector<void*> heap_objects_;
         uint64_t sweep_heap();

@@ -136,8 +136,7 @@ TEST(Compiler, compilesBasicLambda)  {
 
     EXPECT_EQ(rt_is_integer(result1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result1), 1234);
-
-    print_expr(result2);
+    
     EXPECT_EQ(rt_is_float(result2), TRUE_PTR);
     EXPECT_FLOAT_EQ(rt_float_value(result2), 5.678);
     rt_deinit_gc();
