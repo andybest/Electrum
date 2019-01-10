@@ -388,6 +388,9 @@ extern "C" void *rt_deref_var(void *v) {
     return var->val;
 }
 
+void *rt_is_pair(void *val) {
+    return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagPair));
+}
 
 void *rt_make_pair(void *value, void *next) {
     auto *pairVal = static_cast<EPair *>(GC_MALLOC(sizeof(EPair)));

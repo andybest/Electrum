@@ -168,3 +168,26 @@ TEST(Compiler, compilesLambdaWithCapturedEnvironment) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesDefFFIFn) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compile_and_eval_string("(def-ffi-fn* cons rt_make_pair :el (:el :el))");
+    auto result = c.compile_and_eval_string("(cons 1234 nil)");
+
+    EXPECT_EQ(rt_is_pair(result), TRUE_PTR);
+
+    auto car = rt_car(result);
+
+    EXPECT_EQ(rt_is_integer(car), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(car), 1234);
+
+    c.compile_and_eval_string("(def-ffi-fn* car rt_car :el (:el))");
+    auto result2 = c.compile_and_eval_string("(car (cons 5678))");
+
+    EXPECT_EQ(rt_is_integer(result2), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(result2), 5678);
+
+    rt_deinit_gc();
+}

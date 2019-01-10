@@ -150,6 +150,8 @@ namespace electrum {
 
         void compile_maybe_invoke(std::shared_ptr<MaybeInvokeAnalyzerNode> node);
 
+        void compile_def_ffi_fn(std::shared_ptr<DefFFIFunctionNode> node);
+
         std::string mangle_symbol_name(std::string ns, const std::string &name);
 
         llvm::Value *make_nil();

@@ -59,6 +59,8 @@ FLOAT               {INTEGER} {FRACTIONAL}
 
 BOOLEAN             "#t" | "#f" | "#true" | "#false"
 
+NIL                 "nil"
+
 OTHER_UNICODE       [\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]
 IDENTIFIER_START    \p{UnicodeIdentifierStart} | [+\-*<>=/.@?^_~] | {OTHER_UNICODE}
 IDENTIFIER_REST     \p{UnicodeIdentifierPart} | [+\-*<>=/.@?^_~:] | {OTHER_UNICODE}
@@ -88,9 +90,11 @@ STRING              \"([^\\\"]|\\\")*\"
 {FLOAT}             { return kTokenTypeFloat; }
 {INTEGER}           { return kTokenTypeInteger; }
 {BOOLEAN}           { return kTokenTypeBoolean; }
+{NIL}               { return kTokenTypeNil; }
 {STRING}            { return kTokenTypeString; }
 {IDENTIFIER}        { return kTokenTypeSymbol; }
 {KEYWORD}           { return kTokenTypeKeyword; }
+
 
 
 <<EOF>>             { return kTokenTypeEOF; }

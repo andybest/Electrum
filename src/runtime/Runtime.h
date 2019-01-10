@@ -188,11 +188,12 @@ extern "C" void *rt_is_var(void *v);
 extern "C" void rt_set_var(void *v, void *val);
 extern "C" void *rt_deref_var(void *v);
 
-void *rt_make_pair(void *value, void *next);
-void *rt_car(void *pair);
-void *rt_cdr(void *pair);
-void *rt_set_car(void *pair, void *val);
-void *rt_set_cdr(void *pair, void *next);
+extern "C" void *rt_is_pair(void *value);
+extern "C" void *rt_make_pair(void *value, void *next);
+extern "C" void *rt_car(void *pair);
+extern "C" void *rt_cdr(void *pair);
+extern "C" void *rt_set_car(void *pair, void *val);
+extern "C" void *rt_set_cdr(void *pair, void *next);
 
 void *rt_make_interpreted_function(void *argnames, uint64_t arity, void *body, void *env);
 void *rt_make_environment(void *parent);

@@ -46,6 +46,7 @@ namespace electrum {
                 case kTokenTypeSymbol: return make_pair(parseSymbol(t), it);
                 case kTokenTypeKeyword: return make_pair(parseKeyword(t), it);
                 case kTokenTypeString: return make_pair(parseString(t), it);
+                case kTokenTypeNil: return make_pair(parseNil(t), it);
                 case kTokenTypeLParen: {
                     return parseList(tokens, ++it);
                 }
@@ -75,6 +76,17 @@ namespace electrum {
         auto val = make_shared<ASTNode>();
         val->tag = kTypeTagFloat;
         val->floatValue = std::stod(t.text);
+
+        val->sourcePosition = make_shared<SourcePosition>();
+        val->sourcePosition->line = t.line;
+        val->sourcePosition->column = t.column;
+        val->sourcePosition->filename = t.filename;
+        return val;
+    }
+
+    shared_ptr<ASTNode> Parser::parseNil(const Token &t) const {
+        auto val = make_shared<ASTNode>();
+        val->tag = kTypeTagNil;
 
         val->sourcePosition = make_shared<SourcePosition>();
         val->sourcePosition->line = t.line;

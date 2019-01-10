@@ -475,6 +475,8 @@ namespace electrum {
         node->return_type = ret_type;
         node->arg_types = args;
 
+        global_env_[*binding] = node;
+
         return node;
     }
 

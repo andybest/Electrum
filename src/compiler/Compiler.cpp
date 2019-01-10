@@ -129,22 +129,32 @@ namespace electrum {
 
     void Compiler::compile_node(std::shared_ptr<AnalyzerNode> node) {
         switch (node->nodeType()) {
-            case kAnalyzerNodeTypeConstant:compile_constant(std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node));
+            case kAnalyzerNodeTypeConstant:
+                compile_constant(std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node));
                 break;
-            case kAnalyzerNodeTypeLambda:compile_lambda(std::dynamic_pointer_cast<LambdaAnalyzerNode>(node));
+            case kAnalyzerNodeTypeLambda:
+                compile_lambda(std::dynamic_pointer_cast<LambdaAnalyzerNode>(node));
                 break;
-            case kAnalyzerNodeTypeDo:compile_do(std::dynamic_pointer_cast<DoAnalyzerNode>(node));
+            case kAnalyzerNodeTypeDo:
+                compile_do(std::dynamic_pointer_cast<DoAnalyzerNode>(node));
                 break;
-            case kAnalyzerNodeTypeIf:compile_if(std::dynamic_pointer_cast<IfAnalyzerNode>(node));
+            case kAnalyzerNodeTypeIf:
+                compile_if(std::dynamic_pointer_cast<IfAnalyzerNode>(node));
                 break;
-            case kAnalyzerNodeTypeDef: compile_def(std::dynamic_pointer_cast<DefAnalyzerNode>(node));
+            case kAnalyzerNodeTypeDef:
+                compile_def(std::dynamic_pointer_cast<DefAnalyzerNode>(node));
                 break;
-            case kAnalyzerNodeTypeVarLookup: compile_var_lookup(std::dynamic_pointer_cast<VarLookupNode>(node));
+            case kAnalyzerNodeTypeVarLookup:
+                compile_var_lookup(std::dynamic_pointer_cast<VarLookupNode>(node));
                 break;
             case kAnalyzerNodeTypeMaybeInvoke:
                 compile_maybe_invoke(std::dynamic_pointer_cast<MaybeInvokeAnalyzerNode>(node));
                 break;
-            default:throw CompilerException("Unrecognized node type", node->sourcePosition);
+            case kAnalyzerNodeTypeDefFFIFunction:
+                compile_def_ffi_fn(std::dynamic_pointer_cast<DefFFIFunctionNode>(node));
+                break;
+            default:
+                throw CompilerException("Unrecognized node type", node->sourcePosition);
         }
     }
 
@@ -152,19 +162,26 @@ namespace electrum {
         llvm::Value *v;
 
         switch (node->type) {
-            case kAnalyzerConstantTypeInteger: v = make_integer(boost::get<int64_t>(node->value));
+            case kAnalyzerConstantTypeInteger:
+                v = make_integer(boost::get<int64_t>(node->value));
                 break;
-            case kAnalyzerConstantTypeFloat: v = make_float(boost::get<double>(node->value));
+            case kAnalyzerConstantTypeFloat:
+                v = make_float(boost::get<double>(node->value));
                 break;
-            case kAnalyzerConstantTypeBoolean: v = make_boolean(boost::get<bool>(node->value));
+            case kAnalyzerConstantTypeBoolean:
+                v = make_boolean(boost::get<bool>(node->value));
                 break;
-            case kAnalyzerConstantTypeSymbol: v = make_symbol(boost::get<shared_ptr<std::string>>(node->value));
+            case kAnalyzerConstantTypeSymbol:
+                v = make_symbol(boost::get<shared_ptr<std::string>>(node->value));
                 break;
-            case kAnalyzerConstantTypeString: v = make_string(boost::get<shared_ptr<std::string>>(node->value));
+            case kAnalyzerConstantTypeString:
+                v = make_string(boost::get<shared_ptr<std::string>>(node->value));
                 break;
-            case kAnalyzerConstantTypeNil: v = make_nil();
+            case kAnalyzerConstantTypeNil:
+                v = make_nil();
                 break;
-            default:throw CompilerException("Unrecognized constant type", node->sourcePosition);
+            default:
+                throw CompilerException("Unrecognized constant type", node->sourcePosition);
         }
 
         current_context()->push_value(v);
@@ -394,10 +411,95 @@ namespace electrum {
         auto fn_ptr = _builder->CreateFPCast(build_get_lambda_ptr(fn),
                                              llvm::PointerType::get(fn_type, 0));
 
-        //auto result = _builder->CreateGCStatepointCall(0, 0, fn_ptr, args, nullptr, nullptr);
         auto result = _builder->CreateCall(fn_ptr, args);
 
         current_context()->push_value(result);
+    }
+
+    void Compiler::compile_def_ffi_fn(std::shared_ptr<electrum::DefFFIFunctionNode> node) {
+        auto insert_block = _builder->GetInsertBlock();
+        auto insert_point = _builder->GetInsertPoint();
+
+        // Create wrapper function with arg conversion and return type conversion
+
+        std::vector<llvm::Type *> argTypes;
+
+        // Add arguments for each argument we are passing the the FFI function
+        argTypes.reserve(node->arg_types.size());
+        for(int i = 0; i < node->arg_types.size(); i++) {
+            argTypes.push_back(llvm::PointerType::getInt8PtrTy(_context, kGCAddressSpace));
+        }
+
+        argTypes.push_back(llvm::PointerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+        auto ffiWrapperType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                  argTypes,
+                                                  false);
+
+        auto mangled_name = mangle_symbol_name("", *node->binding);
+        auto wrapper_name = mangled_name + "_impl";
+
+        auto ffiWrapper = llvm::Function::Create(
+                ffiWrapperType,
+                llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                mangle_symbol_name("", mangled_name),
+                _module.get());
+
+        ffiWrapper->setGC("statepoint-example");
+
+        auto entryBlock = llvm::BasicBlock::Create(_context, "entry", ffiWrapper);
+        _builder->SetInsertPoint(entryBlock);
+
+        argTypes.pop_back();
+
+        auto cFuncType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, 0),
+                argTypes,
+                false);
+        auto cFunc = _module->getOrInsertFunction(*node->func_name, cFuncType);
+
+        std::vector<llvm::Value *> cArgs;
+
+        for(auto it = ffiWrapper->arg_begin(); it != ffiWrapper->arg_end(); ++it) {
+            auto &arg = *it;
+            cArgs.push_back(dynamic_cast<llvm::Value*>(&arg));
+        }
+
+        auto rv = _builder->CreateCall(cFunc, cArgs);
+
+        _builder->CreateRet(rv);
+
+        _builder->SetInsertPoint(insert_block, insert_point);
+
+
+        // Make global symbol
+
+        auto glob = new llvm::GlobalVariable(*_module,
+                                             llvm::IntegerType::getInt8PtrTy(_context, 0),
+                                             false,
+                                             llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                                             nullptr,
+                                             mangled_name);
+
+        glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(_context, 0)));
+
+        auto nameSym = make_symbol(node->binding);
+        auto v = make_var(nameSym);
+
+        build_gc_add_root(v);
+
+        // Store var in global
+        _builder->CreateStore(v, glob, false);
+
+        // Set initial value for var
+        build_set_var(v, make_closure(node->arg_types.size(), ffiWrapper, 0));
+
+        current_context()->push_value(make_nil());
+
+        auto d = std::make_shared<GlobalDef>();
+        d->name = *node->binding;
+        d->mangled_name = mangled_name;
+
+        current_context()->global_bindings[*node->binding] = d;
     }
 
     std::string Compiler::mangle_symbol_name(const std::string ns, const std::string &name) {
