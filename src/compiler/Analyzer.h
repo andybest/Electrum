@@ -55,11 +55,11 @@ namespace electrum {
     class AnalyzerNode {
     public:
         virtual ~AnalyzerNode() {};
-        
+
         shared_ptr<SourcePosition> sourcePosition;
 
-        vector<string> closed_overs;
-        
+        vector <string> closed_overs;
+
         bool collected_closed_overs;
 
         virtual vector <shared_ptr<AnalyzerNode>> children() { return {}; };
@@ -211,33 +211,33 @@ namespace electrum {
             return kAnalyzerNodeTypeMaybeInvoke;
         }
     };
-    
-    enum FFIType: int64_t {
+
+    enum FFIType : int64_t {
         kFFITypeUnknown = -1,
         kFFITypeElectrumValue
     };
-    
+
     static FFIType ffi_type_from_keyword(string input) {
-        if(input == "el") {
+        if (input == "el") {
             return kFFITypeElectrumValue;
         }
-        
+
         return kFFITypeUnknown;
     }
-    
+
     class DefFFIFunctionNode : public AnalyzerNode {
     public:
         /// Binding name
         shared_ptr<string> binding;
-        
+
         /// Function name
         shared_ptr<string> func_name;
-        
+
         /// Return type
         FFIType return_type;
-        
-        vector<FFIType> arg_types;
-        
+
+        vector <FFIType> arg_types;
+
         AnalyzerNodeType nodeType() override {
             return kAnalyzerNodeTypeDefFFIFunction;
         }
@@ -246,47 +246,76 @@ namespace electrum {
     class Analyzer {
     public:
         Analyzer();
+
         shared_ptr<AnalyzerNode> initialBindingWithName(const std::string &name);
+
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
+
         vector <string> closedOversForNode(shared_ptr<AnalyzerNode> node);
 
     private:
         shared_ptr<AnalyzerNode> analyzeSymbol(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeInteger(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeFloat(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeString(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeNil(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeKeyword(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeBoolean(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeList(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeIf(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeDo(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeLambda(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeDef(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeMaybeInvoke(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeDefFFIFn(shared_ptr<ASTNode> form);
+
+        shared_ptr<AnalyzerNode> analyzeQuote(shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr<string> symbolName, shared_ptr<ASTNode> form);
-        
+
 
         typedef shared_ptr<AnalyzerNode> (Analyzer::*AnalyzerFunc)(shared_ptr<ASTNode>);
 
         void push_local_env();
+
         void pop_local_env();
+
         shared_ptr<AnalyzerNode> lookup_in_local_env(std::string name);
+
         void store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue);
 
         /// Analysis functions for special forms
         const std::unordered_map<std::string, AnalyzerFunc> specialForms{
-                {"if",     &Analyzer::analyzeIf},
-                {"do",     &Analyzer::analyzeDo},
-                {"lambda", &Analyzer::analyzeLambda},
-                {"def",    &Analyzer::analyzeDef},
-                {"def-ffi-fn*", &Analyzer::analyzeDefFFIFn}
+                {"if",          &Analyzer::analyzeIf},
+                {"do",          &Analyzer::analyzeDo},
+                {"lambda",      &Analyzer::analyzeLambda},
+                {"def",         &Analyzer::analyzeDef},
+                {"def-ffi-fn*", &Analyzer::analyzeDefFFIFn},
+                {"quote",       &Analyzer::analyzeQuote}
         };
 
         /// Holds already defined globals
         std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_env_;
-        vector<unordered_map<string, shared_ptr<AnalyzerNode>>> local_envs_;
+        vector <unordered_map<string, shared_ptr<AnalyzerNode>>> local_envs_;
+
+        /// Flag to specify whether the analyzer is inside a quoted form
+        bool is_quoting_;
+
+        /// Flag to specify whether the analuzer is currently insize a quasiquoted form
+        bool is_quasi_quoting_;
     };
 }
 

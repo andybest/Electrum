@@ -147,6 +147,8 @@ namespace electrum {
 
     bool is_object_with_tag(void *val, uint64_t tag);
 
+    bool symbol_equal(void *s1, void *s2);
+
     void print_expr(void *expr);
 
     std::string kind_for_obj(void *obj);

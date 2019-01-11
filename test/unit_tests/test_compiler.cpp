@@ -191,3 +191,16 @@ TEST(Compiler, compilesDefFFIFn) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesQuotedSymbol) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compile_and_eval_string("(def-ffi-fn* cons rt_make_pair :el (:el :el))");
+    auto result = c.compile_and_eval_string("'foo");
+
+    EXPECT_EQ(rt_is_symbol(result), TRUE_PTR);
+    EXPECT_TRUE(symbol_equal(result, rt_make_symbol("foo")));
+
+    rt_deinit_gc();
+}

@@ -30,7 +30,8 @@
 
 namespace electrum {
 
-    Analyzer::Analyzer() {
+    Analyzer::Analyzer() : is_quoting_(false),
+                           is_quasi_quoting_(false) {
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode> form) {
@@ -100,6 +101,15 @@ namespace electrum {
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
         auto symName = form->stringValue;
+
+        if(is_quoting_) {
+            auto node = make_shared<ConstantValueAnalyzerNode>();
+            node->sourcePosition = form->sourcePosition;
+            node->type = kAnalyzerConstantTypeSymbol;
+            node->value = symName;
+
+            return node;
+        }
 
         if (lookup_in_local_env(*symName) != nullptr) {
             auto node = make_shared<VarLookupNode>();
@@ -476,6 +486,30 @@ namespace electrum {
         node->arg_types = args;
 
         global_env_[*binding] = node;
+
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeQuote(shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto listPtr = form->listValue;
+        assert(!listPtr->empty());
+
+        if (listPtr->size() < 2) {
+            throw CompilerException("Quote forms must have one argument",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->size() > 2) {
+            throw CompilerException("Quote forms must not have more than one argument",
+                    form->sourcePosition);
+        }
+
+        auto quotedForm = listPtr->at(1);
+
+        is_quoting_ = true;
+        auto node = analyzeForm(quotedForm);
+        is_quoting_ = false;
 
         return node;
     }
