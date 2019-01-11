@@ -66,3 +66,35 @@ TEST(Parser, parses_nested_list) {
     EXPECT_EQ(val->listValue->at(2)->listValue->at(1)->tag, kTypeTagList);
     EXPECT_EQ(val->listValue->at(2)->listValue->at(1)->listValue->size(), 1);
 }
+
+TEST(Parser, parses_quote_reader_macro) {
+    PARSE_STRING("'foo");
+
+    EXPECT_EQ(val->tag, kTypeTagList);
+    EXPECT_EQ(val->listValue->size(), 2);
+
+    EXPECT_EQ(val->listValue->at(0)->tag, kTypeTagSymbol);
+    EXPECT_EQ(*val->listValue->at(0)->stringValue, "quote");
+
+    EXPECT_EQ(val->listValue->at(1)->tag, kTypeTagSymbol);
+    EXPECT_EQ(*val->listValue->at(1)->stringValue, "foo");
+}
+
+TEST(Parser, parses_quote_list_reader_macro) {
+    PARSE_STRING("'(1 2)");
+
+    EXPECT_EQ(val->tag, kTypeTagList);
+    EXPECT_EQ(val->listValue->size(), 2);
+
+    EXPECT_EQ(val->listValue->at(0)->tag, kTypeTagSymbol);
+    EXPECT_EQ(*val->listValue->at(0)->stringValue, "quote");
+
+    EXPECT_EQ(val->listValue->at(1)->tag, kTypeTagList);
+    EXPECT_EQ(val->listValue->at(1)->listValue->size(), 2);
+
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(0)->tag, kTypeTagInteger);
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(0)->integerValue, 1);
+
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->tag, kTypeTagInteger);
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->integerValue, 2);
+}

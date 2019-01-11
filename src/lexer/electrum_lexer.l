@@ -92,6 +92,7 @@ STRING              \"([^\\\"]|\\\")*\"
 {BOOLEAN}           { return kTokenTypeBoolean; }
 {NIL}               { return kTokenTypeNil; }
 {STRING}            { return kTokenTypeString; }
+{QUOTE}             { return kTokenTypeQuote; }
 {IDENTIFIER}        { return kTokenTypeSymbol; }
 {KEYWORD}           { return kTokenTypeKeyword; }
 

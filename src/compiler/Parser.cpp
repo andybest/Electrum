@@ -47,6 +47,9 @@ namespace electrum {
                 case kTokenTypeKeyword: return make_pair(parseKeyword(t), it);
                 case kTokenTypeString: return make_pair(parseString(t), it);
                 case kTokenTypeNil: return make_pair(parseNil(t), it);
+                case kTokenTypeQuote: {
+                    return parseQuote(tokens, it);
+                }
                 case kTokenTypeLParen: {
                     return parseList(tokens, ++it);
                 }
@@ -190,5 +193,56 @@ namespace electrum {
         throw std::exception();
     }
 
+    pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(const vector<Token> tokens,
+                                                                          vector<Token>::iterator it) const {
+        auto list = make_shared<vector<shared_ptr<ASTNode>>>();
 
+        auto t = *it;
+        ++it;
+
+        // Add 'quote' symbol to head of list
+        auto sym = make_shared<ASTNode>();
+        sym->tag = kTypeTagSymbol;
+        sym->stringValue = make_shared<string>("quote");
+
+        sym->sourcePosition = make_shared<SourcePosition>();
+        sym->sourcePosition->line = t.line;
+        sym->sourcePosition->column = t.column;
+        sym->sourcePosition->filename = t.filename;
+
+        list->push_back(sym);
+
+        t = *it;
+
+        switch (t.type) {
+            case kTokenTypeLParen: {
+                auto l = parseList(tokens, ++it);
+                it = l.second;
+                list->push_back(l.first);
+                break;
+            }
+            case kTokenTypeRParen: {
+                // Unexpected close paren
+                throw std::exception();
+            }
+            default: {
+                auto v = readTokens(tokens, it);
+                list->push_back(v.first);
+                it = v.second;
+                break;
+            }
+        }
+
+        ++it;
+
+        auto val = make_shared<ASTNode>();
+        val->tag = kTypeTagList;
+        val->listValue = list;
+
+        val->sourcePosition = make_shared<SourcePosition>();
+        val->sourcePosition->line = t.line;
+        val->sourcePosition->column = t.column;
+        val->sourcePosition->filename = t.filename;
+        return std::make_pair(val, it);
+    }
 }
