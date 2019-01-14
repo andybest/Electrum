@@ -214,6 +214,12 @@ namespace electrum {
                 if (maybeSpecial) {
                     return maybeSpecial;
                 }
+
+                // Check for macro
+                auto result = global_macros_.find(*firstItemForm->stringValue);
+                if(result != global_macros_.end()) {
+                    return analyzeMacroExpand(form);
+                }
             }
 
             // The node isn't a special form, so it might be a function call.
@@ -469,7 +475,43 @@ namespace electrum {
         node->arg_name_nodes = argNameNodes;
         node->body = body;
 
+        global_macros_[*binding] = node;
+
         pop_local_env();
+
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeMacroExpand(shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto listPtr = form->listValue;
+        assert(!listPtr->empty());
+        assert(listPtr->at(0)->tag == kTypeTagSymbol);
+
+        auto macroName = listPtr->at(0)->stringValue;
+
+        auto result = global_macros_.find(*macroName);
+        if(result == global_macros_.end()) {
+            // This shouldn't be able to happen, as the macro has already been looked up before
+            // this method was invoked.
+            throw CompilerException("Fatal error, could not find macro!",
+                    form->sourcePosition);
+        }
+
+        auto macro = result->second;
+
+        auto node = make_shared<MacroExpandAnalyzerNode>();
+        node->macro = macro;
+        node->args.reserve(listPtr->size() - 1);
+
+        bool first = true;
+        for (const auto &a: *listPtr) {
+            if (first) {
+                first = false;
+            } else {
+                node->args.push_back(analyzeForm(a));
+            }
+        }
 
         return node;
     }

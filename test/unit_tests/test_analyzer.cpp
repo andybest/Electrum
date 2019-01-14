@@ -310,3 +310,30 @@ TEST(Analyzer, analyzesDefMacro) {
     auto sym = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(body->returnValue);
     EXPECT_EQ(*boost::get<shared_ptr<std::string>>(sym->value), "y");
 }
+
+TEST(Analyzer, analyzesMacroExpansion) {
+    PARSE_STRING("(do (defmacro x (y) 'y) (x 1))");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDo);
+    auto doNode = std::dynamic_pointer_cast<DoAnalyzerNode>(node);
+
+    EXPECT_EQ(doNode->returnValue->nodeType(), kAnalyzerNodeTypeMacroExpand);
+
+    auto expandNode = std::dynamic_pointer_cast<MacroExpandAnalyzerNode>(doNode->returnValue);
+    EXPECT_EQ(expandNode->args.size(), 1);
+
+    EXPECT_EQ(expandNode->args[0]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(expandNode->args[0]);
+
+    EXPECT_EQ(arg1->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(arg1->value), 1);
+
+    EXPECT_EQ(expandNode->macro->nodeType(), kAnalyzerNodeTypeDefMacro);
+    auto macroNode = std::dynamic_pointer_cast<DefMacroAnalyzerNode>(expandNode->macro);
+
+    EXPECT_EQ(*macroNode->name, "x");
+    EXPECT_EQ(macroNode->arg_names.size(), 1);
+}

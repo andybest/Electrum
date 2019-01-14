@@ -49,6 +49,7 @@ namespace electrum {
         kAnalyzerNodeTypeDef,
         kAnalyzerNodeTypeVarLookup,
         kAnalyzerNodeTypeMaybeInvoke,
+        kAnalyzerNodeTypeMacroExpand,
         kAnalyzerNodeTypeDefFFIFunction,
         kAnalyzerNodeTypeConstantList
     };
@@ -229,6 +230,29 @@ namespace electrum {
         }
     };
 
+    class MacroExpandAnalyzerNode: public AnalyzerNode {
+    public:
+        /// Expander to call
+        shared_ptr<AnalyzerNode> macro;
+
+        /// Macro arguments
+        std::vector<shared_ptr<AnalyzerNode>> args;
+
+        vector <shared_ptr<AnalyzerNode>> children() override {
+            vector<shared_ptr<AnalyzerNode>> c = {macro};
+
+            for (auto a: args) {
+                c.push_back(a);
+            }
+
+            return c;
+        }
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeMacroExpand;
+        }
+    };
+
     class MaybeInvokeAnalyzerNode : public AnalyzerNode {
     public:
         /// Function to call
@@ -317,6 +341,8 @@ namespace electrum {
         shared_ptr<AnalyzerNode> analyzeLambda(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> analyzeMacro(const shared_ptr<ASTNode> form);
+
+        shared_ptr<AnalyzerNode> analyzeMacroExpand(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> analyzeDef(shared_ptr<ASTNode> form);
 
