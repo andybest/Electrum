@@ -104,3 +104,27 @@ TEST(Parser, parses_quote_list_reader_macro) {
     EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->tag, kTypeTagInteger);
     EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->integerValue, 2);
 }
+
+TEST(Parser, parses_quoted_quote) {
+    PARSE_STRING("'(1 'a)");
+
+    // (quote (1 (quote a)))
+
+    EXPECT_EQ(val->tag, kTypeTagList);
+    EXPECT_EQ(val->listValue->size(), 2);
+
+    EXPECT_EQ(val->listValue->at(0)->tag, kTypeTagSymbol);
+    EXPECT_EQ(*val->listValue->at(0)->stringValue, "quote");
+
+    EXPECT_EQ(val->listValue->at(1)->tag, kTypeTagList);
+    EXPECT_EQ(val->listValue->at(1)->listValue->size(), 2);
+
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(0)->tag, kTypeTagInteger);
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(0)->integerValue, 1);
+
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->tag, kTypeTagList);
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->listValue->size(), 2);
+
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->listValue->at(0)->tag, kTypeTagSymbol);
+    EXPECT_EQ(*val->listValue->at(1)->listValue->at(1)->listValue->at(0)->stringValue, "quote");
+}

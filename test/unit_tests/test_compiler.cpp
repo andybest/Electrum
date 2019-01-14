@@ -247,3 +247,20 @@ TEST(Compiler, compilesQuotedEmptyList) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesQuotedQuote) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("'('a)");
+    EXPECT_EQ(rt_is_pair(result), TRUE_PTR);
+
+    auto car = rt_car(result);
+    EXPECT_EQ(rt_is_pair(car), TRUE_PTR);
+
+    auto q = rt_car(car);
+    EXPECT_EQ(rt_is_symbol(q), TRUE_PTR);
+    EXPECT_TRUE(symbol_equal(q, rt_make_symbol("quote")));
+
+    rt_deinit_gc();
+}

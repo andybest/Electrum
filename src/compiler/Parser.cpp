@@ -48,7 +48,7 @@ namespace electrum {
                 case kTokenTypeString: return make_pair(parseString(t), it);
                 case kTokenTypeNil: return make_pair(parseNil(t), it);
                 case kTokenTypeQuote: {
-                    return parseQuote(tokens, it);
+                    return parseQuote(tokens, ++it);
                 }
                 case kTokenTypeLParen: {
                     return parseList(tokens, ++it);
@@ -198,7 +198,6 @@ namespace electrum {
         auto list = make_shared<vector<shared_ptr<ASTNode>>>();
 
         auto t = *it;
-        ++it;
 
         // Add 'quote' symbol to head of list
         auto sym = make_shared<ASTNode>();
@@ -233,7 +232,7 @@ namespace electrum {
             }
         }
 
-        ++it;
+        //it;
 
         auto val = make_shared<ASTNode>();
         val->tag = kTypeTagList;
