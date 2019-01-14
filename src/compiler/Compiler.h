@@ -138,6 +138,8 @@ namespace electrum {
 
         void compile_constant(std::shared_ptr<ConstantValueAnalyzerNode> node);
 
+        void compile_constant_list(std::shared_ptr<ConstantListAnalyzerNode> node);
+
         void compile_lambda(std::shared_ptr<LambdaAnalyzerNode> node);
 
         void compile_def(std::shared_ptr<DefAnalyzerNode> node);
@@ -169,6 +171,8 @@ namespace electrum {
         llvm::Value *make_keyword(std::shared_ptr<std::string> name);
 
         llvm::Value *make_closure(uint64_t arity, llvm::Value *func_ptr, uint64_t envSize);
+
+        llvm::Value *make_pair(llvm::Value *v, llvm::Value *next);
 
         llvm::Value *get_boolean_value(llvm::Value *val);
 

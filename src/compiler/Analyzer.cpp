@@ -184,6 +184,17 @@ namespace electrum {
         auto listPtr = form->listValue;
         auto listSize = listPtr->size();
 
+        if(is_quoting_) {
+            auto node = make_shared<ConstantListAnalyzerNode>();
+            node->sourcePosition = form->sourcePosition;
+
+            for(auto item: *listPtr) {
+                node->values.push_back(analyzeForm(item));
+            }
+
+            return node;
+        }
+
         if (listSize > 0) {
             auto firstItemForm = listPtr->at(0);
 

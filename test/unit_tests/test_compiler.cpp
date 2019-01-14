@@ -207,11 +207,43 @@ TEST(Compiler, compilesQuotedSymbol) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    c.compile_and_eval_string("(def-ffi-fn* cons rt_make_pair :el (:el :el))");
     auto result = c.compile_and_eval_string("'foo");
 
     EXPECT_EQ(rt_is_symbol(result), TRUE_PTR);
     EXPECT_TRUE(symbol_equal(result, rt_make_symbol("foo")));
+
+    rt_deinit_gc();
+}
+
+TEST(Compiler, compilesQuotedList) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("'(1 2 a)");
+    EXPECT_EQ(rt_is_pair(result), TRUE_PTR);
+
+    auto i1 = rt_car(result);
+    auto i2 = rt_car(rt_cdr(result));
+    auto i3 = rt_car(rt_cdr(rt_cdr(result)));
+
+    EXPECT_EQ(rt_is_integer(i1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(i1), 1);
+
+    EXPECT_EQ(rt_is_integer(i2), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(i2), 2);
+
+    EXPECT_EQ(rt_is_symbol(i3), TRUE_PTR);
+    EXPECT_TRUE(symbol_equal(i3, rt_make_symbol("a")));
+
+    rt_deinit_gc();
+}
+
+TEST(Compiler, compilesQuotedEmptyList) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("'()");
+    EXPECT_EQ(result, NIL_PTR);
 
     rt_deinit_gc();
 }

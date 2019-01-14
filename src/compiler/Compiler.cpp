@@ -132,6 +132,9 @@ namespace electrum {
             case kAnalyzerNodeTypeConstant:
                 compile_constant(std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node));
                 break;
+            case kAnalyzerNodeTypeConstantList:
+                compile_constant_list(std::dynamic_pointer_cast<ConstantListAnalyzerNode>(node));
+                break;
             case kAnalyzerNodeTypeLambda:
                 compile_lambda(std::dynamic_pointer_cast<LambdaAnalyzerNode>(node));
                 break;
@@ -185,6 +188,23 @@ namespace electrum {
         }
 
         current_context()->push_value(v);
+    }
+
+    void Compiler::compile_constant_list(std::shared_ptr<ConstantListAnalyzerNode> node) {
+        // Special case- the empty list is nil
+        if(node->values.size() == 0) {
+            current_context()->push_value(make_nil());
+            return;
+        }
+
+        llvm::Value *head = make_nil();
+
+        for(auto it = node->values.rbegin(); it != node->values.rend(); ++it) {
+            compile_node(*it);
+            head = make_pair(current_context()->pop_value(), head);
+        }
+
+        current_context()->push_value(head);
     }
 
     void Compiler::compile_do(std::shared_ptr<DoAnalyzerNode> node) {
@@ -590,6 +610,15 @@ namespace electrum {
                                     {llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), arity),
                                      func_ptr,
                                      llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), envSize)});
+    }
+
+    llvm::Value *Compiler::make_pair(llvm::Value *v, llvm::Value *next) {
+        auto func = _module->getOrInsertFunction("rt_make_pair",
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+        return _builder->CreateCall(func, {v, next});
     }
 
     llvm::Value *Compiler::get_boolean_value(llvm::Value *val) {

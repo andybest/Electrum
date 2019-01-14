@@ -48,7 +48,8 @@ namespace electrum {
         kAnalyzerNodeTypeDef,
         kAnalyzerNodeTypeVarLookup,
         kAnalyzerNodeTypeMaybeInvoke,
-        kAnalyzerNodeTypeDefFFIFunction
+        kAnalyzerNodeTypeDefFFIFunction,
+        kAnalyzerNodeTypeConstantList
     };
 
 
@@ -116,6 +117,23 @@ namespace electrum {
 
         AnalyzerNodeType nodeType() override {
             return kAnalyzerNodeTypeConstant;
+        }
+    };
+
+    /*
+     * Node that represents a list
+     */
+    class ConstantListAnalyzerNode : public AnalyzerNode {
+    public:
+        /// The values in the list
+        vector<shared_ptr<AnalyzerNode>> values;
+
+        vector<shared_ptr<AnalyzerNode>> children() override {
+            return values;
+        }
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeConstantList;
         }
     };
 

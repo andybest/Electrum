@@ -257,3 +257,29 @@ TEST(Analyzer, analyzesDefFFIFn) {
     EXPECT_EQ(ffiNode->arg_types[0], kFFITypeElectrumValue);
     EXPECT_EQ(ffiNode->arg_types[1], kFFITypeElectrumValue);
 }
+
+TEST(Analyzer, analyzesQuotedList) {
+    PARSE_STRING("'(1 2 a)");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstantList);
+    auto listNode = std::dynamic_pointer_cast<ConstantListAnalyzerNode>(node);
+    EXPECT_EQ(listNode->values.size(), 3);
+
+    EXPECT_EQ(listNode->values[0]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto v1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(listNode->values[0]);
+    EXPECT_EQ(v1->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(v1->value), 1);
+
+    EXPECT_EQ(listNode->values[1]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto v2 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(listNode->values[1]);
+    EXPECT_EQ(v2->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(v2->value), 2);
+
+    EXPECT_EQ(listNode->values[2]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto v3 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(listNode->values[2]);
+    EXPECT_EQ(v3->type, kAnalyzerConstantTypeSymbol);
+    EXPECT_EQ(*boost::get<shared_ptr<std::string>>(v3->value), "a");
+}
