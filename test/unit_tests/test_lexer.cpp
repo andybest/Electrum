@@ -105,3 +105,11 @@ TEST(Lexer, lexes_does_not_lex_invalid_keyword) {
 
     ASSERT_TOKEN(tokens[0], kTokenTypeSymbol, "bar:foo");
 }
+
+TEST(Lexer, lexes_nil) {
+    TOKENIZE_STRING("nil");
+
+    EXPECT_EQ(tokens.size(), 1);
+
+    ASSERT_TOKEN(tokens[0], kTokenTypeNil, "nil");
+}

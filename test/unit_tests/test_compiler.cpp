@@ -80,6 +80,17 @@ TEST(Compiler, compilesConstantString) {
     rt_deinit_gc();
 }
 
+TEST(Compiler, compilesConstantNil) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("nil");
+
+    EXPECT_EQ(result, NIL_PTR);
+
+    rt_deinit_gc();
+}
+
 TEST(Compiler, compilesIf) {
     rt_init_gc(kGCModeInterpreterOwned);
 

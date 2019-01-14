@@ -103,6 +103,17 @@ TEST(Analyzer, analyzesConstantKeyword) {
     EXPECT_EQ(*boost::get<std::shared_ptr<std::string>>(constantNode->value), "foo");
 }
 
+TEST(Analyzer, analyzesConstantNil) {
+    PARSE_STRING("nil");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
+    auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
+    EXPECT_EQ(constantNode->type, kAnalyzerConstantTypeNil);
+}
+
 TEST(Analyzer, analyzesDo) {
     PARSE_STRING("(do 123 456 789)");
 

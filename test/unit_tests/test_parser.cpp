@@ -40,6 +40,12 @@ TEST(Parser, parses_keyword) {
     EXPECT_EQ(*val->stringValue, "foo");
 }
 
+TEST(Parser, parses_nil) {
+    PARSE_STRING("nil");
+
+    EXPECT_EQ(val->tag, kTypeTagNil);
+}
+
 TEST(Parser, parses_list) {
     PARSE_STRING("(1 2 3)");
 
