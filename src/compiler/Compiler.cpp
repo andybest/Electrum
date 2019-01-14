@@ -156,6 +156,9 @@ namespace electrum {
             case kAnalyzerNodeTypeDefFFIFunction:
                 compile_def_ffi_fn(std::dynamic_pointer_cast<DefFFIFunctionNode>(node));
                 break;
+            case kAnalyzerNodeTypeDefMacro:
+                compile_def_macro(std::dynamic_pointer_cast<DefMacroAnalyzerNode>(node));
+                break;
             default:
                 throw CompilerException("Unrecognized node type", node->sourcePosition);
         }
@@ -520,6 +523,112 @@ namespace electrum {
         d->mangled_name = mangled_name;
 
         current_context()->global_bindings[*node->binding] = d;
+    }
+
+    void Compiler::compile_def_macro(std::shared_ptr<electrum::DefMacroAnalyzerNode> node) {
+        auto insert_block = _builder->GetInsertBlock();
+        auto insert_point = _builder->GetInsertPoint();
+
+        std::stringstream ss;
+        ss << "MX_lambda_" << *node->name;
+
+        std::vector<llvm::Type *> argTypes;
+
+        argTypes.reserve(node->arg_names.size() + 1);
+        for (int i = 0; i < node->arg_names.size(); ++i) {
+            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        }
+
+        // Add extra arg for closure, in order to ger environment values
+        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+
+
+        auto expanderType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+                                                  argTypes,
+                                                  false);
+
+        auto expander = llvm::Function::Create(
+                expanderType,
+                llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                ss.str(),
+                _module.get());
+
+        expander->setGC("statepoint-example");
+
+        auto entryBlock = llvm::BasicBlock::Create(_context, "entry", expander);
+        _builder->SetInsertPoint(entryBlock);
+
+        std::unordered_map<std::string, llvm::Value *> local_env;
+        int argNum = 0;
+        auto arg_it = expander->args().begin();
+        for (auto &arg_name : node->arg_names) {
+            auto &arg = *arg_it;
+            arg.setName(*arg_name);
+
+            local_env[*arg_name] = &arg;
+
+            ++argNum;
+            ++arg_it;
+        }
+
+        for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
+            auto &arg = *arg_it;
+            arg.setName("environment");
+
+            local_env[node->closed_overs[i]] = build_lambda_get_env(&arg, i);
+        }
+
+        // Push the arguments onto the environment stack so that the compiler
+        // can look them up later
+        current_context()->push_local_environment(local_env);
+        current_context()->push_func(expander);
+
+        // Compile the body of the expander
+        compile_node(node->body);
+        _builder->CreateRet(current_context()->pop_value());
+
+        // Scope ended, pop the arguments from the environment stack
+        current_context()->pop_local_environment();
+        current_context()->pop_func();
+
+        // Restore back to previous insert point
+        _builder->SetInsertPoint(insert_block, insert_point);
+
+
+        auto closure = make_closure(node->arg_names.size(),
+                                    expander,
+                                    node->closed_overs.size());
+
+        for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
+            build_lambda_set_env(closure, i, current_context()->lookup_in_local_environment(node->closed_overs[i]));
+        }
+
+
+        /* DEF */
+
+        auto mangled_name = mangle_symbol_name("", "MXC_" + *node->name);
+        auto glob = new llvm::GlobalVariable(*_module,
+                                             llvm::IntegerType::getInt8PtrTy(_context, 0),
+                                             false,
+                                             llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                                             nullptr,
+                                             mangled_name);
+
+        glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(_context, 0)));
+
+        build_gc_add_root(closure);
+
+        // Store var in global
+        _builder->CreateStore(closure, glob, false);
+
+        current_context()->push_value(make_nil());
+
+        auto d = std::make_shared<GlobalDef>();
+        d->name = *node->name;
+        d->mangled_name = mangled_name;
+
+        current_context()->global_macros[*node->name] = d;
+        current_context()->push_value(make_nil());
     }
 
     std::string Compiler::mangle_symbol_name(const std::string ns, const std::string &name) {

@@ -47,6 +47,9 @@ namespace electrum {
         std::vector<llvm::Value *> value_stack;
         std::vector<llvm::Function *> func_stack;
 
+        /// The global macro expanders
+        std::unordered_map<std::string, shared_ptr<GlobalDef>> global_macros;
+
         /// The global var bindings
         std::unordered_map<std::string, shared_ptr<GlobalDef>> global_bindings;
 
@@ -153,6 +156,8 @@ namespace electrum {
         void compile_maybe_invoke(std::shared_ptr<MaybeInvokeAnalyzerNode> node);
 
         void compile_def_ffi_fn(std::shared_ptr<DefFFIFunctionNode> node);
+
+        void compile_def_macro(std::shared_ptr<DefMacroAnalyzerNode> node);
 
         std::string mangle_symbol_name(std::string ns, const std::string &name);
 

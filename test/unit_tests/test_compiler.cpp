@@ -264,3 +264,14 @@ TEST(Compiler, compilesQuotedQuote) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesSimpleMacro) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("(do (defmacro x (y) 'y) (x 1))");
+    EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(result), 1);
+
+    rt_deinit_gc();
+}
