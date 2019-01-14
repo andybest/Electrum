@@ -283,3 +283,30 @@ TEST(Analyzer, analyzesQuotedList) {
     EXPECT_EQ(v3->type, kAnalyzerConstantTypeSymbol);
     EXPECT_EQ(*boost::get<shared_ptr<std::string>>(v3->value), "a");
 }
+
+TEST(Analyzer, analyzesDefMacro) {
+    PARSE_STRING("(defmacro x (y) 'y)");
+
+    Analyzer an;
+    auto node = an.analyzeForm(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDefMacro);
+    auto defMacroNode = std::dynamic_pointer_cast<DefMacroAnalyzerNode>(node);
+
+    EXPECT_EQ(*defMacroNode->name, "x");
+
+    EXPECT_EQ(defMacroNode->arg_names.size(), 1);
+    EXPECT_EQ(defMacroNode->arg_name_nodes.at(0)->nodeType(), kAnalyzerNodeTypeConstant);
+
+    auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(defMacroNode->arg_name_nodes.at(0));
+    EXPECT_EQ(arg1->type, kAnalyzerConstantTypeSymbol);
+    EXPECT_EQ(*boost::get<std::shared_ptr<std::string>>(arg1->value), "y");
+
+    EXPECT_EQ(defMacroNode->body->nodeType(), kAnalyzerNodeTypeDo);
+
+    auto body = std::dynamic_pointer_cast<DoAnalyzerNode>(defMacroNode->body);
+    EXPECT_EQ(body->returnValue->nodeType(), kAnalyzerNodeTypeConstant);
+
+    auto sym = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(body->returnValue);
+    EXPECT_EQ(*boost::get<shared_ptr<std::string>>(sym->value), "y");
+}

@@ -37,14 +37,22 @@ namespace electrum {
     shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode> form) {
 
         switch (form->tag) {
-            case kTypeTagInteger: return analyzeInteger(form);
-            case kTypeTagFloat: return analyzeFloat(form);
-            case kTypeTagBoolean: return analyzeBoolean(form);
-            case kTypeTagString: return analyzeString(form);
-            case kTypeTagKeyword: return analyzeKeyword(form);
-            case kTypeTagSymbol: return analyzeSymbol(form);
-            case kTypeTagList: return analyzeList(form);
-            case kTypeTagNil: return analyzeNil(form);
+            case kTypeTagInteger:
+                return analyzeInteger(form);
+            case kTypeTagFloat:
+                return analyzeFloat(form);
+            case kTypeTagBoolean:
+                return analyzeBoolean(form);
+            case kTypeTagString:
+                return analyzeString(form);
+            case kTypeTagKeyword:
+                return analyzeKeyword(form);
+            case kTypeTagSymbol:
+                return analyzeSymbol(form);
+            case kTypeTagList:
+                return analyzeList(form);
+            case kTypeTagNil:
+                return analyzeNil(form);
         }
 
         return shared_ptr<AnalyzerNode>();
@@ -90,7 +98,8 @@ namespace electrum {
                 }
                 break;
             }
-            default: break;
+            default:
+                break;
         }
 
         node->closed_overs = closed_overs;
@@ -102,7 +111,7 @@ namespace electrum {
     shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
         auto symName = form->stringValue;
 
-        if(is_quoting_) {
+        if (is_quoting_) {
             auto node = make_shared<ConstantValueAnalyzerNode>();
             node->sourcePosition = form->sourcePosition;
             node->type = kAnalyzerConstantTypeSymbol;
@@ -184,11 +193,11 @@ namespace electrum {
         auto listPtr = form->listValue;
         auto listSize = listPtr->size();
 
-        if(is_quoting_) {
+        if (is_quoting_) {
             auto node = make_shared<ConstantListAnalyzerNode>();
             node->sourcePosition = form->sourcePosition;
 
-            for(auto item: *listPtr) {
+            for (auto item: *listPtr) {
                 node->values.push_back(analyzeForm(item));
             }
 
@@ -318,7 +327,7 @@ namespace electrum {
         }
 
         if (listPtr->at(1)->tag != kTypeTagList) {
-            // Lamda arguments must be a list
+            // Lambda arguments must be a list
             throw CompilerException("Lambda arguments must be a list",
                                     listPtr->at(1)->sourcePosition);
         }
@@ -371,6 +380,91 @@ namespace electrum {
         auto node = std::make_shared<LambdaAnalyzerNode>();
 
         node->sourcePosition = form->sourcePosition;
+        node->arg_names = argNames;
+        node->arg_name_nodes = argNameNodes;
+        node->body = body;
+
+        pop_local_env();
+
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto listPtr = form->listValue;
+        assert(!listPtr->empty());
+
+        // (defmacro binding (args) body)
+
+        if (listPtr->size() < 2) {
+            throw CompilerException("Defmacro forms must have a binding",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->at(1)->tag != kTypeTagSymbol) {
+            throw CompilerException("Defmacro bindings must be symbols",
+                                    listPtr->at(1)->sourcePosition);
+        }
+
+        if (listPtr->size() < 3) {
+            throw CompilerException("Defmacro forms must have an argument list",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->at(2)->tag != kTypeTagList) {
+            // Macro arguments must be a list
+            throw CompilerException("Defmacro arguments must be a list",
+                                    listPtr->at(1)->sourcePosition);
+        }
+
+        auto binding = listPtr->at(1)->stringValue;
+
+        auto argList = listPtr->at(2)->listValue;
+
+        std::vector<shared_ptr<AnalyzerNode>> argNameNodes;
+        std::vector<shared_ptr<std::string>> argNames;
+
+        for (const auto &arg: *argList) {
+            if (arg->tag != kTypeTagSymbol) {
+                throw CompilerException("Defmacro arguments must be symbols",
+                                        arg->sourcePosition);
+            }
+
+            auto sym = std::make_shared<ConstantValueAnalyzerNode>();
+            sym->sourcePosition = arg->sourcePosition;
+            sym->value = arg->stringValue;
+            sym->type = kAnalyzerConstantTypeSymbol;
+            argNameNodes.push_back(sym);
+
+            argNames.push_back(arg->stringValue);
+        }
+
+        push_local_env();
+
+        for (auto &argName : argNames) {
+            store_in_local_env(*argName, std::make_shared<ConstantValueAnalyzerNode>());
+        }
+
+        if (listPtr->size() < 4) {
+            throw CompilerException("Defmacro forms must have at least one body expression",
+                                    form->sourcePosition);
+        }
+
+        auto body = std::make_shared<DoAnalyzerNode>();
+        body->sourcePosition = listPtr->at(3)->sourcePosition;
+
+        // Add all but the last statements to 'statements'
+        for (auto it = listPtr->begin() + 3; it < listPtr->end() - 1; ++it) {
+            body->statements.push_back(analyzeForm(*it));
+        }
+
+        // Add the last statement to 'returnValue'
+        body->returnValue = analyzeForm(*(listPtr->end() - 1));
+
+        auto node = std::make_shared<DefMacroAnalyzerNode>();
+
+        node->sourcePosition = form->sourcePosition;
+        node->name = binding;
         node->arg_names = argNames;
         node->arg_name_nodes = argNameNodes;
         node->body = body;
@@ -513,7 +607,7 @@ namespace electrum {
 
         if (listPtr->size() > 2) {
             throw CompilerException("Quote forms must not have more than one argument",
-                    form->sourcePosition);
+                                    form->sourcePosition);
         }
 
         auto quotedForm = listPtr->at(1);

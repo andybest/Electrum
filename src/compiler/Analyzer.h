@@ -45,6 +45,7 @@ namespace electrum {
         kAnalyzerNodeTypeConstant,
         kAnalyzerNodeTypeDo,
         kAnalyzerNodeTypeLambda,
+        kAnalyzerNodeTypeDefMacro,
         kAnalyzerNodeTypeDef,
         kAnalyzerNodeTypeVarLookup,
         kAnalyzerNodeTypeMaybeInvoke,
@@ -126,9 +127,9 @@ namespace electrum {
     class ConstantListAnalyzerNode : public AnalyzerNode {
     public:
         /// The values in the list
-        vector<shared_ptr<AnalyzerNode>> values;
+        vector <shared_ptr<AnalyzerNode>> values;
 
-        vector<shared_ptr<AnalyzerNode>> children() override {
+        vector <shared_ptr<AnalyzerNode>> children() override {
             return values;
         }
 
@@ -174,6 +175,27 @@ namespace electrum {
 
         AnalyzerNodeType nodeType() override {
             return kAnalyzerNodeTypeLambda;
+        }
+    };
+
+    class DefMacroAnalyzerNode : public AnalyzerNode {
+    public:
+        /// The binding name
+        shared_ptr<std::string> name;
+
+        /// A vector of the argument names
+        vector <shared_ptr<AnalyzerNode>> arg_name_nodes;
+        vector <shared_ptr<std::string>> arg_names;
+
+        /// A do node representing the body
+        shared_ptr<AnalyzerNode> body;
+
+        vector <shared_ptr<AnalyzerNode>> children() override {
+            return body->children();
+        }
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeDefMacro;
         }
     };
 
@@ -294,6 +316,8 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> analyzeLambda(shared_ptr<ASTNode> form);
 
+        shared_ptr<AnalyzerNode> analyzeMacro(const shared_ptr<ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeDef(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> analyzeMaybeInvoke(shared_ptr<ASTNode> form);
@@ -320,10 +344,14 @@ namespace electrum {
                 {"if",          &Analyzer::analyzeIf},
                 {"do",          &Analyzer::analyzeDo},
                 {"lambda",      &Analyzer::analyzeLambda},
+                {"defmacro",    &Analyzer::analyzeMacro},
                 {"def",         &Analyzer::analyzeDef},
                 {"def-ffi-fn*", &Analyzer::analyzeDefFFIFn},
                 {"quote",       &Analyzer::analyzeQuote}
         };
+
+        /// Holds global macros
+        std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_macros_;
 
         /// Holds already defined globals
         std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_env_;
