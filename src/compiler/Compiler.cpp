@@ -192,7 +192,7 @@ namespace electrum {
 
     void Compiler::compile_constant_list(std::shared_ptr<ConstantListAnalyzerNode> node) {
         // Special case- the empty list is nil
-        if(node->values.size() == 0) {
+        if(node->values.empty()) {
             current_context()->push_value(make_nil());
             return;
         }
