@@ -31,87 +31,13 @@
 #include <memory>
 #include "Analyzer.h"
 #include "ElectrumJit.h"
+#include "CompilerContext.h"
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
 #include <llvm/ExecutionEngine/Orc/Core.h>
 
 namespace electrum {
-
-    struct GlobalDef {
-        std::string name;
-        std::string mangled_name;
-    };
-
-    struct CompilerContext {
-        std::vector<llvm::Value *> value_stack;
-        std::vector<llvm::Function *> func_stack;
-
-        /// The global macro expanders
-        std::unordered_map<std::string, shared_ptr<GlobalDef>> global_macros;
-
-        /// The global var bindings
-        std::unordered_map<std::string, shared_ptr<GlobalDef>> global_bindings;
-
-        /** Global function bindings. Functions that end up here will be
-         * called statically, rather than going through var -> closure
-         * indirection.
-         */
-       // std::unordered_map<std::string, shared_ptr<GlobalDef>> global_func_bindings;
-
-        /// The local bindings for the current level in the AST
-        std::vector<std::unordered_map<std::string, llvm::Value*>> local_bindings;
-
-        void push_value(llvm::Value *val) {
-            value_stack.push_back(val);
-        }
-
-        llvm::Value *pop_value() {
-            auto v = value_stack.back();
-            value_stack.pop_back();
-            return v;
-        }
-
-        void push_func(llvm::Function *func) {
-            func_stack.push_back(func);
-        }
-
-        llvm::Function *pop_func() {
-            auto f = func_stack.back();
-            func_stack.pop_back();
-            return f;
-        }
-
-        llvm::Function *current_func() {
-            return func_stack.back();
-        }
-
-        void push_local_environment() {
-            local_bindings.emplace_back();
-        }
-
-        void push_local_environment(const std::unordered_map<std::string, llvm::Value*> &new_env) {
-            local_bindings.push_back(new_env);
-        }
-
-        void pop_local_environment() {
-            local_bindings.pop_back();
-        }
-
-        llvm::Value *lookup_in_local_environment(const std::string name) {
-            for(auto it = local_bindings.rbegin(); it != local_bindings.rend(); ++it) {
-                auto env = *it;
-                auto result = env.find(name);
-
-                if(result != env.end()) {
-                    return result->second;
-                }
-            }
-
-            return nullptr;
-        }
-
-    };
 
     class Compiler {
 
@@ -124,10 +50,8 @@ namespace electrum {
 
     private:
 
-        llvm::LLVMContext _context;
-        llvm::orc::ExecutionSession _es;
-        std::unique_ptr<llvm::Module> _module;
         std::unique_ptr<llvm::IRBuilder<>> _builder;
+        llvm::orc::ExecutionSession _es;
         CompilerContext _compilerContext;
         Analyzer _analyzer;
         std::shared_ptr<ElectrumJit> _jit;
@@ -136,6 +60,12 @@ namespace electrum {
         static const int kGCAddressSpace = 1;
 
         CompilerContext *current_context() { return &_compilerContext; }
+
+        llvm::Module *current_module() { return current_context()->current_module(); }
+
+        llvm::LLVMContext &llvm_context() { return current_context()->llvm_context(); }
+
+        void create_gc_entry();
 
         void compile_node(std::shared_ptr<AnalyzerNode> node);
 

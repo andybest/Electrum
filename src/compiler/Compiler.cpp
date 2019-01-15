@@ -45,8 +45,10 @@
 #include "llvm/Target/TargetMachine.h"
 
 namespace electrum {
+
+#pragma mark - Compiler
+
     Compiler::Compiler() {
-        //module_ = std::make_unique<llvm::Module>("electrumModule", context_);
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
@@ -64,41 +66,31 @@ namespace electrum {
     }
 
     void *Compiler::compile_and_eval_node(std::shared_ptr<AnalyzerNode> node) {
+
+
         static int cnt = 0;
 
         std::stringstream moduless;
         moduless << "test_module_" << cnt;
-        _module = std::make_unique<llvm::Module>(moduless.str(), _context);
+        current_context()->create_module(moduless.str());
+
+        create_gc_entry();
 
         std::stringstream ss;
         ss << "jit_func_" << cnt;
 
         auto mainfunc = llvm::Function::Create(
-                llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace), false),
+                llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace), false),
                 llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                 ss.str(),
-                _module.get());
+                current_context()->current_module());
 
         mainfunc->setGC("statepoint-example");
 
-        auto gcType = llvm::FunctionType::get(llvm::Type::getVoidTy(_context), false);
-        auto gcfunc = llvm::dyn_cast<llvm::Function>(_module->getOrInsertFunction("gc.safepoint_poll", gcType));
-
-        gcfunc->addFnAttr(llvm::Attribute::NoUnwind);
-
-        auto gcEntry = llvm::BasicBlock::Create(_context, "entry", gcfunc);
-        llvm::IRBuilder<> b(_context);
-        b.SetInsertPoint(gcEntry);
-
-        auto dogc = _module->getOrInsertFunction("rt_enter_gc",
-                                                 llvm::Type::getVoidTy(_context));
-        b.CreateCall(dogc);
-        b.CreateRet(nullptr);
-
         current_context()->push_func(mainfunc);
 
-        auto entry = llvm::BasicBlock::Create(_context, "entry", mainfunc);
-        _builder = std::make_unique<llvm::IRBuilder<>>(_context);
+        auto entry = llvm::BasicBlock::Create(llvm_context(), "entry", mainfunc);
+        _builder = std::make_unique<llvm::IRBuilder<>>(llvm_context());
 
         _builder->SetInsertPoint(entry);
         compile_node(node);
@@ -112,7 +104,7 @@ namespace electrum {
         _builder->CreateRet(result);
         current_context()->pop_func();
 
-        _jit->addModule(std::move(_module));
+        _jit->addModule(std::move(current_context()->move_module()));
 
         auto faddr = _jit->get_symbol_address(ss.str());
         rt_gc_init_stackmap(_jit->get_stack_map_pointer());
@@ -125,6 +117,22 @@ namespace electrum {
         ++cnt;
 
         return rv;
+    }
+
+    void Compiler::create_gc_entry() {
+        auto gcType = llvm::FunctionType::get(llvm::Type::getVoidTy(current_context()->llvm_context()), false);
+        auto gcfunc = llvm::dyn_cast<llvm::Function>(current_context()->current_module()->getOrInsertFunction("gc.safepoint_poll", gcType));
+
+        gcfunc->addFnAttr(llvm::Attribute::NoUnwind);
+
+        auto gcEntry = llvm::BasicBlock::Create(current_context()->llvm_context(), "entry", gcfunc);
+        llvm::IRBuilder<> b(current_context()->llvm_context());
+        b.SetInsertPoint(gcEntry);
+
+        auto dogc = current_context()->current_module()->getOrInsertFunction("rt_enter_gc",
+                                                 llvm::Type::getVoidTy(current_context()->llvm_context()));
+        b.CreateCall(dogc);
+        b.CreateRet(nullptr);
     }
 
     void Compiler::compile_node(std::shared_ptr<AnalyzerNode> node) {
@@ -226,15 +234,15 @@ namespace electrum {
         compile_node(node->condition);
 
         // Create stack variable to hold result
-        auto result = _builder->CreateAlloca(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+        auto result = _builder->CreateAlloca(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                              kGCAddressSpace, nullptr, "if_result");
 
         auto cond = _builder->CreateICmpEQ(get_boolean_value(current_context()->pop_value()),
-                                           llvm::ConstantInt::get(llvm::IntegerType::getInt8Ty(_context), 0));
+                                           llvm::ConstantInt::get(llvm::IntegerType::getInt8Ty(llvm_context()), 0));
 
-        auto iftrueblock = llvm::BasicBlock::Create(_context, "if_true", current_context()->current_func());
-        auto iffalseblock = llvm::BasicBlock::Create(_context, "if_false", current_context()->current_func());
-        auto endifblock = llvm::BasicBlock::Create(_context, "endif", current_context()->current_func());
+        auto iftrueblock = llvm::BasicBlock::Create(llvm_context(), "if_true", current_context()->current_func());
+        auto iffalseblock = llvm::BasicBlock::Create(llvm_context(), "if_false", current_context()->current_func());
+        auto endifblock = llvm::BasicBlock::Create(llvm_context(), "endif", current_context()->current_func());
 
         _builder->CreateCondBr(cond, iffalseblock, iftrueblock);
 
@@ -267,8 +275,8 @@ namespace electrum {
 
             auto def = result->second;
 
-            auto var = _module->getOrInsertGlobal(def->mangled_name,
-                                                  llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+            auto var = current_module()->getOrInsertGlobal(def->mangled_name,
+                                                  llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
             auto v = _builder->CreateLoad(var);
 
             auto val = build_deref_var(v);
@@ -299,15 +307,15 @@ namespace electrum {
 
         argTypes.reserve(node->arg_names.size() + 1);
         for (int i = 0; i < node->arg_names.size(); ++i) {
-            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
         }
 
         // Add extra arg for closure, in order to ger environment values
-        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
 
-        auto lambdaType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+        auto lambdaType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                   argTypes,
                                                   false);
 
@@ -315,11 +323,11 @@ namespace electrum {
                 lambdaType,
                 llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                 ss.str(),
-                _module.get());
+                current_module());
 
         lambda->setGC("statepoint-example");
 
-        auto entryBlock = llvm::BasicBlock::Create(_context, "entry", lambda);
+        auto entryBlock = llvm::BasicBlock::Create(llvm_context(), "entry", lambda);
         _builder->SetInsertPoint(entryBlock);
 
         std::unordered_map<std::string, llvm::Value *> local_env;
@@ -374,14 +382,14 @@ namespace electrum {
     void Compiler::compile_def(std::shared_ptr<DefAnalyzerNode> node) {
         auto mangled_name = mangle_symbol_name("", *node->name);
 
-        auto glob = new llvm::GlobalVariable(*_module,
-                                             llvm::IntegerType::getInt8PtrTy(_context, 0),
+        auto glob = new llvm::GlobalVariable(*current_module(),
+                                             llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
                                              false,
                                              llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                                              nullptr,
                                              mangled_name);
 
-        glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(_context, 0)));
+        glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0)));
 
         auto nameSym = make_symbol(node->name);
         auto v = make_var(nameSym);
@@ -422,12 +430,12 @@ namespace electrum {
 
         std::vector<llvm::Type *> argTypes;
         for (uint64_t i = 0; i < node->args.size() + 1; ++i) {
-            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
         }
 
-        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
-        auto fn_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+        auto fn_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                argTypes,
                                                false);
 
@@ -450,12 +458,12 @@ namespace electrum {
         // Add arguments for each argument we are passing the the FFI function
         argTypes.reserve(node->arg_types.size());
         for(int i = 0; i < node->arg_types.size(); i++) {
-            argTypes.push_back(llvm::PointerType::getInt8PtrTy(_context, kGCAddressSpace));
+            argTypes.push_back(llvm::PointerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
         }
 
-        argTypes.push_back(llvm::PointerType::getInt8PtrTy(_context, kGCAddressSpace));
+        argTypes.push_back(llvm::PointerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
-        auto ffiWrapperType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+        auto ffiWrapperType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                   argTypes,
                                                   false);
 
@@ -466,19 +474,19 @@ namespace electrum {
                 ffiWrapperType,
                 llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                 mangle_symbol_name("", mangled_name),
-                _module.get());
+                current_module());
 
         ffiWrapper->setGC("statepoint-example");
 
-        auto entryBlock = llvm::BasicBlock::Create(_context, "entry", ffiWrapper);
+        auto entryBlock = llvm::BasicBlock::Create(llvm_context(), "entry", ffiWrapper);
         _builder->SetInsertPoint(entryBlock);
 
         argTypes.pop_back();
 
-        auto cFuncType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, 0),
+        auto cFuncType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
                 argTypes,
                 false);
-        auto cFunc = _module->getOrInsertFunction(*node->func_name, cFuncType);
+        auto cFunc = current_module()->getOrInsertFunction(*node->func_name, cFuncType);
 
         std::vector<llvm::Value *> cArgs;
 
@@ -496,14 +504,14 @@ namespace electrum {
 
         // Make global symbol
 
-        auto glob = new llvm::GlobalVariable(*_module,
-                                             llvm::IntegerType::getInt8PtrTy(_context, 0),
+        auto glob = new llvm::GlobalVariable(*current_module(),
+                                             llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
                                              false,
                                              llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                                              nullptr,
                                              mangled_name);
 
-        glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(_context, 0)));
+        glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0)));
 
         auto nameSym = make_symbol(node->binding);
         auto v = make_var(nameSym);
@@ -536,14 +544,14 @@ namespace electrum {
 
         argTypes.reserve(node->arg_names.size() + 1);
         for (int i = 0; i < node->arg_names.size(); ++i) {
-            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
         }
 
         // Add extra arg for closure, in order to ger environment values
-        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
 
-        auto expanderType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
+        auto expanderType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                   argTypes,
                                                   false);
 
@@ -551,11 +559,11 @@ namespace electrum {
                 expanderType,
                 llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                 ss.str(),
-                _module.get());
+                current_module());
 
         expander->setGC("statepoint-example");
 
-        auto entryBlock = llvm::BasicBlock::Create(_context, "entry", expander);
+        auto entryBlock = llvm::BasicBlock::Create(llvm_context(), "entry", expander);
         _builder->SetInsertPoint(entryBlock);
 
         std::unordered_map<std::string, llvm::Value *> local_env;
@@ -607,14 +615,14 @@ namespace electrum {
         /* DEF */
 
         auto mangled_name = mangle_symbol_name("", "MXC_" + *node->name);
-        auto glob = new llvm::GlobalVariable(*_module,
-                                             llvm::IntegerType::getInt8PtrTy(_context, 0),
+        auto glob = new llvm::GlobalVariable(*current_module(),
+                                             llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
                                              false,
                                              llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                                              nullptr,
                                              mangled_name);
 
-        glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(_context, 0)));
+        glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0)));
 
         build_gc_add_root(closure);
 
@@ -642,8 +650,8 @@ namespace electrum {
 #pragma mark - Helpers
 
     llvm::Value *Compiler::make_nil() {
-        auto func = _module->getOrInsertFunction("rt_make_nil",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+        auto func = current_module()->getOrInsertFunction("rt_make_nil",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), 0));
 
         return _builder->CreateCall(func);
     }
@@ -651,151 +659,151 @@ namespace electrum {
     llvm::Value *Compiler::make_integer(int64_t value) {
         // Don't put returned pointer in GC address space, as integers are tagged,
         // and not heap allocated.
-        auto func = _module->getOrInsertFunction("rt_make_integer",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, 0),
-                                                 llvm::IntegerType::getInt64Ty(_context));
+        auto func = current_module()->getOrInsertFunction("rt_make_integer",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+                                                 llvm::IntegerType::getInt64Ty(llvm_context()));
 
         return _builder->CreateCall(func,
-                                    {llvm::ConstantInt::getSigned(llvm::IntegerType::getInt64Ty(_context), value)});
+                                    {llvm::ConstantInt::getSigned(llvm::IntegerType::getInt64Ty(llvm_context()), value)});
     }
 
     llvm::Value *Compiler::make_float(double value) {
-        auto func = _module->getOrInsertFunction("rt_make_float",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::Type::getDoubleTy(_context));
+        auto func = current_module()->getOrInsertFunction("rt_make_float",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::Type::getDoubleTy(llvm_context()));
 
         return _builder->CreateCall(func,
-                                    {llvm::ConstantFP::get(llvm::Type::getDoubleTy(_context), value)});
+                                    {llvm::ConstantFP::get(llvm::Type::getDoubleTy(llvm_context()), value)});
     }
 
     llvm::Value *Compiler::make_boolean(bool value) {
         // Don't put returned pointer in GC address space, as booleans are tagged,
         // and not heap allocated.
-        auto func = _module->getOrInsertFunction("rt_make_boolean",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, 0),
-                                                 llvm::IntegerType::getInt8Ty(_context));
+        auto func = current_module()->getOrInsertFunction("rt_make_boolean",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+                                                 llvm::IntegerType::getInt8Ty(llvm_context()));
 
         return _builder->CreateCall(func,
-                                    {llvm::ConstantInt::getSigned(llvm::IntegerType::getInt8Ty(_context),
+                                    {llvm::ConstantInt::getSigned(llvm::IntegerType::getInt8Ty(llvm_context()),
                                                                   value ? 1 : 0)});
     }
 
     llvm::Value *Compiler::make_symbol(std::shared_ptr<std::string> name) {
-        auto func = _module->getOrInsertFunction("rt_make_symbol",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+        auto func = current_module()->getOrInsertFunction("rt_make_symbol",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), 0));
 
         auto strptr = _builder->CreateGlobalStringPtr(*name);
         return _builder->CreateCall(func, {strptr});
     }
 
     llvm::Value *Compiler::make_string(std::shared_ptr<std::string> str) {
-        auto func = _module->getOrInsertFunction("rt_make_string",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+        auto func = current_module()->getOrInsertFunction("rt_make_string",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), 0));
 
         auto strptr = _builder->CreateGlobalStringPtr(*str);
         return _builder->CreateCall(func, {strptr});
     }
 
     llvm::Value *Compiler::make_keyword(std::shared_ptr<std::string> name) {
-        auto func = _module->getOrInsertFunction("rt_make_keyword",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+        auto func = current_module()->getOrInsertFunction("rt_make_keyword",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), 0));
 
         auto strptr = _builder->CreateGlobalStringPtr(*name);
         return _builder->CreateCall(func, {strptr});
     }
 
     llvm::Value *Compiler::make_closure(uint64_t arity, llvm::Value *func_ptr, uint64_t envSize) {
-        auto func = _module->getOrInsertFunction("rt_make_compiled_function",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt64Ty(_context),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt64Ty(_context));
+        auto func = current_module()->getOrInsertFunction("rt_make_compiled_function",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt64Ty(llvm_context()),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt64Ty(llvm_context()));
 
 
         return _builder->CreateCall(func,
-                                    {llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), arity),
+                                    {llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), arity),
                                      func_ptr,
-                                     llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), envSize)});
+                                     llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), envSize)});
     }
 
     llvm::Value *Compiler::make_pair(llvm::Value *v, llvm::Value *next) {
-        auto func = _module->getOrInsertFunction("rt_make_pair",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        auto func = current_module()->getOrInsertFunction("rt_make_pair",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
         return _builder->CreateCall(func, {v, next});
     }
 
     llvm::Value *Compiler::get_boolean_value(llvm::Value *val) {
-        auto func = _module->getOrInsertFunction("rt_is_true",
-                                                 llvm::IntegerType::getInt8Ty(_context),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+        auto func = current_module()->getOrInsertFunction("rt_is_true",
+                                                 llvm::IntegerType::getInt8Ty(llvm_context()),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), 0));
 
         return _builder->CreateCall(func, {val});
     }
 
     llvm::Value *Compiler::make_var(llvm::Value *sym) {
-        auto func = _module->getOrInsertFunction("rt_make_var",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        auto func = current_module()->getOrInsertFunction("rt_make_var",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
         return _builder->CreateCall(func, {sym});
     }
 
     void Compiler::build_set_var(llvm::Value *var, llvm::Value *newVal) {
-        auto func = _module->getOrInsertFunction("rt_set_var",
-                                                 llvm::Type::getVoidTy(_context),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        auto func = current_module()->getOrInsertFunction("rt_set_var",
+                                                 llvm::Type::getVoidTy(llvm_context()),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
         _builder->CreateCall(func, {var, newVal});
     }
 
     llvm::Value *Compiler::build_deref_var(llvm::Value *var) {
-        auto func = _module->getOrInsertFunction("rt_deref_var",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        auto func = current_module()->getOrInsertFunction("rt_deref_var",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
         return _builder->CreateCall(func, {var});
     }
 
     llvm::Value *Compiler::build_get_lambda_ptr(llvm::Value *fn) {
-        auto func = _module->getOrInsertFunction("rt_compiled_function_get_ptr",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, 0));
+        auto func = current_module()->getOrInsertFunction("rt_compiled_function_get_ptr",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), 0));
         return _builder->CreateCall(func, {fn});
     }
 
     llvm::Value *Compiler::build_lambda_set_env(llvm::Value *fn, uint64_t idx, llvm::Value *val) {
-        auto func = _module->getOrInsertFunction("rt_compiled_function_set_env",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt64Ty(_context),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        auto func = current_module()->getOrInsertFunction("rt_compiled_function_set_env",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt64Ty(llvm_context()),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
-        llvm::Value *idxVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), idx);
+        llvm::Value *idxVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), idx);
 
         return _builder->CreateCall(func, {fn, idxVal, val});
     }
 
     llvm::Value *Compiler::build_lambda_get_env(llvm::Value *fn, uint64_t idx) {
-        auto func = _module->getOrInsertFunction("rt_compiled_function_get_env",
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace),
-                                                 llvm::IntegerType::getInt64Ty(_context));
+        auto func = current_module()->getOrInsertFunction("rt_compiled_function_get_env",
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                 llvm::IntegerType::getInt64Ty(llvm_context()));
 
-        llvm::Value *idxVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(_context), idx);
+        llvm::Value *idxVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), idx);
 
         return _builder->CreateCall(func, {fn, idxVal});
     }
 
     llvm::Value *Compiler::build_gc_add_root(llvm::Value *obj) {
-        auto func = _module->getOrInsertFunction("rt_gc_add_root",
-                                                 llvm::Type::getVoidTy(_context),
-                                                 llvm::IntegerType::getInt8PtrTy(_context, kGCAddressSpace));
+        auto func = current_module()->getOrInsertFunction("rt_gc_add_root",
+                                                 llvm::Type::getVoidTy(llvm_context()),
+                                                 llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
         return _builder->CreateCall(func, {obj});
     }

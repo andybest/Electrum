@@ -3,6 +3,7 @@ project(${CMAKE_PROJECT_NAME}c)
 set(CMAKE_CXX_STANDARD 17)
 
 set(HEADER_FILES
+        CompilerContext.h
         Compiler.h
         Parser.h
         Analyzer.h
@@ -12,6 +13,7 @@ set(HEADER_FILES
 
 set(SOURCE_FILES
         main.cpp
+        CompilerContext.cpp
         Compiler.cpp
         Parser.cpp
         Analyzer.cpp
