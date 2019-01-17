@@ -57,6 +57,7 @@ namespace electrum {
     };
 
 
+
     class AnalyzerNode {
     public:
         virtual ~AnalyzerNode() {};
@@ -343,7 +344,7 @@ namespace electrum {
     public:
         Analyzer();
 
-        shared_ptr<AnalyzerNode> analyze(shared_ptr<ASTNode> form, uint64_t depth = 0);
+        shared_ptr<AnalyzerNode> analyze(shared_ptr<ASTNode> form, uint64_t depth = 0, EvaluationPhase phase = kEvaluationPhaseLoadTime);
 
         shared_ptr<AnalyzerNode> initialBindingWithName(const std::string &name);
 
@@ -396,7 +397,6 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr<string> symbolName, shared_ptr<ASTNode> form);
 
-
         typedef shared_ptr<AnalyzerNode> (Analyzer::*AnalyzerFunc)(shared_ptr<ASTNode>);
 
         void push_local_env();
@@ -406,6 +406,13 @@ namespace electrum {
         shared_ptr<AnalyzerNode> lookup_in_local_env(std::string name);
 
         void store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue);
+
+
+        void push_evaluation_phase(EvaluationPhase phase);
+
+        EvaluationPhase pop_evaluation_phase();
+
+        EvaluationPhase current_evaluation_phase();
 
         /// Analysis functions for special forms
         const std::unordered_map<std::string, AnalyzerFunc> specialForms{
@@ -419,11 +426,16 @@ namespace electrum {
                 {"eval-when",   &Analyzer::analyzeEvalWhen}
         };
 
+        struct AnalyzerDefinition {
+            EvaluationPhase phase;
+            shared_ptr<AnalyzerNode> node;
+        };
+
         /// Holds global macros
         std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_macros_;
 
         /// Holds already defined globals
-        std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_env_;
+        std::unordered_map<std::string, AnalyzerDefinition> global_env_;
         vector <unordered_map<string, shared_ptr<AnalyzerNode>>> local_envs_;
 
         /// Flag to specify whether the analyzer is inside a quoted form
@@ -431,6 +443,12 @@ namespace electrum {
 
         /// Flag to specify whether the analyzer is currently inside a quasiquoted form
         bool is_quasi_quoting_;
+
+        /// Flag to specify whether the analyzer is currently analyzing a macro expander
+        bool in_macro_;
+
+        /// Stack to hold evaluation environments
+        vector<EvaluationPhase> evaluation_phases_;
     };
 }
 

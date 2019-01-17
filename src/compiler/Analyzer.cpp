@@ -31,13 +31,18 @@
 namespace electrum {
 
     Analyzer::Analyzer() : is_quoting_(false),
-                           is_quasi_quoting_(false) {
+                           is_quasi_quoting_(false),
+                           in_macro_(false) {
     }
 
-    shared_ptr<AnalyzerNode> Analyzer::analyze(shared_ptr<ASTNode> form, uint64_t depth) {
-        auto node = analyzeForm(form);
+    shared_ptr<AnalyzerNode> Analyzer::analyze(shared_ptr<ASTNode> form, uint64_t depth, EvaluationPhase phase) {
+        push_evaluation_phase(phase);
 
+        auto node = analyzeForm(form);
         run_passes(node, depth);
+
+        pop_evaluation_phase();
+        assert(evaluation_phases_.empty());
 
         return node;
     }
@@ -182,6 +187,13 @@ namespace electrum {
 
         auto globalResult = global_env_.find(*symName);
         if (globalResult != global_env_.end()) {
+            auto def = globalResult->second;
+
+            if(in_macro_ && !(def.phase & kEvaluationPhaseCompileTime)) {
+                throw CompilerException("The symbol " + *symName + " is not visible to the compiler",
+                        form->sourcePosition);
+            }
+
             auto node = make_shared<VarLookupNode>();
             node->sourcePosition = form->sourcePosition;
             node->name = form->stringValue;
@@ -515,6 +527,9 @@ namespace electrum {
         auto body = std::make_shared<DoAnalyzerNode>();
         body->sourcePosition = listPtr->at(3)->sourcePosition;
 
+        auto last_macro_val = in_macro_;
+        in_macro_ = true;
+
         // Add all but the last statements to 'statements'
         for (auto it = listPtr->begin() + 3; it < listPtr->end() - 1; ++it) {
             body->statements.push_back(analyzeForm(*it));
@@ -522,6 +537,8 @@ namespace electrum {
 
         // Add the last statement to 'returnValue'
         body->returnValue = analyzeForm(*(listPtr->end() - 1));
+
+        in_macro_ = last_macro_val;
 
         auto node = std::make_shared<DefMacroAnalyzerNode>();
 
@@ -601,7 +618,12 @@ namespace electrum {
 
         auto name = listPtr->at(1)->stringValue;
         auto valueNode = analyzeForm(listPtr->at(2));
-        global_env_[*name] = valueNode;
+
+        AnalyzerDefinition d;
+        d.phase = current_evaluation_phase();
+        d.node = valueNode;
+
+        global_env_[*name] = d;
 
         auto node = std::make_shared<DefAnalyzerNode>();
         node->sourcePosition = form->sourcePosition;
@@ -688,7 +710,11 @@ namespace electrum {
         node->return_type = ret_type;
         node->arg_types = args;
 
-        global_env_[*binding] = node;
+        AnalyzerDefinition d;
+        d.phase = current_evaluation_phase();
+        d.node = node;
+
+        global_env_[*binding] = d;
 
         return node;
     }
@@ -755,6 +781,8 @@ namespace electrum {
         node->sourcePosition = form->sourcePosition;
         node->phases = phases;
 
+        push_evaluation_phase(phases);
+
         // Add all but the last form to body
         for (auto it = listPtr->begin() + 2; it < listPtr->end() - 1; ++it) {
             node->body.push_back(analyzeForm(*it));
@@ -762,6 +790,8 @@ namespace electrum {
 
         // Add the last form to 'last'
         node->last = analyzeForm(*(listPtr->end() - 1));
+
+        pop_evaluation_phase();
 
         return node;
     }
@@ -771,7 +801,7 @@ namespace electrum {
         auto result = global_env_.find(name);
 
         if (result != global_env_.end()) {
-            return result->second;
+            return result->second.node;
         }
 
         return nullptr;
@@ -801,6 +831,21 @@ namespace electrum {
 
     void Analyzer::store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue) {
         local_envs_.at(local_envs_.size() - 1)[name] = initialValue;
+    }
+
+    void Analyzer::push_evaluation_phase(EvaluationPhase phase) {
+        evaluation_phases_.push_back(phase);
+    }
+
+    EvaluationPhase Analyzer::pop_evaluation_phase() {
+        assert(!evaluation_phases_.empty());
+        auto p = evaluation_phases_.back();
+        evaluation_phases_.pop_back();
+        return p;
+    }
+
+    EvaluationPhase Analyzer::current_evaluation_phase() {
+        return evaluation_phases_.back();
     }
 
 

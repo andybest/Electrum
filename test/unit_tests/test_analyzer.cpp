@@ -211,9 +211,9 @@ TEST(Analyzer, collectsClosedOversInLambda) {
 
     EXPECT_EQ(outerLambda->arg_name_nodes.size(), 1);
     EXPECT_EQ(outerLambda->closed_overs.size(), 0);
-    
+
     EXPECT_EQ(outerLambda->body->nodeType(), kAnalyzerNodeTypeDo);
-    
+
     auto body = std::dynamic_pointer_cast<DoAnalyzerNode>(outerLambda->body);
     EXPECT_EQ(body->returnValue->nodeType(), kAnalyzerNodeTypeLambda);
     auto innerLambda = std::dynamic_pointer_cast<LambdaAnalyzerNode>(body->returnValue);
@@ -239,10 +239,10 @@ TEST(Analyzer, doesNotTreatGlobalVarAsClosedOver) {
 
 TEST(Analyzer, analyzesDefFFIFn) {
     PARSE_STRING("(def-ffi-fn* binding c_func :el (:el :el))");
-    
+
     Analyzer an;
     auto node = an.analyze(val);
-    
+
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDefFFIFunction);
     auto ffiNode = std::dynamic_pointer_cast<DefFFIFunctionNode>(node);
 
@@ -397,4 +397,14 @@ TEST(Analyzer, analyzesEvalWhenLoad) {
     auto evalWhenNode = std::dynamic_pointer_cast<EvalWhenAnalyzerNode>(node);
     EXPECT_FALSE(evalWhenNode->phases & kEvaluationPhaseCompileTime);
     EXPECT_TRUE(evalWhenNode->phases & kEvaluationPhaseLoadTime);
+}
+
+TEST(Analyzer, rejectsMacroReferingToSymbolNotVisibleToCompilationPhase) {
+    PARSE_STRING("(eval-when (:load)"
+                 "(def test 1)"
+                 "(defmacro foo () test)");
+
+    Analyzer an;
+
+    EXPECT_ANY_THROW(an.analyze(val));
 }
