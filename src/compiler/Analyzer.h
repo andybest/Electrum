@@ -429,7 +429,7 @@ namespace electrum {
         /// Flag to specify whether the analyzer is inside a quoted form
         bool is_quoting_;
 
-        /// Flag to specify whether the analuzer is currently insize a quasiquoted form
+        /// Flag to specify whether the analyzer is currently inside a quasiquoted form
         bool is_quasi_quoting_;
     };
 }
