@@ -399,7 +399,7 @@ TEST(Analyzer, analyzesEvalWhenLoad) {
     EXPECT_TRUE(evalWhenNode->phases & kEvaluationPhaseLoadTime);
 }
 
-TEST(Analyzer, rejectsMacroReferingToSymbolNotVisibleToCompilationPhase) {
+TEST(Analyzer, rejectsMacroReferringToGlobalSymbolNotVisibleToCompilationPhase) {
     PARSE_STRING("(eval-when (:load)"
                  "(def test 1)"
                  "(defmacro foo () test)");
