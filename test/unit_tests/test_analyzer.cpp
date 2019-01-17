@@ -359,3 +359,42 @@ TEST(Analyzer, calculatesNodeDepth) {
     EXPECT_EQ(ifNode2->consequent->node_depth, 2);
     EXPECT_EQ(ifNode2->alternative->node_depth, 2);
 }
+
+TEST(Analyzer, analyzesEvalWhen) {
+    PARSE_STRING("(eval-when (:compile :load) (if #t 123 456))");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeEvalWhen);
+
+    auto evalWhenNode = std::dynamic_pointer_cast<EvalWhenAnalyzerNode>(node);
+    EXPECT_TRUE(evalWhenNode->phases & kEvaluationPhaseCompileTime);
+    EXPECT_TRUE(evalWhenNode->phases & kEvaluationPhaseLoadTime);
+}
+
+TEST(Analyzer, analyzesEvalWhenCompile) {
+    PARSE_STRING("(eval-when (:compile) (if #t 123 456))");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeEvalWhen);
+
+    auto evalWhenNode = std::dynamic_pointer_cast<EvalWhenAnalyzerNode>(node);
+    EXPECT_TRUE(evalWhenNode->phases & kEvaluationPhaseCompileTime);
+    EXPECT_FALSE(evalWhenNode->phases & kEvaluationPhaseLoadTime);
+}
+
+TEST(Analyzer, analyzesEvalWhenLoad) {
+    PARSE_STRING("(eval-when (:load) (if #t 123 456))");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeEvalWhen);
+
+    auto evalWhenNode = std::dynamic_pointer_cast<EvalWhenAnalyzerNode>(node);
+    EXPECT_FALSE(evalWhenNode->phases & kEvaluationPhaseCompileTime);
+    EXPECT_TRUE(evalWhenNode->phases & kEvaluationPhaseLoadTime);
+}

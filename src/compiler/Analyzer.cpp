@@ -742,9 +742,9 @@ namespace electrum {
                                         p->sourcePosition);
             }
 
-            if (*p->stringValue == ":compile") {
+            if (*p->stringValue == "compile") {
                 phases |= kEvaluationPhaseCompileTime;
-            } else if (*p->stringValue == ":load") {
+            } else if (*p->stringValue == "load") {
                 phases |= kEvaluationPhaseLoadTime;
             } else {
                 throw CompilerException("Unknown eval-when phase", p->sourcePosition);
