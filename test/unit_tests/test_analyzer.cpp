@@ -35,7 +35,7 @@ TEST(Analyzer, analyzesConstantInteger) {
     PARSE_STRING("1234");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
     auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
@@ -47,7 +47,7 @@ TEST(Analyzer, analyzesConstantFloat) {
     PARSE_STRING("1234.5678");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
     auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
@@ -59,7 +59,7 @@ TEST(Analyzer, analyzesConstantBooleanTrue) {
     PARSE_STRING("#t");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
     auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
@@ -71,7 +71,7 @@ TEST(Analyzer, analyzesConstantBooleanFalse) {
     PARSE_STRING("#f");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
     auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
@@ -83,7 +83,7 @@ TEST(Analyzer, analyzesConstantString) {
     PARSE_STRING("\"foo\"");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
     auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
@@ -95,7 +95,7 @@ TEST(Analyzer, analyzesConstantKeyword) {
     PARSE_STRING(":foo");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
     auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
@@ -107,7 +107,7 @@ TEST(Analyzer, analyzesConstantNil) {
     PARSE_STRING("nil");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstant);
     auto constantNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node);
@@ -118,7 +118,7 @@ TEST(Analyzer, analyzesDo) {
     PARSE_STRING("(do 123 456 789)");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDo);
     auto doNode = std::dynamic_pointer_cast<DoAnalyzerNode>(node);
@@ -135,7 +135,7 @@ TEST(Analyzer, analyzesLambda) {
     PARSE_STRING("(lambda (x) 1234)");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeLambda);
     auto lambdaNode = std::dynamic_pointer_cast<LambdaAnalyzerNode>(node);
@@ -161,7 +161,7 @@ TEST(Analyzer, analyzesLambda) {
 TEST(Analyzer, analyzesInvoke) {
     PARSE_STRING("((lambda (x y) 42) 1 2)");
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeMaybeInvoke);
     auto invokeNode = std::dynamic_pointer_cast<MaybeInvokeAnalyzerNode>(node);
@@ -183,7 +183,7 @@ TEST(Analyzer, analyzesDefAndSavesToAnalyzerEnvironment) {
     PARSE_STRING("(def a 1234)");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     auto envVal = an.initialBindingWithName("a");
     EXPECT_NE(envVal, nullptr);
@@ -204,8 +204,7 @@ TEST(Analyzer, collectsClosedOversInLambda) {
     PARSE_STRING("(lambda (a) (lambda () a))");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
-    an.closedOversForNode(node);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeLambda);
     auto outerLambda = std::dynamic_pointer_cast<LambdaAnalyzerNode>(node);
@@ -227,8 +226,7 @@ TEST(Analyzer, doesNotTreatGlobalVarAsClosedOver) {
     PARSE_STRING("(do (def a 1) (lambda () a))");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
-    an.closedOversForNode(node);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDo);
     auto doNode = std::dynamic_pointer_cast<DoAnalyzerNode>(node);
@@ -243,7 +241,7 @@ TEST(Analyzer, analyzesDefFFIFn) {
     PARSE_STRING("(def-ffi-fn* binding c_func :el (:el :el))");
     
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
     
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDefFFIFunction);
     auto ffiNode = std::dynamic_pointer_cast<DefFFIFunctionNode>(node);
@@ -262,7 +260,7 @@ TEST(Analyzer, analyzesQuotedList) {
     PARSE_STRING("'(1 2 a)");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstantList);
     auto listNode = std::dynamic_pointer_cast<ConstantListAnalyzerNode>(node);
@@ -288,7 +286,7 @@ TEST(Analyzer, analyzesDefMacro) {
     PARSE_STRING("(defmacro x (y) 'y)");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDefMacro);
     auto defMacroNode = std::dynamic_pointer_cast<DefMacroAnalyzerNode>(node);
@@ -315,7 +313,7 @@ TEST(Analyzer, analyzesMacroExpansion) {
     PARSE_STRING("(do (defmacro x (y) 'y) (x 1))");
 
     Analyzer an;
-    auto node = an.analyzeForm(val);
+    auto node = an.analyze(val);
 
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDo);
     auto doNode = std::dynamic_pointer_cast<DoAnalyzerNode>(node);

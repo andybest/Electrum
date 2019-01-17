@@ -34,6 +34,15 @@ namespace electrum {
                            is_quasi_quoting_(false) {
     }
 
+    shared_ptr<AnalyzerNode> Analyzer::analyze(shared_ptr<ASTNode> form, uint64_t depth) {
+        auto node = analyzeForm(form);
+
+        analyze_closed_overs(node);
+        run_passes(node);
+
+        return node;
+    }
+
     shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode> form) {
 
         switch (form->tag) {
@@ -58,7 +67,7 @@ namespace electrum {
         return shared_ptr<AnalyzerNode>();
     }
 
-    vector<string> Analyzer::closedOversForNode(const shared_ptr<AnalyzerNode> node) {
+    vector<string> Analyzer::analyze_closed_overs(const shared_ptr<AnalyzerNode> node) {
         if (node->collected_closed_overs) {
             return node->closed_overs;
         }
@@ -66,7 +75,7 @@ namespace electrum {
         vector<string> closed_overs;
 
         for (auto child: node->children()) {
-            for (auto v: closedOversForNode(child)) {
+            for (auto v: analyze_closed_overs(child)) {
                 closed_overs.push_back(v);
             }
         }
@@ -106,6 +115,44 @@ namespace electrum {
         node->collected_closed_overs = true;
 
         return closed_overs;
+    }
+
+    void Analyzer::update_depth_for_node(const shared_ptr<AnalyzerNode> node, uint64_t starting_depth) {
+        if(node->node_depth >= 0) {
+            return;
+        }
+
+        node->node_depth = starting_depth;
+
+        for(auto c: node->children()) {
+            switch(c->nodeType()) {
+                case kAnalyzerNodeTypeEvalWhen: // Anything below an eval-when still counts as top level.
+                case kAnalyzerNodeTypeDo:
+                    break;
+                default: {
+                    update_depth_for_node(c, starting_depth + 1);
+                }
+            }
+        }
+    }
+
+    void Analyzer::assert_eval_when_for_compile_is_top_level(shared_ptr<AnalyzerNode> node) {
+        if(node->nodeType() == kAnalyzerNodeTypeEvalWhen && node->node_depth > 0) {
+            throw CompilerException("eval-when forms can only be used at the top-level.",
+                    node->sourcePosition);
+        }
+
+        for(auto c: node->children()) {
+            assert_eval_when_for_compile_is_top_level(c);
+        }
+    }
+
+    void Analyzer::run_passes(std::shared_ptr<electrum::AnalyzerNode> node) {
+        // Calculate the depth for each node
+        update_depth_for_node(node, node_depth_);
+
+        // If any eval-when forms appear that are not top-level, throw an error.
+        assert_eval_when_for_compile_is_top_level(node);
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
@@ -661,6 +708,57 @@ namespace electrum {
         return node;
     }
 
+    shared_ptr<AnalyzerNode> Analyzer::analyzeEvalWhen(shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto listPtr = form->listValue;
+        assert(!listPtr->empty());
+
+        // (eval-when (:compile :load) ...)
+
+        if (listPtr->size() < 2) {
+            throw CompilerException("eval-when forms must have a list of evaluation environments",
+                                    form->sourcePosition);
+        }
+
+        if (listPtr->at(1)->tag != kTypeTagList) {
+            throw CompilerException("Expected a list",
+                                    listPtr->at(1)->sourcePosition);
+        }
+
+        EvaluationPhase phases = kEvaluationPhaseNone;
+
+        for(auto p: *listPtr->at(1)->listValue) {
+            if(p->tag != kTypeTagKeyword) {
+                throw CompilerException("eval-when phase must be a keyword",
+                        p->sourcePosition);
+            }
+
+            if(*p->stringValue == ":compile") {
+                phases |= kEvaluationPhaseCompileTime;
+            } else if(*p->stringValue == ":load") {
+                phases |= kEvaluationPhaseLoadTime;
+            } else {
+                throw CompilerException("Unknown eval-when phase", p->sourcePosition);
+            }
+        }
+
+        auto node = make_shared<EvalWhenAnalyzerNode>();
+        node->sourcePosition = form->sourcePosition;
+        node->phases = phases;
+
+        // Add all but the last form to body
+        for (auto it = listPtr->begin() + 2; it < listPtr->end() - 1; ++it) {
+            node->body.push_back(analyzeForm(*it));
+        }
+
+        // Add the last form to 'last'
+        node->last = analyzeForm(*(listPtr->end() - 1));
+
+        return node;
+    }
+
+
+
     shared_ptr<AnalyzerNode> Analyzer::initialBindingWithName(const std::string &name) {
         auto result = global_env_.find(name);
 
@@ -696,4 +794,6 @@ namespace electrum {
     void Analyzer::store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue) {
         local_envs_.at(local_envs_.size() - 1)[name] = initialValue;
     }
+
+
 }

@@ -27,6 +27,7 @@
 #define ELECTRUM_ANALYZER_H
 
 #include "types/Types.h"
+#include "EvaluationPhase.h"
 #include <memory>
 #include <boost/variant.hpp>
 #include <string>
@@ -51,7 +52,8 @@ namespace electrum {
         kAnalyzerNodeTypeMaybeInvoke,
         kAnalyzerNodeTypeMacroExpand,
         kAnalyzerNodeTypeDefFFIFunction,
-        kAnalyzerNodeTypeConstantList
+        kAnalyzerNodeTypeConstantList,
+        kAnalyzerNodeTypeEvalWhen
     };
 
 
@@ -64,6 +66,8 @@ namespace electrum {
         vector <string> closed_overs;
 
         bool collected_closed_overs;
+
+        int64_t node_depth = -1;
 
         virtual vector <shared_ptr<AnalyzerNode>> children() { return {}; };
 
@@ -230,7 +234,7 @@ namespace electrum {
         }
     };
 
-    class MacroExpandAnalyzerNode: public AnalyzerNode {
+    class MacroExpandAnalyzerNode : public AnalyzerNode {
     public:
         /// Expander to call
         shared_ptr<AnalyzerNode> macro;
@@ -307,17 +311,54 @@ namespace electrum {
         }
     };
 
+    class EvalWhenAnalyzerNode : public AnalyzerNode {
+    public:
+        /// Which evaluation phases the body will be evaluated in
+        EvaluationPhase phases;
+
+        /// All but the last body form
+        vector <shared_ptr<AnalyzerNode>> body;
+
+        /// The last body form (returned value)
+        shared_ptr<AnalyzerNode> last;
+
+        AnalyzerNodeType nodeType() override {
+            return kAnalyzerNodeTypeEvalWhen;
+        }
+
+        vector <shared_ptr<AnalyzerNode>> children() override {
+            vector<shared_ptr<AnalyzerNode>> c;
+
+            for (const auto &b: body) {
+                c.push_back(b);
+            }
+
+            c.push_back(last);
+
+            return c;
+        }
+    };
+
     class Analyzer {
     public:
         Analyzer();
 
+        shared_ptr<AnalyzerNode> analyze(shared_ptr<ASTNode> form, uint64_t depth = 0);
+
         shared_ptr<AnalyzerNode> initialBindingWithName(const std::string &name);
+
+    private:
 
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
 
-        vector <string> closedOversForNode(shared_ptr<AnalyzerNode> node);
+        vector <string> analyze_closed_overs(shared_ptr <AnalyzerNode> node);
 
-    private:
+        void run_passes(shared_ptr<AnalyzerNode> node);
+
+        void update_depth_for_node(shared_ptr<AnalyzerNode> node, uint64_t starting_depth = 0);
+
+        void assert_eval_when_for_compile_is_top_level(shared_ptr<AnalyzerNode> node);
+
         shared_ptr<AnalyzerNode> analyzeSymbol(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> analyzeInteger(shared_ptr<ASTNode> form);
@@ -340,7 +381,7 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> analyzeLambda(shared_ptr<ASTNode> form);
 
-        shared_ptr<AnalyzerNode> analyzeMacro(const shared_ptr<ASTNode> form);
+        shared_ptr<AnalyzerNode> analyzeMacro(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> analyzeMacroExpand(shared_ptr<ASTNode> form);
 
@@ -351,6 +392,8 @@ namespace electrum {
         shared_ptr<AnalyzerNode> analyzeDefFFIFn(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> analyzeQuote(shared_ptr<ASTNode> form);
+
+        shared_ptr<AnalyzerNode> analyzeEvalWhen(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr<string> symbolName, shared_ptr<ASTNode> form);
 
@@ -373,7 +416,8 @@ namespace electrum {
                 {"defmacro",    &Analyzer::analyzeMacro},
                 {"def",         &Analyzer::analyzeDef},
                 {"def-ffi-fn*", &Analyzer::analyzeDefFFIFn},
-                {"quote",       &Analyzer::analyzeQuote}
+                {"quote",       &Analyzer::analyzeQuote},
+                {"eval-when",   &Analyzer::analyzeEvalWhen}
         };
 
         /// Holds global macros
@@ -388,6 +432,9 @@ namespace electrum {
 
         /// Flag to specify whether the analuzer is currently insize a quasiquoted form
         bool is_quasi_quoting_;
+
+        /// How many nodes deep the analyzer is
+        uint64_t node_depth_;
     };
 }
 

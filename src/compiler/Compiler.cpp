@@ -59,8 +59,9 @@ namespace electrum {
     void *Compiler::compile_and_eval_string(std::string str) {
         Parser p;
         auto ast = p.readString(str);
-        auto node = _analyzer.analyzeForm(ast);
-        _analyzer.closedOversForNode(node);
+
+        // Analyze as a top level form
+        auto node = _analyzer.analyze(ast, 0);
 
         return compile_and_eval_node(node);
     }

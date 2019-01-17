@@ -39,6 +39,8 @@ namespace electrum {
 
 #pragma mark Current Function
 
+
+
     void CompilerContext::push_new_function(llvm::FunctionType *func_type, std::string name) {
         auto f = llvm::dyn_cast<llvm::Function>(current_module()->getOrInsertFunction(name, func_type));
         push_func(f);
@@ -63,7 +65,7 @@ namespace electrum {
     }
 
     bool CompilerContext::is_top_level() {
-        return func_stack.size() == 0;
+        return func_stack.empty();
     }
 
 #pragma mark Local Environment
@@ -95,15 +97,15 @@ namespace electrum {
 
 #pragma mark Evaluation Context
 
-    EvaluationContext CompilerContext::current_evaluation_context() {
+    EvaluationPhase CompilerContext::current_evaluation_context() {
         if(evaluation_context_stack.empty()) {
-            return kEvaluationContextRuntime;
+            return kEvaluationPhaseLoadTime;
         } else {
             return evaluation_context_stack.back();
         }
     }
 
-    void CompilerContext::push_evaluation_context(EvaluationContext ctx) {
+    void CompilerContext::push_evaluation_context(EvaluationPhase ctx) {
         evaluation_context_stack.push_back(ctx);
     }
 

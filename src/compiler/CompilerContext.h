@@ -32,6 +32,7 @@
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
+#include "EvaluationPhase.h"
 
 namespace electrum {
         struct GlobalDef {
@@ -39,23 +40,13 @@ namespace electrum {
         std::string mangled_name;
     };
 
-    /// Values that represent the context in which the currently compiling expression will be evaluated in
-    enum EvaluationContext {
-        kEvaluationContextNone = 0,
-
-        /// The expression will be evaluated at runtime
-                kEvaluationContextRuntime = 1 << 0,
-
-        /// The expression will be evaluated at compile time
-                kEvaluationContextCompileTime = 1 << 1
-    };
 
     struct TopLevelInitializerDef {
-        /// The contexts in which this initializer will be evaluated
-        EvaluationContext evaluation_contexts = kEvaluationContextNone;
+        /// The phases in which this initializer will be evaluated
+        EvaluationPhase evaluation_phases = kEvaluationPhaseNone;
 
-        /// Which contexts the initializer has been evaluated in already
-        EvaluationContext evaluated_in = kEvaluationContextNone;
+        /// Which phases the initializer has been evaluated in already
+        EvaluationPhase evaluated_in = kEvaluationPhaseNone;
 
         // The initializer function
         llvm::Function *func;
@@ -75,7 +66,7 @@ namespace electrum {
     public:
         std::vector<TopLevelInitializerDef> top_level_initializers;
 
-        std::vector<EvaluationContext> evaluation_context_stack;
+        std::vector<EvaluationPhase> evaluation_context_stack;
 
         /// The global macro expanders
         std::unordered_map<std::string, std::shared_ptr<GlobalDef>> global_macros;
@@ -124,9 +115,9 @@ namespace electrum {
 
         /* Evaluation Context */
 
-        EvaluationContext current_evaluation_context();
+        EvaluationPhase current_evaluation_context();
 
-        void push_evaluation_context(EvaluationContext ctx);
+        void push_evaluation_context(EvaluationPhase ctx);
 
         void pop_evaluation_context();
 
