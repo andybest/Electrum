@@ -37,8 +37,7 @@ namespace electrum {
     shared_ptr<AnalyzerNode> Analyzer::analyze(shared_ptr<ASTNode> form, uint64_t depth) {
         auto node = analyzeForm(form);
 
-        analyze_closed_overs(node);
-        run_passes(node);
+        run_passes(node, depth);
 
         return node;
     }
@@ -118,38 +117,44 @@ namespace electrum {
     }
 
     void Analyzer::update_depth_for_node(const shared_ptr<AnalyzerNode> node, uint64_t starting_depth) {
-        if(node->node_depth >= 0) {
+        if (node->node_depth >= 0) {
             return;
         }
 
         node->node_depth = starting_depth;
 
-        for(auto c: node->children()) {
-            switch(c->nodeType()) {
-                case kAnalyzerNodeTypeEvalWhen: // Anything below an eval-when still counts as top level.
-                case kAnalyzerNodeTypeDo:
-                    break;
-                default: {
-                    update_depth_for_node(c, starting_depth + 1);
-                }
-            }
+        uint64_t new_depth;
+
+        switch (node->nodeType()) {
+            case kAnalyzerNodeTypeEvalWhen:
+            case kAnalyzerNodeTypeDo:
+                new_depth = starting_depth;
+                break;
+            default:
+                new_depth = starting_depth + 1;
+        }
+
+        for (const auto &c: node->children()) {
+            update_depth_for_node(c, new_depth);
         }
     }
 
     void Analyzer::assert_eval_when_for_compile_is_top_level(shared_ptr<AnalyzerNode> node) {
-        if(node->nodeType() == kAnalyzerNodeTypeEvalWhen && node->node_depth > 0) {
+        if (node->nodeType() == kAnalyzerNodeTypeEvalWhen && node->node_depth > 0) {
             throw CompilerException("eval-when forms can only be used at the top-level.",
-                    node->sourcePosition);
+                                    node->sourcePosition);
         }
 
-        for(auto c: node->children()) {
+        for (auto c: node->children()) {
             assert_eval_when_for_compile_is_top_level(c);
         }
     }
 
-    void Analyzer::run_passes(std::shared_ptr<electrum::AnalyzerNode> node) {
+    void Analyzer::run_passes(std::shared_ptr<electrum::AnalyzerNode> node, uint64_t depth) {
+        analyze_closed_overs(node);
+
         // Calculate the depth for each node
-        update_depth_for_node(node, node_depth_);
+        update_depth_for_node(node, depth);
 
         // If any eval-when forms appear that are not top-level, throw an error.
         assert_eval_when_for_compile_is_top_level(node);
@@ -264,7 +269,7 @@ namespace electrum {
 
                 // Check for macro
                 auto result = global_macros_.find(*firstItemForm->stringValue);
-                if(result != global_macros_.end()) {
+                if (result != global_macros_.end()) {
                     return analyzeMacroExpand(form);
                 }
             }
@@ -387,8 +392,10 @@ namespace electrum {
 
         auto argList = listPtr->at(1)->listValue;
 
-        std::vector<shared_ptr<AnalyzerNode>> argNameNodes;
-        std::vector<shared_ptr<std::string>> argNames;
+        std::vector<shared_ptr<AnalyzerNode>>
+                argNameNodes;
+        std::vector<shared_ptr<std::string>>
+                argNames;
 
         for (auto arg: *argList) {
             if (arg->tag != kTypeTagSymbol) {
@@ -474,8 +481,10 @@ namespace electrum {
 
         auto argList = listPtr->at(2)->listValue;
 
-        std::vector<shared_ptr<AnalyzerNode>> argNameNodes;
-        std::vector<shared_ptr<std::string>> argNames;
+        std::vector<shared_ptr<AnalyzerNode>>
+                argNameNodes;
+        std::vector<shared_ptr<std::string>>
+                argNames;
 
         for (const auto &arg: *argList) {
             if (arg->tag != kTypeTagSymbol) {
@@ -538,11 +547,11 @@ namespace electrum {
         auto macroName = listPtr->at(0)->stringValue;
 
         auto result = global_macros_.find(*macroName);
-        if(result == global_macros_.end()) {
+        if (result == global_macros_.end()) {
             // This shouldn't be able to happen, as the macro has already been looked up before
             // this method was invoked.
             throw CompilerException("Fatal error, could not find macro!",
-                    form->sourcePosition);
+                                    form->sourcePosition);
         }
 
         auto macro = result->second;
@@ -727,15 +736,15 @@ namespace electrum {
 
         EvaluationPhase phases = kEvaluationPhaseNone;
 
-        for(auto p: *listPtr->at(1)->listValue) {
-            if(p->tag != kTypeTagKeyword) {
+        for (auto p: *listPtr->at(1)->listValue) {
+            if (p->tag != kTypeTagKeyword) {
                 throw CompilerException("eval-when phase must be a keyword",
-                        p->sourcePosition);
+                                        p->sourcePosition);
             }
 
-            if(*p->stringValue == ":compile") {
+            if (*p->stringValue == ":compile") {
                 phases |= kEvaluationPhaseCompileTime;
-            } else if(*p->stringValue == ":load") {
+            } else if (*p->stringValue == ":load") {
                 phases |= kEvaluationPhaseLoadTime;
             } else {
                 throw CompilerException("Unknown eval-when phase", p->sourcePosition);
@@ -756,7 +765,6 @@ namespace electrum {
 
         return node;
     }
-
 
 
     shared_ptr<AnalyzerNode> Analyzer::initialBindingWithName(const std::string &name) {

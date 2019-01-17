@@ -348,12 +348,11 @@ namespace electrum {
         shared_ptr<AnalyzerNode> initialBindingWithName(const std::string &name);
 
     private:
-
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
 
         vector <string> analyze_closed_overs(shared_ptr <AnalyzerNode> node);
 
-        void run_passes(shared_ptr<AnalyzerNode> node);
+        void run_passes(shared_ptr<AnalyzerNode> node, uint64_t depth = 0);
 
         void update_depth_for_node(shared_ptr<AnalyzerNode> node, uint64_t starting_depth = 0);
 
@@ -432,9 +431,6 @@ namespace electrum {
 
         /// Flag to specify whether the analuzer is currently insize a quasiquoted form
         bool is_quasi_quoting_;
-
-        /// How many nodes deep the analyzer is
-        uint64_t node_depth_;
     };
 }
 

@@ -335,3 +335,27 @@ TEST(Analyzer, analyzesMacroExpansion) {
     EXPECT_EQ(*macroNode->name, "x");
     EXPECT_EQ(macroNode->arg_names.size(), 1);
 }
+
+TEST(Analyzer, calculatesNodeDepth) {
+    PARSE_STRING("(do (if #t (if #f 1 2) 3))");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    auto doNode = std::dynamic_pointer_cast<DoAnalyzerNode>(node);
+    EXPECT_EQ(doNode->node_depth, 0);
+
+    auto ifNode1 = std::dynamic_pointer_cast<IfAnalyzerNode>(doNode->returnValue);
+    // Do node should not affect node depth
+    EXPECT_EQ(ifNode1->node_depth, 0);
+
+    EXPECT_EQ(ifNode1->condition->node_depth, 1);
+    EXPECT_EQ(ifNode1->consequent->node_depth, 1);
+    EXPECT_EQ(ifNode1->alternative->node_depth, 1);
+
+    auto ifNode2 = std::dynamic_pointer_cast<IfAnalyzerNode>(ifNode1->consequent);
+
+    EXPECT_EQ(ifNode2->condition->node_depth, 2);
+    EXPECT_EQ(ifNode2->consequent->node_depth, 2);
+    EXPECT_EQ(ifNode2->alternative->node_depth, 2);
+}
