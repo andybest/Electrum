@@ -400,11 +400,33 @@ TEST(Analyzer, analyzesEvalWhenLoad) {
 }
 
 TEST(Analyzer, rejectsMacroReferringToGlobalSymbolNotVisibleToCompilationPhase) {
-    PARSE_STRING("(eval-when (:load)"
-                 "(def test 1)"
-                 "(defmacro foo () test)");
+    PARSE_STRING("(do (eval-when (:load)"
+                 "  (def test 1))"
+                 "(defmacro foo () test))");
+
+    Analyzer an;
+    EXPECT_ANY_THROW(an.analyze(val));
+}
+
+TEST(Analyzer, doesNotRejectMacroReferringToGlobalSymbolWhenVisibleToCompilationPhase) {
+    PARSE_STRING("(do (eval-when (:load :compile)"
+                 "  (def test 1))"
+                 "(defmacro foo () test))");
+
+    Analyzer an;
+    EXPECT_NO_THROW(an.analyze(val));
+}
+
+TEST(Analyzer, updatesEvaluationPhasesOfAllNodes) {
+    PARSE_STRING("(eval-when (:load :compile)"
+                 "  1234"
+                 "  5.678)");
 
     Analyzer an;
 
-    EXPECT_ANY_THROW(an.analyze(val));
+    auto node = an.analyze(val);
+
+    for(const auto &c: node->children()) {
+        EXPECT_EQ(c->evaluation_phase, kEvaluationPhaseLoadTime | kEvaluationPhaseCompileTime);
+    }
 }

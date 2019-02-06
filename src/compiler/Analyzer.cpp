@@ -50,25 +50,29 @@ namespace electrum {
     shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode> form) {
 
         switch (form->tag) {
-            case kTypeTagInteger:
-                return analyzeInteger(form);
-            case kTypeTagFloat:
-                return analyzeFloat(form);
-            case kTypeTagBoolean:
-                return analyzeBoolean(form);
-            case kTypeTagString:
-                return analyzeString(form);
-            case kTypeTagKeyword:
-                return analyzeKeyword(form);
-            case kTypeTagSymbol:
-                return analyzeSymbol(form);
-            case kTypeTagList:
-                return analyzeList(form);
-            case kTypeTagNil:
-                return analyzeNil(form);
+            case kTypeTagInteger:return analyzeInteger(form);
+            case kTypeTagFloat:return analyzeFloat(form);
+            case kTypeTagBoolean:return analyzeBoolean(form);
+            case kTypeTagString:return analyzeString(form);
+            case kTypeTagKeyword:return analyzeKeyword(form);
+            case kTypeTagSymbol:return analyzeSymbol(form);
+            case kTypeTagList:return analyzeList(form);
+            case kTypeTagNil:return analyzeNil(form);
         }
 
         return shared_ptr<AnalyzerNode>();
+    }
+
+    vector<shared_ptr<AnalyzerNode>> Analyzer::collapse_top_level_forms(const shared_ptr<AnalyzerNode> node) {
+        if (node->node_depth > 0) {
+            return {node};
+        }
+
+        switch (node->nodeType()) {
+            case kAnalyzerNodeTypeDo: return node->children();
+            case kAnalyzerNodeTypeEvalWhen: return node->children();
+            default: return {node};
+        }
     }
 
     vector<string> Analyzer::analyze_closed_overs(const shared_ptr<AnalyzerNode> node) {
@@ -111,8 +115,7 @@ namespace electrum {
                 }
                 break;
             }
-            default:
-                break;
+            default:break;
         }
 
         node->closed_overs = closed_overs;
@@ -132,11 +135,9 @@ namespace electrum {
 
         switch (node->nodeType()) {
             case kAnalyzerNodeTypeEvalWhen:
-            case kAnalyzerNodeTypeDo:
-                new_depth = starting_depth;
+            case kAnalyzerNodeTypeDo:new_depth = starting_depth;
                 break;
-            default:
-                new_depth = starting_depth + 1;
+            default:new_depth = starting_depth + 1;
         }
 
         for (const auto &c: node->children()) {
@@ -155,6 +156,21 @@ namespace electrum {
         }
     }
 
+    void Analyzer::update_evaluation_phase(shared_ptr<AnalyzerNode> node, EvaluationPhase phase) {
+        EvaluationPhase p = phase;
+
+        if(node->nodeType() == kAnalyzerNodeTypeEvalWhen) {
+            auto evalWhenNode = std::dynamic_pointer_cast<EvalWhenAnalyzerNode>(node);
+            p = evalWhenNode->phases;
+        }
+
+        node->evaluation_phase = p;
+
+        for(auto c: node->children()) {
+            update_evaluation_phase(c, p);
+        }
+    }
+
     void Analyzer::run_passes(std::shared_ptr<electrum::AnalyzerNode> node, uint64_t depth) {
         analyze_closed_overs(node);
 
@@ -163,6 +179,9 @@ namespace electrum {
 
         // If any eval-when forms appear that are not top-level, throw an error.
         assert_eval_when_for_compile_is_top_level(node);
+
+        // Update the evaluation phase of all of the nodes, with a default of load time evaluation.
+        update_evaluation_phase(node, kEvaluationPhaseLoadTime);
     }
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
@@ -189,9 +208,9 @@ namespace electrum {
         if (globalResult != global_env_.end()) {
             auto def = globalResult->second;
 
-            if(in_macro_ && !(def.phase & kEvaluationPhaseCompileTime)) {
+            if (in_macro_ && !(def.phase & kEvaluationPhaseCompileTime)) {
                 throw CompilerException("The symbol " + *symName + " is not visible to the compiler",
-                        form->sourcePosition);
+                                        form->sourcePosition);
             }
 
             auto node = make_shared<VarLookupNode>();

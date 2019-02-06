@@ -70,6 +70,8 @@ namespace electrum {
 
         int64_t node_depth = -1;
 
+        EvaluationPhase evaluation_phase = kEvaluationPhaseNone;
+
         virtual vector <shared_ptr<AnalyzerNode>> children() { return {}; };
 
         virtual AnalyzerNodeType nodeType() = 0;
@@ -349,6 +351,8 @@ namespace electrum {
         shared_ptr<AnalyzerNode> initialBindingWithName(const std::string &name);
 
     private:
+        vector<shared_ptr<AnalyzerNode>> collapse_top_level_forms(const shared_ptr<AnalyzerNode> node);
+
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
 
         vector <string> analyze_closed_overs(shared_ptr <AnalyzerNode> node);
@@ -358,6 +362,8 @@ namespace electrum {
         void update_depth_for_node(shared_ptr<AnalyzerNode> node, uint64_t starting_depth = 0);
 
         void assert_eval_when_for_compile_is_top_level(shared_ptr<AnalyzerNode> node);
+
+        void update_evaluation_phase(shared_ptr<AnalyzerNode> node, EvaluationPhase phase);
 
         shared_ptr<AnalyzerNode> analyzeSymbol(shared_ptr<ASTNode> form);
 
