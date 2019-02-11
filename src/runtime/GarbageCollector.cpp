@@ -27,6 +27,7 @@
 #include "GarbageCollector.h"
 #include "stackmap/api.h"
 #include "Runtime.h"
+#include <cassert>
 
 namespace electrum {
 
@@ -294,8 +295,13 @@ extern "C" void rt_enter_gc_impl(void *stackPointer) {
  */
 extern "C" __attribute__((naked)) void rt_enter_gc() {
 #if __x86_64__
+#if __clang__
     asm("mov %rsp, %rdi\n"
         "jmp _rt_enter_gc_impl");
+#else
+    asm("mov %rsp, %rdi\n"
+        "jmp rt_enter_gc_impl");
+#endif
 #elif __aarch64__
     asm("mov x0, sp\n"
         "jmp _rt_enter_gc_impl");

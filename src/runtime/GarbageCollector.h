@@ -91,6 +91,7 @@ extern "C" {
 
 /* Exported functions */
 void rt_gc_init_stackmap(void *stackmap);
+void rt_enter_gc_impl(void*);
 
 #ifdef __cplusplus
 }

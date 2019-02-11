@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
+#include <cassert>
 
 namespace electrum {
 
