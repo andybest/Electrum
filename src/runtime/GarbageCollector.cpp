@@ -295,7 +295,7 @@ extern "C" void rt_enter_gc_impl(void *stackPointer) {
  */
 extern "C" __attribute__((naked)) void rt_enter_gc() {
 #if __x86_64__
-#if __clang__
+#if __APPLE__
     asm("mov %rsp, %rdi\n"
         "jmp _rt_enter_gc_impl");
 #else
