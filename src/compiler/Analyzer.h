@@ -350,8 +350,8 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> initialBindingWithName(const std::string &name);
 
+        vector<shared_ptr<AnalyzerNode>> collapse_top_level_forms(shared_ptr<AnalyzerNode> node);
     private:
-        vector<shared_ptr<AnalyzerNode>> collapse_top_level_forms(const shared_ptr<AnalyzerNode> node);
 
         shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
 

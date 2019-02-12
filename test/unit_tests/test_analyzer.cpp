@@ -430,3 +430,26 @@ TEST(Analyzer, updatesEvaluationPhasesOfAllNodes) {
         EXPECT_EQ(c->evaluation_phase, kEvaluationPhaseLoadTime | kEvaluationPhaseCompileTime);
     }
 }
+
+TEST(Analyzer, collapsesTopLevelForms) {
+    PARSE_STRING("(do 1234 (do 5678 1.234) (eval-when (:compile) (def a 1)))");
+
+    Analyzer an;
+
+    auto node = an.analyze(val);
+    auto nodes = an.collapse_top_level_forms(node);
+
+    EXPECT_EQ(nodes.size(), 4);
+
+    EXPECT_EQ(nodes[0]->nodeType(), kAnalyzerNodeTypeConstant);
+    EXPECT_EQ(nodes[1]->nodeType(), kAnalyzerNodeTypeConstant);
+    EXPECT_EQ(nodes[2]->nodeType(), kAnalyzerNodeTypeConstant);
+    EXPECT_EQ(nodes[3]->nodeType(), kAnalyzerNodeTypeDef);
+
+    EXPECT_EQ(nodes[0]->evaluation_phase, kEvaluationPhaseLoadTime);
+    EXPECT_EQ(nodes[1]->evaluation_phase, kEvaluationPhaseLoadTime);
+    EXPECT_EQ(nodes[2]->evaluation_phase, kEvaluationPhaseLoadTime);
+    // Evaluation phase should have been added by another pass before
+    // eval-when nodes are collapsed
+    EXPECT_EQ(nodes[3]->evaluation_phase, kEvaluationPhaseCompileTime);
+}

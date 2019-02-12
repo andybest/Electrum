@@ -69,8 +69,18 @@ namespace electrum {
         }
 
         switch (node->nodeType()) {
-            case kAnalyzerNodeTypeDo: return node->children();
-            case kAnalyzerNodeTypeEvalWhen: return node->children();
+            case kAnalyzerNodeTypeDo:
+            case kAnalyzerNodeTypeEvalWhen:
+            {
+                vector<shared_ptr<AnalyzerNode>> nodes;
+                for(auto c: node->children()) {
+                    for(auto r: collapse_top_level_forms(c)) {
+                        nodes.push_back(r);
+                    }
+                }
+
+                return nodes;
+            }
             default: return {node};
         }
     }
