@@ -35,11 +35,11 @@
 #include "EvaluationPhase.h"
 
 namespace electrum {
-        struct GlobalDef {
+
+    struct GlobalDef {
         std::string name;
         std::string mangled_name;
     };
-
 
     struct TopLevelInitializerDef {
         /// The phases in which this initializer will be evaluated
@@ -48,10 +48,8 @@ namespace electrum {
         /// Which phases the initializer has been evaluated in already
         EvaluationPhase evaluated_in = kEvaluationPhaseNone;
 
-        // The initializer function
-        llvm::Function *func;
-
-        explicit TopLevelInitializerDef(llvm::Function *func) : func(func) {};
+        /// The mangled name of the initializer function
+        std::string mangled_name;
     };
 
     class CompilerContext {

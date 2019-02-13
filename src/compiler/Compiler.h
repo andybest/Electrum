@@ -67,6 +67,8 @@ namespace electrum {
 
         void create_gc_entry();
 
+        TopLevelInitializerDef compile_top_level_node(std::shared_ptr<AnalyzerNode> node);
+
         void compile_node(std::shared_ptr<AnalyzerNode> node);
 
         void compile_constant(std::shared_ptr<ConstantValueAnalyzerNode> node);

@@ -62,8 +62,50 @@ namespace electrum {
 
         // Analyze as a top level form
         auto node = _analyzer.analyze(ast, 0);
+        auto toplevel_forms = _analyzer.collapse_top_level_forms(node);
+
+
 
         return compile_and_eval_node(node);
+    }
+
+    TopLevelInitializerDef Compiler::compile_top_level_node(std::shared_ptr<AnalyzerNode> node) {
+        static int cnt = 0;
+        std::stringstream ss;
+        ss << "toplevel_" << cnt;
+        auto mangled_name = ss.str();
+
+        TopLevelInitializerDef initializer;
+        initializer.mangled_name = mangled_name;
+        initializer.evaluation_phases = node->evaluation_phase;
+        initializer.evaluated_in = kEvaluationPhaseNone;
+
+        auto mainfunc = llvm::Function::Create(
+                llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace), false),
+                llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                mangled_name,
+                current_context()->current_module());
+
+        mainfunc->setGC("statepoint-example");
+
+        current_context()->push_func(mainfunc);
+
+        auto entry = llvm::BasicBlock::Create(llvm_context(), "entry", mainfunc);
+        _builder = std::make_unique<llvm::IRBuilder<>>(llvm_context());
+
+        _builder->SetInsertPoint(entry);
+        compile_node(std::move(node));
+
+        // Return result.
+        auto result = current_context()->pop_value();
+
+        // TODO: Figure out what to do with return values rather than adding as a root
+        build_gc_add_root(result);
+
+        _builder->CreateRet(result);
+        current_context()->pop_func();
+
+        return initializer;
     }
 
     void *Compiler::compile_and_eval_node(std::shared_ptr<AnalyzerNode> node) {
