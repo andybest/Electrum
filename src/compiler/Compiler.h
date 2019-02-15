@@ -107,7 +107,7 @@ namespace electrum {
 
         llvm::Value *make_keyword(std::shared_ptr<std::string> name);
 
-        llvm::Value *make_closure(uint64_t arity, llvm::Value *func_ptr, uint64_t envSize);
+        llvm::Value *make_closure(uint64_t arity, llvm::Value *func_ptr, uint64_t env_size);
 
         llvm::Value *make_pair(llvm::Value *v, llvm::Value *next);
 
@@ -115,7 +115,7 @@ namespace electrum {
 
         llvm::Value *make_var(llvm::Value *sym);
 
-        void build_set_var(llvm::Value *var, llvm::Value *newVal);
+        void build_set_var(llvm::Value *var, llvm::Value *new_val);
 
         llvm::Value *build_deref_var(llvm::Value *var);
 

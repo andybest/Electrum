@@ -163,14 +163,14 @@ namespace electrum {
     }
 
     void Compiler::create_gc_entry() {
-        auto gcType = llvm::FunctionType::get(llvm::Type::getVoidTy(current_context()->llvm_context()), false);
-        auto gcfunc = llvm::dyn_cast<llvm::Function>(current_context()->current_module()->getOrInsertFunction("gc.safepoint_poll", gcType));
+        auto gc_type = llvm::FunctionType::get(llvm::Type::getVoidTy(current_context()->llvm_context()), false);
+        auto gcfunc = llvm::dyn_cast<llvm::Function>(current_context()->current_module()->getOrInsertFunction("gc.safepoint_poll", gc_type));
 
         gcfunc->addFnAttr(llvm::Attribute::NoUnwind);
 
-        auto gcEntry = llvm::BasicBlock::Create(current_context()->llvm_context(), "entry", gcfunc);
+        auto gc_entry = llvm::BasicBlock::Create(current_context()->llvm_context(), "entry", gcfunc);
         llvm::IRBuilder<> b(current_context()->llvm_context());
-        b.SetInsertPoint(gcEntry);
+        b.SetInsertPoint(gc_entry);
 
         auto dogc = current_context()->current_module()->getOrInsertFunction("rt_enter_gc",
                                                  llvm::Type::getVoidTy(current_context()->llvm_context()));
@@ -346,35 +346,35 @@ namespace electrum {
         std::stringstream ss;
         ss << "lambda_" << cnt;
 
-        std::vector<llvm::Type *> argTypes;
+        std::vector<llvm::Type *> arg_types;
 
-        argTypes.reserve(node->arg_names.size() + 1);
+        arg_types.reserve(node->arg_names.size() + 1);
         for (int i = 0; i < node->arg_names.size(); ++i) {
-            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+            arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
         }
 
         // Add extra arg for closure, in order to ger environment values
-        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+        arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
 
-        auto lambdaType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
-                                                  argTypes,
+        auto lambda_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                  arg_types,
                                                   false);
 
         auto lambda = llvm::Function::Create(
-                lambdaType,
+                lambda_type,
                 llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                 ss.str(),
                 current_module());
 
         lambda->setGC("statepoint-example");
 
-        auto entryBlock = llvm::BasicBlock::Create(llvm_context(), "entry", lambda);
-        _builder->SetInsertPoint(entryBlock);
+        auto entry_block = llvm::BasicBlock::Create(llvm_context(), "entry", lambda);
+        _builder->SetInsertPoint(entry_block);
 
         std::unordered_map<std::string, llvm::Value *> local_env;
-        int argNum = 0;
+        int arg_num = 0;
         auto arg_it = lambda->args().begin();
         for (auto &arg_name : node->arg_names) {
             auto &arg = *arg_it;
@@ -382,7 +382,7 @@ namespace electrum {
 
             local_env[*arg_name] = &arg;
 
-            ++argNum;
+            ++arg_num;
             ++arg_it;
         }
 
@@ -434,8 +434,8 @@ namespace electrum {
 
         glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0)));
 
-        auto nameSym = make_symbol(node->name);
-        auto v = make_var(nameSym);
+        auto name_sym = make_symbol(node->name);
+        auto v = make_var(name_sym);
 
         build_gc_add_root(v);
 
@@ -471,15 +471,15 @@ namespace electrum {
 
         args.push_back(fn);
 
-        std::vector<llvm::Type *> argTypes;
+        std::vector<llvm::Type *> arg_types;
         for (uint64_t i = 0; i < node->args.size() + 1; ++i) {
-            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+            arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
         }
 
-        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+        arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
         auto fn_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
-                                               argTypes,
+                                               arg_types,
                                                false);
 
         auto fn_ptr = _builder->CreateFPCast(build_get_lambda_ptr(fn),
@@ -496,49 +496,49 @@ namespace electrum {
 
         // Create wrapper function with arg conversion and return type conversion
 
-        std::vector<llvm::Type *> argTypes;
+        std::vector<llvm::Type *> arg_types;
 
         // Add arguments for each argument we are passing the the FFI function
-        argTypes.reserve(node->arg_types.size());
+        arg_types.reserve(node->arg_types.size());
         for(int i = 0; i < node->arg_types.size(); i++) {
-            argTypes.push_back(llvm::PointerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+            arg_types.push_back(llvm::PointerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
         }
 
-        argTypes.push_back(llvm::PointerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+        arg_types.push_back(llvm::PointerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
-        auto ffiWrapperType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
-                                                  argTypes,
+        auto ffi_wrapper_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                  arg_types,
                                                   false);
 
         auto mangled_name = mangle_symbol_name("", *node->binding);
         auto wrapper_name = mangled_name + "_impl";
 
-        auto ffiWrapper = llvm::Function::Create(
-                ffiWrapperType,
+        auto ffi_wrapper = llvm::Function::Create(
+                ffi_wrapper_type,
                 llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                 mangle_symbol_name("", mangled_name),
                 current_module());
 
-        ffiWrapper->setGC("statepoint-example");
+        ffi_wrapper->setGC("statepoint-example");
 
-        auto entryBlock = llvm::BasicBlock::Create(llvm_context(), "entry", ffiWrapper);
-        _builder->SetInsertPoint(entryBlock);
+        auto entry_block = llvm::BasicBlock::Create(llvm_context(), "entry", ffi_wrapper);
+        _builder->SetInsertPoint(entry_block);
 
-        argTypes.pop_back();
+        arg_types.pop_back();
 
-        auto cFuncType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
-                argTypes,
+        auto c_func_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+                arg_types,
                 false);
-        auto cFunc = current_module()->getOrInsertFunction(*node->func_name, cFuncType);
+        auto c_func = current_module()->getOrInsertFunction(*node->func_name, c_func_type);
 
-        std::vector<llvm::Value *> cArgs;
+        std::vector<llvm::Value *> c_args;
 
-        for(auto it = ffiWrapper->arg_begin(); it != ffiWrapper->arg_end(); ++it) {
+        for(auto it = ffi_wrapper->arg_begin(); it != ffi_wrapper->arg_end(); ++it) {
             auto &arg = *it;
-            cArgs.push_back(dynamic_cast<llvm::Value*>(&arg));
+            c_args.push_back(dynamic_cast<llvm::Value*>(&arg));
         }
 
-        auto rv = _builder->CreateCall(cFunc, cArgs);
+        auto rv = _builder->CreateCall(c_func, c_args);
 
         _builder->CreateRet(rv);
 
@@ -556,8 +556,8 @@ namespace electrum {
 
         glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0)));
 
-        auto nameSym = make_symbol(node->binding);
-        auto v = make_var(nameSym);
+        auto name_sym = make_symbol(node->binding);
+        auto v = make_var(name_sym);
 
         build_gc_add_root(v);
 
@@ -565,7 +565,7 @@ namespace electrum {
         _builder->CreateStore(v, glob, false);
 
         // Set initial value for var
-        build_set_var(v, make_closure(node->arg_types.size(), ffiWrapper, 0));
+        build_set_var(v, make_closure(node->arg_types.size(), ffi_wrapper, 0));
 
         current_context()->push_value(make_nil());
 
@@ -583,34 +583,34 @@ namespace electrum {
         std::stringstream ss;
         ss << "MX_lambda_" << *node->name;
 
-        std::vector<llvm::Type *> argTypes;
+        std::vector<llvm::Type *> arg_types;
 
-        argTypes.reserve(node->arg_names.size() + 1);
+        arg_types.reserve(node->arg_names.size() + 1);
         for (int i = 0; i < node->arg_names.size(); ++i) {
-            argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+            arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
         }
 
         // Add extra arg for closure, in order to ger environment values
-        argTypes.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+        arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
 
-        auto expanderType = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
-                                                  argTypes,
+        auto expander_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                                  arg_types,
                                                   false);
 
         auto expander = llvm::Function::Create(
-                expanderType,
+                expander_type,
                 llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                 ss.str(),
                 current_module());
 
         expander->setGC("statepoint-example");
 
-        auto entryBlock = llvm::BasicBlock::Create(llvm_context(), "entry", expander);
-        _builder->SetInsertPoint(entryBlock);
+        auto entry_block = llvm::BasicBlock::Create(llvm_context(), "entry", expander);
+        _builder->SetInsertPoint(entry_block);
 
         std::unordered_map<std::string, llvm::Value *> local_env;
-        int argNum = 0;
+        int arg_num = 0;
         auto arg_it = expander->args().begin();
         for (auto &arg_name : node->arg_names) {
             auto &arg = *arg_it;
@@ -618,7 +618,7 @@ namespace electrum {
 
             local_env[*arg_name] = &arg;
 
-            ++argNum;
+            ++arg_num;
             ++arg_it;
         }
 
@@ -758,7 +758,7 @@ namespace electrum {
         return _builder->CreateCall(func, {strptr});
     }
 
-    llvm::Value *Compiler::make_closure(uint64_t arity, llvm::Value *func_ptr, uint64_t envSize) {
+    llvm::Value *Compiler::make_closure(uint64_t arity, llvm::Value *func_ptr, uint64_t env_size) {
         auto func = current_module()->getOrInsertFunction("rt_make_compiled_function",
                                                  llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                  llvm::IntegerType::getInt64Ty(llvm_context()),
@@ -769,7 +769,7 @@ namespace electrum {
         return _builder->CreateCall(func,
                                     {llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), arity),
                                      func_ptr,
-                                     llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), envSize)});
+                                     llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), env_size)});
     }
 
     llvm::Value *Compiler::make_pair(llvm::Value *v, llvm::Value *next) {
@@ -797,13 +797,13 @@ namespace electrum {
         return _builder->CreateCall(func, {sym});
     }
 
-    void Compiler::build_set_var(llvm::Value *var, llvm::Value *newVal) {
+    void Compiler::build_set_var(llvm::Value *var, llvm::Value *new_val) {
         auto func = current_module()->getOrInsertFunction("rt_set_var",
                                                  llvm::Type::getVoidTy(llvm_context()),
                                                  llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                  llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
-        _builder->CreateCall(func, {var, newVal});
+        _builder->CreateCall(func, {var, new_val});
     }
 
     llvm::Value *Compiler::build_deref_var(llvm::Value *var) {
@@ -827,9 +827,9 @@ namespace electrum {
                                                  llvm::IntegerType::getInt64Ty(llvm_context()),
                                                  llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
-        llvm::Value *idxVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), idx);
+        llvm::Value *idx_val = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), idx);
 
-        return _builder->CreateCall(func, {fn, idxVal, val});
+        return _builder->CreateCall(func, {fn, idx_val, val});
     }
 
     llvm::Value *Compiler::build_lambda_get_env(llvm::Value *fn, uint64_t idx) {
@@ -838,9 +838,9 @@ namespace electrum {
                                                  llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                  llvm::IntegerType::getInt64Ty(llvm_context()));
 
-        llvm::Value *idxVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), idx);
+        llvm::Value *idx_val = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), idx);
 
-        return _builder->CreateCall(func, {fn, idxVal});
+        return _builder->CreateCall(func, {fn, idx_val});
     }
 
     llvm::Value *Compiler::build_gc_add_root(llvm::Value *obj) {
