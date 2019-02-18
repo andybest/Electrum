@@ -59,7 +59,7 @@ namespace electrum {
     llvm::Function *CompilerContext::current_func() {
         // If there are no functions on the stack, return the current top level initializer
         if(func_stack.empty()) {
-            return top_level_initializers.back().func;
+            return nullptr;
         }
         return func_stack.back();
     }
