@@ -269,7 +269,8 @@ TEST(Compiler, compilesSimpleMacro) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compile_and_eval_string("(do (defmacro x (y) 'y) (x 1))");
+    c.compile_and_eval_string("(defmacro infix (x op y) `(,op ,x ,y))");
+    auto result = c.compile_and_eval_string("(infix 1 + 2)");
     EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result), 1);
 

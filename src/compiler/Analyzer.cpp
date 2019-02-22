@@ -611,7 +611,9 @@ namespace electrum {
             if (first) {
                 first = false;
             } else {
+                is_quoting_ = true;
                 node->args.push_back(analyzeForm(a));
+                is_quoting_ = false;
             }
         }
 

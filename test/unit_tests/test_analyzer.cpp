@@ -336,6 +336,49 @@ TEST(Analyzer, analyzesMacroExpansion) {
     EXPECT_EQ(macroNode->arg_names.size(), 1);
 }
 
+TEST(Analyzer, doesNotEvaluateMacroArguments) {
+    PARSE_STRING("(do (defmacro infix (x op y) `(,op ,x ,y)) (infix 1 + 2))");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDo);
+    auto doNode = std::dynamic_pointer_cast<DoAnalyzerNode>(node);
+
+    EXPECT_EQ(doNode->returnValue->nodeType(), kAnalyzerNodeTypeMacroExpand);
+
+    auto expandNode = std::dynamic_pointer_cast<MacroExpandAnalyzerNode>(doNode->returnValue);
+    EXPECT_EQ(expandNode->args.size(), 3);
+
+
+    EXPECT_EQ(expandNode->args[0]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(expandNode->args[0]);
+
+    EXPECT_EQ(arg1->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(arg1->value), 1);
+
+
+    EXPECT_EQ(expandNode->args[1]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto arg2 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(expandNode->args[1]);
+
+    EXPECT_EQ(arg2->type, kAnalyzerConstantTypeSymbol);
+    EXPECT_EQ(*boost::get<shared_ptr<std::string>>(arg2->value), "+");
+
+
+    EXPECT_EQ(expandNode->args[2]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto arg3 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(expandNode->args[2]);
+
+    EXPECT_EQ(arg3->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(arg3->value), 2);
+
+
+    EXPECT_EQ(expandNode->macro->nodeType(), kAnalyzerNodeTypeDefMacro);
+    auto macroNode = std::dynamic_pointer_cast<DefMacroAnalyzerNode>(expandNode->macro);
+
+    EXPECT_EQ(*macroNode->name, "infix");
+    EXPECT_EQ(macroNode->arg_names.size(), 3);
+}
+
 TEST(Analyzer, calculatesNodeDepth) {
     PARSE_STRING("(do (if #t (if #f 1 2) 3))");
 

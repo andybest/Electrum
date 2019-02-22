@@ -62,7 +62,7 @@ void *Compiler::compile_and_eval_string(std::string str) {
     Parser p;
     auto ast = p.readString(std::move(str));
 
-    if(current_module() == nullptr) {
+    if (current_module()==nullptr) {
         current_context()->create_module("jit_module");
         create_gc_entry();
     }
@@ -123,14 +123,14 @@ TopLevelInitializerDef Compiler::compile_top_level_node(std::shared_ptr<Analyzer
     return initializer;
 }
 
-void *Compiler::run_initializer_with_jit(TopLevelInitializerDef& tl_def) {
+void *Compiler::run_initializer_with_jit(TopLevelInitializerDef &tl_def) {
     static int cnt = 0;
 
-    if(current_module()->getFunction(tl_def.mangled_name) != nullptr) {
+    if (current_module()->getFunction(tl_def.mangled_name)!=nullptr) {
         jit_->addModule(current_context()->move_module());
 
         auto stackmap_ptr = jit_->get_stack_map_pointer();
-        if(stackmap_ptr != nullptr) {
+        if (stackmap_ptr!=nullptr) {
             rt_gc_init_stackmap(stackmap_ptr);
         }
 
@@ -239,6 +239,8 @@ void Compiler::compile_node(std::shared_ptr<AnalyzerNode> node) {
             break;
         case kAnalyzerNodeTypeDefMacro:compile_def_macro(std::dynamic_pointer_cast<DefMacroAnalyzerNode>(node));
             break;
+        case kAnalyzerNodeTypeMacroExpand: compile_macro_expand(std::dynamic_pointer_cast<MacroExpandAnalyzerNode>(node));
+            break;
         default:throw CompilerException("Unrecognized node type", node->sourcePosition);
     }
 }
@@ -265,7 +267,7 @@ void Compiler::compile_constant(std::shared_ptr<ConstantValueAnalyzerNode> node)
     current_context()->push_value(v);
 }
 
-void Compiler::compile_constant_list(std::shared_ptr<ConstantListAnalyzerNode> node) {
+void Compiler::compile_constant_list(const std::shared_ptr<ConstantListAnalyzerNode> &node) {
     // Special case- the empty list is nil
     if (node->values.empty()) {
         current_context()->push_value(make_nil());
@@ -282,7 +284,7 @@ void Compiler::compile_constant_list(std::shared_ptr<ConstantListAnalyzerNode> n
     current_context()->push_value(head);
 }
 
-void Compiler::compile_do(std::shared_ptr<DoAnalyzerNode> node) {
+void Compiler::compile_do(const std::shared_ptr<DoAnalyzerNode> &node) {
     // Compile each node in the body, disregarding the result
     for (const auto &child: node->statements) {
         compile_node(child);
@@ -293,13 +295,14 @@ void Compiler::compile_do(std::shared_ptr<DoAnalyzerNode> node) {
     compile_node(node->returnValue);
 }
 
-void Compiler::compile_if(std::shared_ptr<IfAnalyzerNode> node) {
+void Compiler::compile_if(const std::shared_ptr<IfAnalyzerNode> &node) {
     // Compile the condition to the stack
     compile_node(node->condition);
 
     // Create stack variable to hold result
+    // TODO: Make sure this doesn't need to be in the GC Address space
     auto result = builder_->CreateAlloca(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
-                                         kGCAddressSpace, nullptr, "if_result");
+                                         0, nullptr, "if_result");
 
     auto cond = builder_->CreateICmpEQ(get_boolean_value(current_context()->pop_value()),
                                        llvm::ConstantInt::get(llvm::IntegerType::getInt8Ty(llvm_context()), 0));
@@ -328,7 +331,7 @@ void Compiler::compile_if(std::shared_ptr<IfAnalyzerNode> node) {
     current_context()->push_value(builder_->CreateLoad(result));
 }
 
-void Compiler::compile_var_lookup(std::shared_ptr<VarLookupNode> node) {
+void Compiler::compile_var_lookup(const std::shared_ptr<VarLookupNode> &node) {
     if (node->is_global) {
         auto result = current_context()->global_bindings.find(*node->name);
 
@@ -358,7 +361,7 @@ void Compiler::compile_var_lookup(std::shared_ptr<VarLookupNode> node) {
     throw CompilerException("Unsupported var type", node->sourcePosition);
 }
 
-void Compiler::compile_lambda(std::shared_ptr<LambdaAnalyzerNode> node) {
+void Compiler::compile_lambda(const std::shared_ptr<LambdaAnalyzerNode> &node) {
     // TODO: This is temporary
     static int cnt = 0;
 
@@ -442,11 +445,11 @@ void Compiler::compile_lambda(std::shared_ptr<LambdaAnalyzerNode> node) {
     current_context()->push_value(closure);
 }
 
-void Compiler::compile_def(std::shared_ptr<DefAnalyzerNode> node) {
+void Compiler::compile_def(const std::shared_ptr<DefAnalyzerNode> &node) {
     auto mangled_name = mangle_symbol_name("", *node->name);
 
     auto glob = new llvm::GlobalVariable(*current_module(),
-                                         llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+                                         llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                          false,
                                          llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                                          nullptr,
@@ -477,7 +480,7 @@ void Compiler::compile_def(std::shared_ptr<DefAnalyzerNode> node) {
     current_context()->global_bindings[*node->name] = d;
 }
 
-void Compiler::compile_maybe_invoke(std::shared_ptr<MaybeInvokeAnalyzerNode> node) {
+void Compiler::compile_maybe_invoke(const std::shared_ptr<MaybeInvokeAnalyzerNode> &node) {
     compile_node(node->fn);
     auto fn = current_context()->pop_value();
 
@@ -492,10 +495,11 @@ void Compiler::compile_maybe_invoke(std::shared_ptr<MaybeInvokeAnalyzerNode> nod
     args.push_back(fn);
 
     std::vector<llvm::Type *> arg_types;
-    for (uint64_t i = 0; i < node->args.size() + 1; ++i) {
+    for (uint64_t i = 0; i < node->args.size(); ++i) {
         arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
     }
 
+    // Extra arg for lambda pointer
     arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
     auto fn_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
@@ -510,7 +514,7 @@ void Compiler::compile_maybe_invoke(std::shared_ptr<MaybeInvokeAnalyzerNode> nod
     current_context()->push_value(result);
 }
 
-void Compiler::compile_def_ffi_fn(std::shared_ptr<electrum::DefFFIFunctionNode> node) {
+void Compiler::compile_def_ffi_fn(const std::shared_ptr<electrum::DefFFIFunctionNode> &node) {
     auto insert_block = builder_->GetInsertBlock();
     auto insert_point = builder_->GetInsertPoint();
 
@@ -546,14 +550,14 @@ void Compiler::compile_def_ffi_fn(std::shared_ptr<electrum::DefFFIFunctionNode> 
 
     arg_types.pop_back();
 
-    auto c_func_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+    auto c_func_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                arg_types,
                                                false);
     auto c_func = current_module()->getOrInsertFunction(*node->func_name, c_func_type);
 
     std::vector<llvm::Value *> c_args;
 
-    for (auto it = ffi_wrapper->arg_begin(); it!=ffi_wrapper->arg_end(); ++it) {
+    for (auto it = ffi_wrapper->arg_begin(); it!=(ffi_wrapper->arg_end() - 1); ++it) {
         auto &arg = *it;
         c_args.push_back(dynamic_cast<llvm::Value *>(&arg));
     }
@@ -568,13 +572,14 @@ void Compiler::compile_def_ffi_fn(std::shared_ptr<electrum::DefFFIFunctionNode> 
     // Make global symbol
 
     auto glob = new llvm::GlobalVariable(*current_module(),
-                                         llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+                                         llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                          false,
                                          llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                                          nullptr,
                                          mangled_name);
 
-    glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0)));
+    glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(llvm_context(),
+                                                                                        kGCAddressSpace)));
 
     auto name_sym = make_symbol(node->binding);
     auto v = make_var(name_sym);
@@ -596,7 +601,7 @@ void Compiler::compile_def_ffi_fn(std::shared_ptr<electrum::DefFFIFunctionNode> 
     current_context()->global_bindings[*node->binding] = d;
 }
 
-void Compiler::compile_def_macro(std::shared_ptr<electrum::DefMacroAnalyzerNode> node) {
+void Compiler::compile_def_macro(const std::shared_ptr<electrum::DefMacroAnalyzerNode> &node) {
     auto insert_block = builder_->GetInsertBlock();
     auto insert_point = builder_->GetInsertPoint();
 
@@ -700,6 +705,51 @@ void Compiler::compile_def_macro(std::shared_ptr<electrum::DefMacroAnalyzerNode>
     current_context()->push_value(make_nil());
 }
 
+void Compiler::compile_macro_expand(const std::shared_ptr<electrum::MacroExpandAnalyzerNode> &node) {
+    assert(node->macro->nodeType()==kAnalyzerNodeTypeDefMacro);
+
+    auto macroNode = std::dynamic_pointer_cast<DefMacroAnalyzerNode>(node->macro);
+
+    auto result = current_context()->global_macros.find(*macroNode->name);
+    if (result==current_context()->global_macros.end()) {
+        throw CompilerException("Unable to find macro expander!", node->sourcePosition);
+    }
+
+    auto expanderDef = result->second;
+    auto expanderRef = current_module()->getOrInsertGlobal(expanderDef->mangled_name,
+                                                           llvm::IntegerType::getInt8PtrTy(llvm_context(),
+                                                                                           kGCAddressSpace));
+    auto expanderClosure = builder_->CreateLoad(expanderRef);
+
+    std::vector<llvm::Value *> args;
+    args.reserve(node->args.size() + 1);
+
+    for (const auto &a: node->args) {
+        compile_node(a);
+        args.push_back(current_context()->pop_value());
+    }
+
+    args.push_back(expanderClosure);
+
+    std::vector<llvm::Type *> arg_types;
+    for (uint64_t i = 0; i < node->args.size() + 1; ++i) {
+        arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+    }
+
+    arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
+
+    auto fn_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
+                                           arg_types,
+                                           false);
+
+    auto fn_ptr = builder_->CreateFPCast(build_get_lambda_ptr(expanderClosure),
+                                         llvm::PointerType::get(fn_type, 0));
+
+    auto expander_result = builder_->CreateCall(fn_ptr, args);
+
+    current_context()->push_value(expander_result);
+}
+
 std::string Compiler::mangle_symbol_name(const std::string ns, const std::string &name) {
     // Ignore ns for now, as we don't support yet
     std::stringstream ss;
@@ -711,7 +761,7 @@ std::string Compiler::mangle_symbol_name(const std::string ns, const std::string
 
 llvm::Value *Compiler::make_nil() {
     auto func = current_module()->getOrInsertFunction("rt_make_nil",
-                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), 0));
+                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
     return builder_->CreateCall(func);
 }
@@ -720,7 +770,7 @@ llvm::Value *Compiler::make_integer(int64_t value) {
     // Don't put returned pointer in GC address space, as integers are tagged,
     // and not heap allocated.
     auto func = current_module()->getOrInsertFunction("rt_make_integer",
-                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                       llvm::IntegerType::getInt64Ty(llvm_context()));
 
     return builder_->CreateCall(func,
@@ -740,7 +790,7 @@ llvm::Value *Compiler::make_boolean(bool value) {
     // Don't put returned pointer in GC address space, as booleans are tagged,
     // and not heap allocated.
     auto func = current_module()->getOrInsertFunction("rt_make_boolean",
-                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                                       llvm::IntegerType::getInt8Ty(llvm_context()));
 
     return builder_->CreateCall(func,
@@ -784,7 +834,9 @@ llvm::Value *Compiler::make_closure(uint64_t arity, llvm::Value *func_ptr, uint6
 
     return builder_->CreateCall(func,
                                 {llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), arity),
-                                 func_ptr,
+                                 builder_->CreatePointerCast(func_ptr,
+                                                             llvm::IntegerType::getInt8PtrTy(llvm_context(),
+                                                                                             kGCAddressSpace)),
                                  llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvm_context()), env_size)});
 }
 
@@ -800,7 +852,7 @@ llvm::Value *Compiler::make_pair(llvm::Value *v, llvm::Value *next) {
 llvm::Value *Compiler::get_boolean_value(llvm::Value *val) {
     auto func = current_module()->getOrInsertFunction("rt_is_true",
                                                       llvm::IntegerType::getInt8Ty(llvm_context()),
-                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), 0));
+                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
 
     return builder_->CreateCall(func, {val});
 }
@@ -832,7 +884,8 @@ llvm::Value *Compiler::build_deref_var(llvm::Value *var) {
 
 llvm::Value *Compiler::build_get_lambda_ptr(llvm::Value *fn) {
     auto func = current_module()->getOrInsertFunction("rt_compiled_function_get_ptr",
-                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), 0));
+                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
     return builder_->CreateCall(func, {fn});
 }
 

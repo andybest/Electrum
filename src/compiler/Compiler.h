@@ -75,23 +75,25 @@ class Compiler {
 
   void compile_constant(std::shared_ptr<ConstantValueAnalyzerNode> node);
 
-  void compile_constant_list(std::shared_ptr<ConstantListAnalyzerNode> node);
+  void compile_constant_list(const std::shared_ptr<ConstantListAnalyzerNode> &node);
 
-  void compile_lambda(std::shared_ptr<LambdaAnalyzerNode> node);
+  void compile_lambda(const std::shared_ptr<LambdaAnalyzerNode> &node);
 
-  void compile_def(std::shared_ptr<DefAnalyzerNode> node);
+  void compile_def(const std::shared_ptr<DefAnalyzerNode> &node);
 
-  void compile_do(std::shared_ptr<DoAnalyzerNode> node);
+  void compile_do(const std::shared_ptr<DoAnalyzerNode> &node);
 
-  void compile_if(std::shared_ptr<IfAnalyzerNode> node);
+  void compile_if(const std::shared_ptr<IfAnalyzerNode> &node);
 
-  void compile_var_lookup(std::shared_ptr<VarLookupNode> node);
+  void compile_var_lookup(const std::shared_ptr<VarLookupNode> &node);
 
-  void compile_maybe_invoke(std::shared_ptr<MaybeInvokeAnalyzerNode> node);
+  void compile_maybe_invoke(const std::shared_ptr<MaybeInvokeAnalyzerNode> &node);
 
-  void compile_def_ffi_fn(std::shared_ptr<DefFFIFunctionNode> node);
+  void compile_def_ffi_fn(const std::shared_ptr<DefFFIFunctionNode> &node);
 
-  void compile_def_macro(std::shared_ptr<DefMacroAnalyzerNode> node);
+  void compile_def_macro(const std::shared_ptr<DefMacroAnalyzerNode> &node);
+
+  void compile_macro_expand(const shared_ptr <MacroExpandAnalyzerNode> &node);
 
   std::string mangle_symbol_name(std::string ns, const std::string &name);
 

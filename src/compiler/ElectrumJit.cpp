@@ -41,11 +41,18 @@ static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Modul
         fpm->run(f);
     }
 
+    std::string errors;
+    auto error_stream = llvm::raw_string_ostream(errors);
+    auto has_errors = llvm::verifyModule(*module, &error_stream, nullptr);
+    if(has_errors) {
+        std::cout << errors << std::endl;
+        module->print(llvm::errs(), nullptr);
+        throw std::exception();
+    }
+
     llvm::legacy::PassManager pm;
     pm.add(llvm::createRewriteStatepointsForGCLegacyPass());
     pm.run(*module);
-
-    //module->print(llvm::errs(), nullptr);
 
     return module;
 }
