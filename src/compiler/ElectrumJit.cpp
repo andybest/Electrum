@@ -45,6 +45,7 @@ static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Modul
     auto error_stream = llvm::raw_string_ostream(errors);
     auto has_errors = llvm::verifyModule(*module, &error_stream, nullptr);
     if(has_errors) {
+        error_stream.flush();
         std::cout << errors << std::endl;
         module->print(llvm::errs(), nullptr);
         throw std::exception();
