@@ -451,11 +451,11 @@ void Compiler::compile_def(const std::shared_ptr<DefAnalyzerNode> &node) {
     auto glob = new llvm::GlobalVariable(*current_module(),
                                          llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                          false,
-                                         llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                                         llvm::GlobalValue::LinkageTypes::InternalLinkage,
                                          nullptr,
                                          mangled_name);
-
-    glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0)));
+    
+    glob->setInitializer(llvm::ConstantPointerNull::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace)));
 
     auto name_sym = make_symbol(node->name);
     auto v = make_var(name_sym);
