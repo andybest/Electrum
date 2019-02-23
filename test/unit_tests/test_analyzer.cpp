@@ -282,6 +282,28 @@ TEST(Analyzer, analyzesQuotedList) {
     EXPECT_EQ(*boost::get<shared_ptr<std::string>>(v3->value), "a");
 }
 
+TEST(Analyzer, analyzesQuasiQuoteInLambda) {
+    PARSE_STRING("(lambda (a b c) `(,a ,b ,c))");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeLambda);
+    auto lambdaNode = std::dynamic_pointer_cast<LambdaAnalyzerNode>(node);
+
+    EXPECT_EQ(lambdaNode->body->nodeType(), kAnalyzerNodeTypeDo);
+    auto doBodyNode = std::dynamic_pointer_cast<DoAnalyzerNode>(lambdaNode->body);
+
+    EXPECT_EQ(doBodyNode->returnValue->nodeType(), kAnalyzerNodeTypeConstantList);
+
+    auto listNode = std::dynamic_pointer_cast<ConstantListAnalyzerNode>(doBodyNode->returnValue);
+    EXPECT_EQ(listNode->values.size(), 3);
+
+    EXPECT_EQ(listNode->values[0]->nodeType(), kAnalyzerNodeTypeVarLookup);
+    EXPECT_EQ(listNode->values[1]->nodeType(), kAnalyzerNodeTypeVarLookup);
+    EXPECT_EQ(listNode->values[2]->nodeType(), kAnalyzerNodeTypeVarLookup);
+}
+
 TEST(Analyzer, analyzesDefMacro) {
     PARSE_STRING("(defmacro x (y) 'y)");
 
@@ -336,7 +358,7 @@ TEST(Analyzer, analyzesMacroExpansion) {
     EXPECT_EQ(macroNode->arg_names.size(), 1);
 }
 
-TEST(Analyzer, doesNotEvaluateMacroArguments) {
+TEST(Analyzer, doesNotEvaluateArguments) {
     PARSE_STRING("(do (defmacro infix (x op y) `(,op ,x ,y)) (infix 1 + 2))");
 
     Analyzer an;

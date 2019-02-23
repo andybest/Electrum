@@ -48,7 +48,13 @@ namespace electrum {
                 case kTokenTypeString: return make_pair(parseString(t), it);
                 case kTokenTypeNil: return make_pair(parseNil(t), it);
                 case kTokenTypeQuote: {
-                    return parseQuote(tokens, ++it);
+                    return parseQuote(tokens, ++it, kQuoteTypeQuote);
+                }
+                case kTokenTypeQuasiQuote: {
+                    return parseQuote(tokens, ++it, kQuoteTypeQuasiQuote);
+                }
+                case kTokenTypeUnquote: {
+                    return parseQuote(tokens, ++it, kQuoteTypeUnquote);
                 }
                 case kTokenTypeLParen: {
                     return parseList(tokens, ++it);
@@ -194,7 +200,8 @@ namespace electrum {
     }
 
     pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(const vector<Token> tokens,
-                                                                          vector<Token>::iterator it) const {
+                                                                          vector<Token>::iterator it,
+                                                                          QuoteType quote_type) const {
         auto list = make_shared<vector<shared_ptr<ASTNode>>>();
 
         auto t = *it;
@@ -202,7 +209,21 @@ namespace electrum {
         // Add 'quote' symbol to head of list
         auto sym = make_shared<ASTNode>();
         sym->tag = kTypeTagSymbol;
-        sym->stringValue = make_shared<string>("quote");
+
+        switch(quote_type) {
+            case kQuoteTypeQuote:
+                sym->stringValue = make_shared<string>("quote");
+                break;
+
+            case kQuoteTypeQuasiQuote:
+                sym->stringValue = make_shared<string>("quasiquote");
+                break;
+
+            case kQuoteTypeUnquote:
+                sym->stringValue = make_shared<string>("unquote");
+                break;
+        }
+
 
         sym->sourcePosition = make_shared<SourcePosition>();
         sym->sourcePosition->line = t.line;

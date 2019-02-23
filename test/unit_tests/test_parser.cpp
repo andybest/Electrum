@@ -128,3 +128,22 @@ TEST(Parser, parses_quoted_quote) {
     EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->listValue->at(0)->tag, kTypeTagSymbol);
     EXPECT_EQ(*val->listValue->at(1)->listValue->at(1)->listValue->at(0)->stringValue, "quote");
 }
+
+TEST(Parser, parses_quasiquote_reader_macro) {
+    PARSE_STRING("`(1 2)");
+
+    EXPECT_EQ(val->tag, kTypeTagList);
+    EXPECT_EQ(val->listValue->size(), 2);
+
+    EXPECT_EQ(val->listValue->at(0)->tag, kTypeTagSymbol);
+    EXPECT_EQ(*val->listValue->at(0)->stringValue, "quasiquote");
+
+    EXPECT_EQ(val->listValue->at(1)->tag, kTypeTagList);
+    EXPECT_EQ(val->listValue->at(1)->listValue->size(), 2);
+
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(0)->tag, kTypeTagInteger);
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(0)->integerValue, 1);
+
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->tag, kTypeTagInteger);
+    EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->integerValue, 2);
+}

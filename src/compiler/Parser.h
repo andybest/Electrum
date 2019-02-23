@@ -40,6 +40,12 @@ namespace electrum {
 
     class Parser {
 
+      enum QuoteType {
+        kQuoteTypeQuote,
+        kQuoteTypeQuasiQuote,
+        kQuoteTypeUnquote
+      };
+
         pair<shared_ptr<ASTNode>, vector<Token>::iterator> readTokens(vector<Token> tokens,
                                                                       vector<Token>::iterator it) const;
 
@@ -53,7 +59,8 @@ namespace electrum {
                                                                           vector<Token>::iterator it) const;
 
         pair<shared_ptr<ASTNode>, vector<Token>::iterator> parseQuote(const vector<Token> tokens,
-                                                                      vector<Token>::iterator it) const;
+                                                                      vector<Token>::iterator it,
+                                                                      QuoteType quote_type) const;
 
     public:
         std::shared_ptr<ASTNode> readString(string input) const;

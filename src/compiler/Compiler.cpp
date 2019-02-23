@@ -454,7 +454,7 @@ void Compiler::compile_def(const std::shared_ptr<DefAnalyzerNode> &node) {
                                          llvm::GlobalValue::LinkageTypes::InternalLinkage,
                                          nullptr,
                                          mangled_name);
-    
+
     glob->setInitializer(llvm::ConstantPointerNull::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace)));
 
     auto name_sym = make_symbol(node->name);
@@ -682,13 +682,13 @@ void Compiler::compile_def_macro(const std::shared_ptr<electrum::DefMacroAnalyze
 
     auto mangled_name = mangle_symbol_name("", "MXC_" + *node->name);
     auto glob = new llvm::GlobalVariable(*current_module(),
-                                         llvm::IntegerType::getInt8PtrTy(llvm_context(), 0),
+                                         llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace),
                                          false,
                                          llvm::GlobalValue::LinkageTypes::ExternalLinkage,
                                          nullptr,
                                          mangled_name);
 
-    glob->setInitializer(llvm::UndefValue::getNullValue(llvm::IntegerType::getInt8PtrTy(llvm_context(), 0)));
+    glob->setInitializer(llvm::ConstantPointerNull::get(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace)));
 
     build_gc_add_root(closure);
 
@@ -732,7 +732,7 @@ void Compiler::compile_macro_expand(const std::shared_ptr<electrum::MacroExpandA
     args.push_back(expanderClosure);
 
     std::vector<llvm::Type *> arg_types;
-    for (uint64_t i = 0; i < node->args.size() + 1; ++i) {
+    for (uint64_t i = 0; i < node->args.size(); ++i) {
         arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvm_context(), kGCAddressSpace));
     }
 

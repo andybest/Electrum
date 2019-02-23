@@ -265,14 +265,49 @@ TEST(Compiler, compilesQuotedQuote) {
     rt_deinit_gc();
 }
 
+TEST(Compiler, compilesQuoteInLambda) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto result = c.compile_and_eval_string("((lambda (a b c) `(,a ,b ,c)) 1 2 3)");
+
+    // Expected result: '(1 2 3)
+    EXPECT_EQ(rt_is_pair(result), TRUE_PTR);
+
+    auto e1 = rt_car(result);
+    EXPECT_EQ(rt_is_integer(e1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(e1), 1);
+
+    auto e2 = rt_car(rt_cdr(result));
+    EXPECT_EQ(rt_is_integer(e2), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(e2), 2);
+
+    auto e3 = rt_car(rt_cdr(rt_cdr(result)));
+    EXPECT_EQ(rt_is_integer(e3), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(e3), 3);
+
+    rt_deinit_gc();
+}
+
 TEST(Compiler, compilesSimpleMacro) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    c.compile_and_eval_string("(defmacro infix (x op y) `(,op ,x ,y))");
-    auto result = c.compile_and_eval_string("(infix 1 + 2)");
-    EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
-    EXPECT_EQ(rt_integer_value(result), 1);
+    auto result = c.compile_and_eval_string("(do (defmacro infix (x op y) `(,op ,x ,y)) (infix 1 + 2))");
+    EXPECT_EQ(rt_is_pair(result), TRUE_PTR);
+
+    auto e1 = rt_car(result);
+    auto e2 = rt_car(rt_cdr(result));
+    auto e3 = rt_car(rt_cdr(rt_cdr(result)));
+
+    EXPECT_EQ(rt_is_symbol(e1), TRUE_PTR);
+    EXPECT_TRUE(symbol_equal(e1, rt_make_symbol("+")));
+
+    EXPECT_EQ(rt_is_integer(e2), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(e2), 1);
+
+    EXPECT_EQ(rt_is_integer(e3), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(e3), 2);
 
     rt_deinit_gc();
 }

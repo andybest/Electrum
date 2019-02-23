@@ -51,6 +51,8 @@ static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Modul
         throw std::exception();
     }
 
+    module->print(llvm::errs(), nullptr);
+
     llvm::legacy::PassManager pm;
     pm.add(llvm::createRewriteStatepointsForGCLegacyPass());
     pm.run(*module);

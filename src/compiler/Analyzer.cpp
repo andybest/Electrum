@@ -31,7 +31,6 @@
 namespace electrum {
 
     Analyzer::Analyzer() : is_quoting_(false),
-                           is_quasi_quoting_(false),
                            in_macro_(false) {
     }
 
@@ -118,6 +117,25 @@ namespace electrum {
                         closed_overs.end());
                 break;
             }
+            case kAnalyzerNodeTypeDefMacro: {
+                // If it's a def macro node, remove the macro's args from the collected closed overs
+                // of the child nodes.
+                auto defMacroNode = std::dynamic_pointer_cast<DefMacroAnalyzerNode>(node);
+
+                closed_overs.erase(
+                    std::remove_if(closed_overs.begin(),
+                                   closed_overs.end(),
+                                   [&defMacroNode](auto c) {
+                                     for (auto n: defMacroNode->arg_names) {
+                                         if (*n == c) {
+                                             return true;
+                                         }
+                                     }
+                                     return false;
+                                   }),
+                    closed_overs.end());
+                break;
+            }
             case kAnalyzerNodeTypeVarLookup: {
                 auto varNode = std::dynamic_pointer_cast<VarLookupNode>(node);
                 if (!varNode->is_global) {
@@ -197,7 +215,7 @@ namespace electrum {
     shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
         auto symName = form->stringValue;
 
-        if (is_quoting_) {
+        if (is_quoting_ || (quasi_quote_state_.size() > 0 && quasi_quote_state_.back())) {
             auto node = make_shared<ConstantValueAnalyzerNode>();
             node->sourcePosition = form->sourcePosition;
             node->type = kAnalyzerConstantTypeSymbol;
@@ -286,7 +304,12 @@ namespace electrum {
         auto listPtr = form->listValue;
         auto listSize = listPtr->size();
 
-        if (is_quoting_) {
+        if (is_quoting_ || (quasi_quote_state_.size() > 0 && quasi_quote_state_.back())) {
+            // Special case for unquote
+            if(listSize > 0 && listPtr->at(0)->tag == kTypeTagSymbol && *listPtr->at(0)->stringValue == "unquote") {
+                return analyzeUnquote(form);
+            }
+
             auto node = make_shared<ConstantListAnalyzerNode>();
             node->sourcePosition = form->sourcePosition;
 
@@ -752,24 +775,78 @@ namespace electrum {
 
     shared_ptr<AnalyzerNode> Analyzer::analyzeQuote(shared_ptr<ASTNode> form) {
         assert(form->tag == kTypeTagList);
-        auto listPtr = form->listValue;
-        assert(!listPtr->empty());
+        auto list_ptr = form->listValue;
+        assert(!list_ptr->empty());
 
-        if (listPtr->size() < 2) {
+        if (list_ptr->size() < 2) {
             throw CompilerException("Quote forms must have one argument",
                                     form->sourcePosition);
         }
 
-        if (listPtr->size() > 2) {
+        if (list_ptr->size() > 2) {
             throw CompilerException("Quote forms must not have more than one argument",
                                     form->sourcePosition);
         }
 
-        auto quotedForm = listPtr->at(1);
+        auto quoted_form = list_ptr->at(1);
 
         is_quoting_ = true;
-        auto node = analyzeForm(quotedForm);
+        auto node = analyzeForm(quoted_form);
         is_quoting_ = false;
+
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeQuasiQuote(shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto list_ptr = form->listValue;
+        assert(!list_ptr->empty());
+
+        if (list_ptr->size() < 2) {
+            throw CompilerException("Quasiquote forms must have one argument",
+                                    form->sourcePosition);
+        }
+
+        if (list_ptr->size() > 2) {
+            throw CompilerException("Quasiquote forms must not have more than one argument",
+                                    form->sourcePosition);
+        }
+
+        auto quoted_form = list_ptr->at(1);
+
+        quasi_quote_state_.push_back(true);
+        auto node = analyzeForm(quoted_form);
+        quasi_quote_state_.pop_back();
+
+        return node;
+    }
+
+    shared_ptr<AnalyzerNode> Analyzer::analyzeUnquote(shared_ptr<ASTNode> form) {
+        assert(form->tag == kTypeTagList);
+        auto list_ptr = form->listValue;
+        assert(!list_ptr->empty());
+
+        if (list_ptr->size() < 2) {
+            throw CompilerException("Unquote forms must have one argument",
+                                    form->sourcePosition);
+        }
+
+        if (list_ptr->size() > 2) {
+            throw CompilerException("Unquote forms must not have more than one argument",
+                                    form->sourcePosition);
+        }
+
+        auto unquoted_form = list_ptr->at(1);
+
+        if(quasi_quote_state_.empty() || !quasi_quote_state_.back()) {
+            throw CompilerException("Unquote not valid: not in quasiquote.", form->sourcePosition);
+        }
+
+        quasi_quote_state_.pop_back();
+        quasi_quote_state_.push_back(false);
+        auto node = analyzeForm(unquoted_form);
+        quasi_quote_state_.pop_back();
+        quasi_quote_state_.push_back(true);
 
         return node;
     }

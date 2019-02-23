@@ -399,6 +399,10 @@ namespace electrum {
 
         shared_ptr<AnalyzerNode> analyzeQuote(shared_ptr<ASTNode> form);
 
+        shared_ptr <AnalyzerNode> analyzeQuasiQuote(shared_ptr <ASTNode> form);
+
+        shared_ptr <AnalyzerNode> analyzeUnquote(shared_ptr <ASTNode> form);
+
         shared_ptr<AnalyzerNode> analyzeEvalWhen(shared_ptr<ASTNode> form);
 
         shared_ptr<AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr<string> symbolName, shared_ptr<ASTNode> form);
@@ -429,6 +433,8 @@ namespace electrum {
                 {"def",         &Analyzer::analyzeDef},
                 {"def-ffi-fn*", &Analyzer::analyzeDefFFIFn},
                 {"quote",       &Analyzer::analyzeQuote},
+                {"quasiquote",  &Analyzer::analyzeQuasiQuote},
+                {"unquote",     &Analyzer::analyzeUnquote},
                 {"eval-when",   &Analyzer::analyzeEvalWhen}
         };
 
@@ -447,8 +453,8 @@ namespace electrum {
         /// Flag to specify whether the analyzer is inside a quoted form
         bool is_quoting_;
 
-        /// Flag to specify whether the analyzer is currently inside a quasiquoted form
-        bool is_quasi_quoting_;
+        /// The current quasiquote state
+        std::vector<bool> quasi_quote_state_;
 
         /// Flag to specify whether the analyzer is currently analyzing a macro expander
         bool in_macro_;
