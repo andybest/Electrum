@@ -28,51 +28,37 @@ namespace electrum {
     #pragma mark Value Stack
 
     void CompilerContext::push_value(llvm::Value *val) {
-        value_stack.push_back(val);
+        current_state()->value_stack.push_back(val);
     }
 
     llvm::Value *CompilerContext::pop_value() {
-        auto v = value_stack.back();
-        value_stack.pop_back();
+        auto v = current_state()->value_stack.back();
+        current_state()->value_stack.pop_back();
         return v;
     }
 
 #pragma mark Current Function
 
 
-
-    void CompilerContext::push_new_function(llvm::FunctionType *func_type, std::string name) {
-        auto f = llvm::dyn_cast<llvm::Function>(current_module()->getOrInsertFunction(name, func_type));
-        push_func(f);
-    }
-
     void CompilerContext::push_func(llvm::Function *func) {
-        func_stack.push_back(func);
+        current_state()->func_stack.push_back(func);
     }
 
     llvm::Function *CompilerContext::pop_func() {
-        auto f = func_stack.back();
-        func_stack.pop_back();
+        auto f = current_state()->func_stack.back();
+        current_state()->func_stack.pop_back();
         return f;
     }
 
     llvm::Function *CompilerContext::current_func() {
         // If there are no functions on the stack, return the current top level initializer
-        if(func_stack.empty()) {
+        if(current_state()->func_stack.empty()) {
             return nullptr;
         }
-        return func_stack.back();
-    }
-
-    bool CompilerContext::is_top_level() {
-        return func_stack.empty();
+        return current_state()->func_stack.back();
     }
 
 #pragma mark Local Environment
-
-    void CompilerContext::push_local_environment() {
-        local_bindings.emplace_back();
-    }
 
     void CompilerContext::push_local_environment(const std::unordered_map<std::string, llvm::Value *> &new_env) {
         local_bindings.push_back(new_env);
@@ -95,40 +81,35 @@ namespace electrum {
         return nullptr;
     }
 
-#pragma mark Evaluation Context
-
-    EvaluationPhase CompilerContext::current_evaluation_context() {
-        if(evaluation_context_stack.empty()) {
-            return kEvaluationPhaseLoadTime;
-        } else {
-            return evaluation_context_stack.back();
-        }
-    }
-
-    void CompilerContext::push_evaluation_context(EvaluationPhase ctx) {
-        evaluation_context_stack.push_back(ctx);
-    }
-
-    void CompilerContext::pop_evaluation_context() {
-        if(!evaluation_context_stack.empty()) {
-            evaluation_context_stack.pop_back();
-        }
-    }
-
-    void CompilerContext::create_module(std::string name) {
-        assert(_module == nullptr);
-        _module = std::make_unique<llvm::Module>(name, _context);
-    }
-
     llvm::Module *CompilerContext::current_module() {
-        return _module.get();
-    }
-
-    std::unique_ptr<llvm::Module> CompilerContext::move_module() {
-        return std::move(_module);
+        return current_state()->module.get();
     }
 
     llvm::LLVMContext &CompilerContext::llvm_context() {
         return _context;
+    }
+
+    std::shared_ptr<llvm::IRBuilder<>> CompilerContext::current_builder() {
+        return current_state()->builder;
+    }
+
+    void CompilerContext::push_new_state(std::string module_name) {
+        auto s = std::make_shared<ContextState>();
+
+        s->module = std::make_unique<llvm::Module>(module_name, _context);
+        s->builder = std::make_shared<llvm::IRBuilder<>>(_context);
+        _state_stack.push_back(s);
+    }
+
+    std::shared_ptr<ContextState> CompilerContext::current_state() {
+        assert(!_state_stack.empty());
+        return _state_stack.back();
+    }
+
+    std::unique_ptr<llvm::Module> CompilerContext::pop_state() {
+        auto state = _state_stack.back();
+        _state_stack.pop_back();
+
+        return std::move(state->module);
     }
 }

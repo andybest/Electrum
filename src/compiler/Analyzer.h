@@ -245,6 +245,9 @@ namespace electrum {
         /// Macro arguments
         std::vector<shared_ptr<AnalyzerNode>> args;
 
+        /// Specifies whether the result be evaluated after expansion
+        bool do_evaluate;
+
         vector <shared_ptr<AnalyzerNode>> children() override {
             vector<shared_ptr<AnalyzerNode>> c = {macro};
 

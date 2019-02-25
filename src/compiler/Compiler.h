@@ -46,11 +46,10 @@ class Compiler {
 
   void *compile_and_eval_string(std::string str);
 
-  void *compile_and_eval_node(std::shared_ptr<AnalyzerNode> node);
+  void *compile_and_eval_expander(std::shared_ptr<MacroExpandAnalyzerNode> node);
 
  private:
 
-  std::unique_ptr<llvm::IRBuilder<>> builder_;
   llvm::orc::ExecutionSession es_;
   CompilerContext compiler_context_;
   Analyzer analyzer_;
@@ -64,6 +63,8 @@ class Compiler {
   llvm::Module *current_module() { return current_context()->current_module(); }
 
   llvm::LLVMContext &llvm_context() { return current_context()->llvm_context(); }
+
+  shared_ptr<llvm::IRBuilder<>> current_builder() { return current_context()->current_builder(); }
 
   void create_gc_entry();
 

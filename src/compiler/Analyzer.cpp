@@ -628,6 +628,7 @@ namespace electrum {
         auto node = make_shared<MacroExpandAnalyzerNode>();
         node->macro = macro;
         node->args.reserve(listPtr->size() - 1);
+        node->do_evaluate = true;
 
         bool first = true;
         for (const auto &a: *listPtr) {

@@ -52,14 +52,18 @@ namespace electrum {
         std::string mangled_name;
     };
 
+    struct ContextState {
+        std::shared_ptr<llvm::IRBuilder<>> builder;
+        std::unique_ptr<llvm::Module> module;
+        std::vector<llvm::Value *> value_stack;
+        std::vector<llvm::Function *> func_stack;
+    };
+
     class CompilerContext {
     private:
         llvm::LLVMContext _context;
-        std::shared_ptr<llvm::IRBuilder<>> _builder;
-        std::unique_ptr<llvm::Module> _module;
 
-        std::vector<llvm::Value *> value_stack;
-        std::vector<llvm::Function *> func_stack;
+        std::vector<std::shared_ptr<ContextState>> _state_stack;
 
     public:
         std::vector<TopLevelInitializerDef> top_level_initializers;
@@ -72,17 +76,16 @@ namespace electrum {
         /// The global var bindings
         std::unordered_map<std::string, std::shared_ptr<GlobalDef>> global_bindings;
 
-        /** Global function bindings. Functions that end up here will be
-         * called statically, rather than going through var -> closure
-         * indirection.
-         */
-        // std::unordered_map<std::string, shared_ptr<GlobalDef>> global_func_bindings;
-
         /// The local bindings for the current level in the AST
         std::vector<std::unordered_map<std::string, llvm::Value *>> local_bindings;
 
+        /* State */
 
-        //CompilerContext();
+        void push_new_state(std::string module_name);
+
+        std::shared_ptr<ContextState> current_state();
+
+        std::unique_ptr<llvm::Module> pop_state();
 
         /* Value Stack */
         void push_value(llvm::Value *val);
@@ -90,8 +93,6 @@ namespace electrum {
         llvm::Value *pop_value();
 
         /* Current Function */
- 
-        void push_new_function(llvm::FunctionType *func_type, std::string name);
 
         void push_func(llvm::Function *func);
 
@@ -99,11 +100,7 @@ namespace electrum {
 
         llvm::Function *current_func();
 
-        bool is_top_level();
-
         /* Local Environment */
-
-        void push_local_environment();
 
         void push_local_environment(const std::unordered_map<std::string, llvm::Value *> &new_env);
 
@@ -111,21 +108,11 @@ namespace electrum {
 
         llvm::Value *lookup_in_local_environment(std::string name);
 
-        /* Evaluation Context */
-
-        EvaluationPhase current_evaluation_context();
-
-        void push_evaluation_context(EvaluationPhase ctx);
-
-        void pop_evaluation_context();
-
-        void create_module(std::string name);
-
-        llvm::Module *current_module();
-
-        std::unique_ptr<llvm::Module> move_module();
+        llvm::Module * current_module();
 
         llvm::LLVMContext &llvm_context();
+
+        std::shared_ptr<llvm::IRBuilder<>> current_builder();
     };
 }
 

@@ -24,6 +24,7 @@
 
 #include "Parser.h"
 #include <lex.yy.h>
+#include <Runtime.h>
 
 namespace electrum {
 
@@ -264,5 +265,50 @@ namespace electrum {
         val->sourcePosition->column = t.column;
         val->sourcePosition->filename = t.filename;
         return std::make_pair(val, it);
+    }
+
+    shared_ptr<ASTNode> Parser::readLispValue(void *val) {
+        auto form = make_shared<ASTNode>();
+
+        if(rt_is_integer(val) == TRUE_PTR) {
+            form->tag = kTypeTagInteger;
+            form->integerValue = rt_integer_value(val);
+        } else if(rt_is_float(val) == TRUE_PTR) {
+            form->tag = kTypeTagFloat;
+            form->floatValue = rt_float_value(val);
+        } else if(rt_is_boolean(val) == TRUE_PTR) {
+            form->tag = kTypeTagBoolean;
+            form->booleanValue = val == TRUE_PTR;
+        } else if(rt_is_string(val) == TRUE_PTR) {
+            form->tag = kTypeTagString;
+            form->stringValue = make_shared<string>(rt_string_value(val));
+        } else if(rt_is_symbol(val) == TRUE_PTR) {
+            form->tag = kTypeTagSymbol;
+            form->stringValue = make_shared<string>(rt_string_value(val));
+        } else if(rt_is_pair(val) == TRUE_PTR) {
+            form->tag = kTypeTagList;
+
+            auto list = make_shared<vector<shared_ptr<ASTNode>>>();
+
+            auto head = val;
+            while(rt_is_pair(head) == TRUE_PTR) {
+                auto current = rt_car(head);
+                list->push_back(readLispValue(current));
+
+                head = rt_cdr(head);
+            }
+
+            if(head != NIL_PTR) {
+                list->push_back(readLispValue(head));
+            }
+
+            form->listValue = list;
+        } else if(val == NIL_PTR) {
+            form->tag = kTypeTagNil;
+        } else {
+            throw std::exception();
+        }
+
+        return form;
     }
 }

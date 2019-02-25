@@ -293,21 +293,27 @@ TEST(Compiler, compilesSimpleMacro) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compile_and_eval_string("(do (defmacro infix (x op y) `(,op ,x ,y)) (infix 1 + 2))");
+    auto result = c.compile_and_eval_string("(do "
+                                            "  (def-ffi-fn* cons rt_make_pair :el (:el :el))"
+                                            "  (defmacro make-list (x y z) `(cons ,x (cons ,y (cons ,z nil))))"
+                                            "  (make-list 1 2 3))");
+
+    // Should result in (1 2 3)
+
     EXPECT_EQ(rt_is_pair(result), TRUE_PTR);
 
     auto e1 = rt_car(result);
     auto e2 = rt_car(rt_cdr(result));
     auto e3 = rt_car(rt_cdr(rt_cdr(result)));
 
-    EXPECT_EQ(rt_is_symbol(e1), TRUE_PTR);
-    EXPECT_TRUE(symbol_equal(e1, rt_make_symbol("+")));
+    EXPECT_EQ(rt_is_integer(e1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(e1), 1);
 
     EXPECT_EQ(rt_is_integer(e2), TRUE_PTR);
-    EXPECT_EQ(rt_integer_value(e2), 1);
+    EXPECT_EQ(rt_integer_value(e2), 2);
 
     EXPECT_EQ(rt_is_integer(e3), TRUE_PTR);
-    EXPECT_EQ(rt_integer_value(e3), 2);
+    EXPECT_EQ(rt_integer_value(e3), 3);
 
     rt_deinit_gc();
 }
