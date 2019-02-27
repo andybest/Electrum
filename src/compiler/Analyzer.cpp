@@ -107,10 +107,14 @@ namespace electrum {
                         std::remove_if(closed_overs.begin(),
                                        closed_overs.end(),
                                        [&lambdaNode](auto c) {
+                            // Exclude args and rest args from closed overs
                                            for (auto n: lambdaNode->arg_names) {
                                                if (*n == c) {
                                                    return true;
                                                }
+                                           }
+                                           if(lambdaNode->has_rest_arg && *lambdaNode->rest_arg_name == c) {
+                                               return true;
                                            }
                                            return false;
                                        }),

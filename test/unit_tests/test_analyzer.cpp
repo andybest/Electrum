@@ -223,7 +223,7 @@ TEST(Analyzer, analyzesDefAndSavesToAnalyzerEnvironment) {
 }
 
 TEST(Analyzer, collectsClosedOversInLambda) {
-    PARSE_STRING("(lambda (a) (lambda () a))");
+    PARSE_STRING("(lambda (a & b) (lambda () a))");
 
     Analyzer an;
     auto node = an.analyze(val);
@@ -231,7 +231,6 @@ TEST(Analyzer, collectsClosedOversInLambda) {
     EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeLambda);
     auto outerLambda = std::dynamic_pointer_cast<LambdaAnalyzerNode>(node);
 
-    EXPECT_EQ(outerLambda->arg_name_nodes.size(), 1);
     EXPECT_EQ(outerLambda->closed_overs.size(), 0);
 
     EXPECT_EQ(outerLambda->body->nodeType(), kAnalyzerNodeTypeDo);
@@ -242,6 +241,18 @@ TEST(Analyzer, collectsClosedOversInLambda) {
 
     EXPECT_EQ(innerLambda->closed_overs.size(), 1);
     EXPECT_EQ(innerLambda->closed_overs[0], *outerLambda->arg_names[0]);
+}
+
+TEST(Analyzer, doesNotTreatRestArgAsClosedOver) {
+    PARSE_STRING("(lambda (a & b) b)");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeLambda);
+    auto lambda = std::dynamic_pointer_cast<LambdaAnalyzerNode>(node);
+
+    EXPECT_EQ(lambda->closed_overs.size(), 0);
 }
 
 TEST(Analyzer, doesNotTreatGlobalVarAsClosedOver) {
