@@ -143,6 +143,8 @@ TEST(Analyzer, analyzesLambda) {
     EXPECT_EQ(lambdaNode->arg_names.size(), 1);
     EXPECT_EQ(lambdaNode->arg_name_nodes.at(0)->nodeType(), kAnalyzerNodeTypeConstant);
 
+    EXPECT_EQ(lambdaNode->has_rest_arg, false);
+
     auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(lambdaNode->arg_name_nodes.at(0));
     EXPECT_EQ(arg1->type, kAnalyzerConstantTypeSymbol);
     EXPECT_EQ(*boost::get<std::shared_ptr<std::string>>(arg1->value), "x");
@@ -156,6 +158,26 @@ TEST(Analyzer, analyzesLambda) {
 
     EXPECT_EQ(rv->type, kAnalyzerConstantTypeInteger);
     EXPECT_EQ(boost::get<int64_t>(rv->value), 1234);
+}
+
+TEST(Analyzer, analyzesLambdaWithRestArgs) {
+    PARSE_STRING("(lambda (x & y) y)");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeLambda);
+    auto lambdaNode = std::dynamic_pointer_cast<LambdaAnalyzerNode>(node);
+
+    EXPECT_EQ(lambdaNode->arg_names.size(), 1);
+    EXPECT_EQ(lambdaNode->arg_name_nodes.at(0)->nodeType(), kAnalyzerNodeTypeConstant);
+
+    auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(lambdaNode->arg_name_nodes.at(0));
+    EXPECT_EQ(arg1->type, kAnalyzerConstantTypeSymbol);
+    EXPECT_EQ(*boost::get<std::shared_ptr<std::string>>(arg1->value), "x");
+
+    EXPECT_EQ(lambdaNode->has_rest_arg, true);
+    EXPECT_EQ(*lambdaNode->rest_arg_name, "y");
 }
 
 TEST(Analyzer, analyzesInvoke) {

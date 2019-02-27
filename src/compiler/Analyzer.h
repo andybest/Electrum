@@ -174,6 +174,12 @@ namespace electrum {
 
         vector <shared_ptr<std::string>> arg_names;
 
+        /// Whether the func has a rest arg
+        bool has_rest_arg;
+
+        /// The name of the rest arg
+        shared_ptr<std::string> rest_arg_name;
+
         /// A do node representing the body
         shared_ptr<AnalyzerNode> body;
 

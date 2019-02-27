@@ -41,9 +41,9 @@ TEST(Lexer, lexes_parens) {
 }
 
 TEST(Lexer, lexes_symbols) {
-    TOKENIZE_STRING("... +soup+ ->string lambda q <=?");
+    TOKENIZE_STRING("... +soup+ ->string lambda q <=? &");
 
-    EXPECT_EQ(tokens.size(), 6);
+    EXPECT_EQ(tokens.size(), 7);
 
     ASSERT_TOKEN(tokens[0], kTokenTypeSymbol, "...");
     ASSERT_TOKEN(tokens[1], kTokenTypeSymbol, "+soup+");
@@ -51,6 +51,7 @@ TEST(Lexer, lexes_symbols) {
     ASSERT_TOKEN(tokens[3], kTokenTypeSymbol, "lambda");
     ASSERT_TOKEN(tokens[4], kTokenTypeSymbol, "q");
     ASSERT_TOKEN(tokens[5], kTokenTypeSymbol, "<=?");
+    ASSERT_TOKEN(tokens[6], kTokenTypeSymbol, "&");
 }
 
 TEST(Lexer, lexes_unicode_symbols) {

@@ -51,7 +51,7 @@ std::string tokenTypeName(TokenType type) {
     }
 }
 
-#define ASSERT_TOKEN(t, type, text) EXPECT_TRUE(AssertToken((t), (type), (text)));
+#define ASSERT_TOKEN(t, type, text) EXPECT_TRUE(AssertToken((t), (type), (text)))
 
 ::testing::AssertionResult AssertToken(Token t, TokenType type, std::string text) {
     auto failure = ::testing::AssertionFailure();
