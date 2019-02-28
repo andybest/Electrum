@@ -433,11 +433,11 @@ void Compiler::compile_lambda(const std::shared_ptr<LambdaAnalyzerNode> &node) {
     }
 
     //++arg_it;
-    for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
-        auto &arg = *arg_it;
-        arg.setName("environment");
+    auto &fn_arg = *arg_it;
+    fn_arg.setName("env");
 
-        local_env[node->closed_overs[i]] = build_lambda_get_env(&arg, i);
+    for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
+        local_env[node->closed_overs[i]] = build_lambda_get_env(&fn_arg, i);
     }
 
     // Push the arguments onto the environment stack so that the compiler
@@ -466,6 +466,8 @@ void Compiler::compile_lambda(const std::shared_ptr<LambdaAnalyzerNode> &node) {
     }
 
     current_context()->push_value(closure);
+
+    ++cnt;
 }
 
 void Compiler::compile_def(const std::shared_ptr<DefAnalyzerNode> &node) {
@@ -515,7 +517,10 @@ void Compiler::compile_maybe_invoke(const std::shared_ptr<MaybeInvokeAnalyzerNod
     compile_node(list_node);
     auto args = current_context()->pop_value();
 
+    // TODO: Is there a better way to save the args?
+    build_gc_add_root(args);
     current_context()->push_value(build_apply(fn, args));
+    build_gc_remove_root(args);
 
 //    std::vector<llvm::Value *> args;
 //    args.reserve(node->args.size() + 1);
@@ -981,6 +986,15 @@ llvm::Value *Compiler::build_lambda_get_env(llvm::Value *fn, uint64_t idx) {
 
 llvm::Value *Compiler::build_gc_add_root(llvm::Value *obj) {
     auto func = current_module()->getOrInsertFunction("rt_gc_add_root",
+                                                      llvm::Type::getVoidTy(llvm_context()),
+                                                      llvm::IntegerType::getInt8PtrTy(llvm_context(),
+                                                                                      kGCAddressSpace));
+
+    return current_builder()->CreateCall(func, {obj});
+}
+
+llvm::Value *Compiler::build_gc_remove_root(llvm::Value *obj) {
+    auto func = current_module()->getOrInsertFunction("rt_gc_remove_root",
                                                       llvm::Type::getVoidTy(llvm_context()),
                                                       llvm::IntegerType::getInt8PtrTy(llvm_context(),
                                                                                       kGCAddressSpace));

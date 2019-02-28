@@ -70,6 +70,7 @@ namespace electrum {
      * @param stackPointer The stack pointer of the call point
      */
     void GarbageCollector::collect(void *stackPointer) {
+
         auto return_address = *static_cast<uint64_t *>(stackPointer);
 
         auto frame_info = get_frame_info(return_address);
@@ -88,7 +89,7 @@ namespace electrum {
 
                 // Mark if it is an object
                 if (is_object(*ptr)) {
-                    traverse_object(TAG_TO_OBJECT(*ptr));
+                    traverse_object(*ptr);
                 }
             }
 
@@ -102,7 +103,7 @@ namespace electrum {
         // Mark roots
         for (auto it: object_roots_) {
             if (is_object(it)) {
-                traverse_object(TAG_TO_OBJECT(it));
+                traverse_object(it);
             }
         }
 
@@ -278,6 +279,11 @@ extern "C" void rt_gc_init_stackmap(void *stackmap) {
 extern "C" void rt_gc_add_root(void *obj) {
     auto collector = rt_get_gc();
     collector->add_object_root(obj);
+}
+
+extern "C" void rt_gc_remove_root(void *obj) {
+    auto collector = rt_get_gc();
+    collector->remove_object_root(obj);
 }
 
 /**

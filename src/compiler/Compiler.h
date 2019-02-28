@@ -133,6 +133,8 @@ class Compiler {
   llvm::Value *build_gc_add_root(llvm::Value *obj);
 
   llvm::Value *build_apply(llvm::Value *f, llvm::Value *args);
+
+    llvm::Value *build_gc_remove_root(llvm::Value *obj);
 };
 }
 
