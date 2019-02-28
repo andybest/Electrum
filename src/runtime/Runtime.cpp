@@ -229,6 +229,12 @@ namespace electrum {
     }
 }
 
+extern "C" void rt_assert_tag(void *obj, ETypeTag tag) {
+    if(!electrum::is_object_with_tag(obj, tag)) {
+        throw std::exception();
+    }
+}
+
 //extern "C" {
 
 void rt_init() {
@@ -432,6 +438,8 @@ void *rt_set_cdr(void *pair, void *next) {
     return pair;
 }
 
+#pragma mark - Lambdas
+
 void *rt_make_interpreted_function(void *argnames, uint64_t arity, void *body, void *env) {
     auto funcVal = static_cast<EInterpretedFunction *>(GC_MALLOC(sizeof(EInterpretedFunction)));
     funcVal->header.tag = kETypeTagInterpretedFunction;
@@ -443,11 +451,12 @@ void *rt_make_interpreted_function(void *argnames, uint64_t arity, void *body, v
     return OBJECT_TO_TAG(funcVal);
 }
 
-extern "C" void *rt_make_compiled_function(uint64_t arity, void *fp, uint64_t env_size) {
+extern "C" void *rt_make_compiled_function(uint32_t arity, uint32_t has_rest_args, void *fp, uint64_t env_size) {
     auto funcVal = static_cast<ECompiledFunction *>(GC_MALLOC(sizeof(ECompiledFunction) + (sizeof(void *) * env_size)));
     funcVal->header.tag = kETypeTagFunction;
     funcVal->header.gc_mark = 0;
     funcVal->arity = arity;
+    funcVal->has_rest_args = has_rest_args;
     funcVal->f_ptr = fp;
     funcVal->env_size = env_size;
     return OBJECT_TO_TAG(funcVal);
@@ -485,6 +494,74 @@ extern "C" void *rt_compiled_function_get_env(void *func, uint64_t index) {
     auto funcVal = static_cast<ECompiledFunction *>(static_cast<void *>(TAG_TO_OBJECT(func)));
     return funcVal->env[index];
 }
+
+extern "C" void *rt_apply(void *func, void *args) {
+    rt_assert_tag(func, kETypeTagFunction);
+    //rt_assert_tag(args, kETypeTagPair);
+    auto funcVal = static_cast<ECompiledFunction *>(static_cast<void *>(TAG_TO_OBJECT(func)));
+
+    uint32_t has_rest_args = funcVal->has_rest_args;
+    uint32_t arity = funcVal->arity;
+
+    std::vector<void *> a;
+
+    void *arg_head = args;
+    for(int i = 0; i < arity; i++) {
+        if(arg_head == NIL_PTR) {
+            // TODO: Change this
+            printf("Apply: Error- expected %i args\n", arity);
+            throw std::exception();
+        }
+
+        rt_assert_tag(arg_head, kETypeTagPair);
+        a.push_back(rt_car(arg_head));
+        arg_head = rt_cdr(arg_head);
+    }
+
+    // Any remaining args
+    if(has_rest_args) {
+        a.push_back(arg_head);
+    } else {
+        if(arg_head != NIL_PTR) {
+            // TODO: Change this
+            printf("Apply: Error- too many args\n");
+            throw std::exception();
+        }
+    }
+
+    uint32_t total_arg_count = arity + (has_rest_args ? 1 : 0);
+
+    switch(total_arg_count) {
+        case 0: return rt_apply_0(func);
+        case 1: return rt_apply_1(func,a[0]);
+        case 2: return rt_apply_2(func,a[0],a[1]);
+        case 3: return rt_apply_3(func,a[0],a[1],a[2]);
+        case 4: return rt_apply_4(func,a[0],a[1],a[2],a[3]);
+        case 5: return rt_apply_5(func,a[0],a[1],a[2],a[3],a[4]);
+        case 6: return rt_apply_6(func,a[0],a[1],a[2],a[3],a[4],a[5]);
+        case 7: return rt_apply_7(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6]);
+        case 8: return rt_apply_8(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7]);
+        case 9: return rt_apply_9(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8]);
+        case 10: return rt_apply_10(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9]);
+        case 11: return rt_apply_11(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10]);
+        case 12: return rt_apply_12(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11]);
+        case 13: return rt_apply_13(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12]);
+        case 14: return rt_apply_14(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12],a[13]);
+        case 15: return rt_apply_15(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12],a[13],a[14]);
+        case 16: return rt_apply_16(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12],a[13],a[14],a[15]);
+        case 17: return rt_apply_17(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12],a[13],a[14],a[15],a[16]);
+        case 18: return rt_apply_18(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12],a[13],a[14],a[15],a[16],a[17]);
+        case 19: return rt_apply_19(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12],a[13],a[14],a[15],a[16],a[17],a[18]);
+        case 20: return rt_apply_20(func,a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12],a[13],a[14],a[15],a[16],a[17],a[18],a[19]);
+        default: {
+            // TODO: Change this
+            printf("Apply: Error- too many args\n");
+            throw std::exception();
+        }
+    }
+}
+
+#pragma mark - Environment
 
 void *rt_make_environment(void *parent) {
     auto envVal = static_cast<EEnvironment *>(GC_MALLOC(sizeof(EEnvironment)));

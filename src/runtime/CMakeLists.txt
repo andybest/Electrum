@@ -14,6 +14,7 @@ set(HEADER_FILES
 
 set(SOURCE_FILES
         Runtime.cpp
+        apply.cpp
         GarbageCollector.cpp
         generate.c
         hash_table.c

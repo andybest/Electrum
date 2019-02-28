@@ -106,7 +106,8 @@ struct EVar {
 
 struct ECompiledFunction {
     EObjectHeader header;
-    uint64_t arity;
+    uint32_t arity;
+    uint32_t has_rest_args;
 
     /** Pointer to function implementation */
     void *f_ptr;
@@ -203,6 +204,30 @@ void *rt_environment_add(void *env, void *binding, void *value);
 void *rt_environment_get(void *env, void *binding);
 void *rt_gc_malloc_tagged_object(size_t size);
 extern "C" void rt_gc_add_root(void *obj);
+
+extern "C" void *rt_apply_0(void*);
+extern "C" void *rt_apply_1(void*,void*);
+extern "C" void *rt_apply_2(void*,void*,void*);
+extern "C" void *rt_apply_3(void*,void*,void*,void*);
+extern "C" void *rt_apply_4(void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_5(void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_6(void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_7(void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_8(void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_9(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_10(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_11(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_12(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_13(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_14(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_15(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_16(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_17(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_18(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_19(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void *rt_apply_20(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+
+
 //}
 /*EBoolean *rt_make_boolean(uint8_t booleanValue);
 uint64_t rt_is_boolean(EObjectHeader *val);

@@ -112,7 +112,7 @@ class Compiler {
 
   llvm::Value *make_keyword(std::shared_ptr<std::string> name);
 
-  llvm::Value *make_closure(uint64_t arity, llvm::Value *func_ptr, uint64_t env_size);
+  llvm::Value *make_closure(uint64_t arity, bool has_rest_args, llvm::Value *func_ptr, uint64_t env_size);
 
   llvm::Value *make_pair(llvm::Value *v, llvm::Value *next);
 
@@ -131,6 +131,8 @@ class Compiler {
   llvm::Value *build_lambda_get_env(llvm::Value *fn, uint64_t idx);
 
   llvm::Value *build_gc_add_root(llvm::Value *obj);
+
+  llvm::Value *build_apply(llvm::Value *f, llvm::Value *args);
 };
 }
 

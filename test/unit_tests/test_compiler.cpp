@@ -137,7 +137,7 @@ TEST(Compiler, compilesDef) {
     rt_deinit_gc();
 }
 
-TEST(Compiler, compilesBasicLambda)  {
+TEST(Compiler, compilesBasicLambda) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
@@ -147,13 +147,13 @@ TEST(Compiler, compilesBasicLambda)  {
 
     EXPECT_EQ(rt_is_integer(result1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result1), 1234);
-    
+
     EXPECT_EQ(rt_is_float(result2), TRUE_PTR);
     EXPECT_FLOAT_EQ(rt_float_value(result2), 5.678);
     rt_deinit_gc();
 }
 
-TEST(Compiler, compilesLambdaWithBranch)  {
+TEST(Compiler, compilesLambdaWithBranch) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
@@ -195,7 +195,7 @@ TEST(Compiler, compilesDefFFIFn) {
     EXPECT_EQ(rt_integer_value(car), 1234);
 
     c.compile_and_eval_string("(def-ffi-fn* car rt_car :el (:el))");
-    auto result2 = c.compile_and_eval_string("(car (cons 5678))");
+    auto result2 = c.compile_and_eval_string("(car (cons 5678 nil))");
 
     EXPECT_EQ(rt_is_integer(result2), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result2), 5678);
@@ -314,6 +314,30 @@ TEST(Compiler, compilesSimpleMacro) {
 
     EXPECT_EQ(rt_is_integer(e3), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(e3), 3);
+
+    rt_deinit_gc();
+}
+
+TEST(Compiler, compilesLambdaWithRestArgs) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compile_and_eval_string("(do "
+                              "  (def-ffi-fn* car rt_car :el (:el))"
+                              "  (def-ffi-fn* cdr rt_cdr :el (:el)))");
+
+    auto r1 = c.compile_and_eval_string("((lambda (x & rest) x) 1 2 3)");
+    auto r2 = c.compile_and_eval_string("((lambda (x & rest) (car rest)) 1 2 3)");
+    auto r3 = c.compile_and_eval_string("((lambda (x & rest) (car (cdr rest))) 1 2 3)");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 1);
+
+    EXPECT_EQ(rt_is_integer(r2), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r2), 2);
+
+    EXPECT_EQ(rt_is_integer(r3), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r3), 3);
 
     rt_deinit_gc();
 }
