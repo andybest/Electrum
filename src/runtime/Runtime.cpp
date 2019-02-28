@@ -606,6 +606,148 @@ void *rt_environment_get(void *env, void *binding) {
     return NIL_PTR;
 }
 
+#pragma mark - Arithmetic
+
+extern "C" void *rt_add(void *x, void *y) {
+    bool ix = electrum::is_integer(x);
+    bool iy = electrum::is_integer(y);
+
+    if(ix && iy) {
+        // Since the tag is 0, we can simply add them together and return
+        return reinterpret_cast<void*>(reinterpret_cast<intptr_t>(x) + reinterpret_cast<intptr_t>(y));
+    }
+
+    bool fx = electrum::is_object_with_tag(x, kETypeTagFloat);
+    bool fy = electrum::is_object_with_tag(y, kETypeTagFloat);
+
+    if(fx && fy) {
+        // float + float
+        double dx = rt_float_value(x);
+        double dy = rt_float_value(y);
+        return rt_make_float(dx + dy);
+    } else if(ix && fy) {
+        // integer + float
+        intptr_t iix = TAG_TO_INTEGER(x);
+        double dy = rt_float_value(y);
+        return rt_make_float(((double)iix) + dy);
+    } else if(fx && iy) {
+        // float + integer
+        double dx = rt_float_value(x);
+        intptr_t iiy = TAG_TO_INTEGER(y);
+        return rt_make_float(dx + ((double)iiy));
+    }
+
+    throw std::exception();
+}
+
+extern "C" void *rt_sub(void *x, void *y) {
+    bool ix = electrum::is_integer(x);
+    bool iy = electrum::is_integer(y);
+
+    if(ix && iy) {
+        // Tag is 0, so no shifts needed
+        return reinterpret_cast<void*>(reinterpret_cast<intptr_t>(x) - reinterpret_cast<intptr_t>(y));
+    }
+
+    bool fx = electrum::is_object_with_tag(x, kETypeTagFloat);
+    bool fy = electrum::is_object_with_tag(y, kETypeTagFloat);
+
+    if(fx && fy) {
+        // float - float
+        double dx = rt_float_value(x);
+        double dy = rt_float_value(y);
+        return rt_make_float(dx + dy);
+    } else if(ix && fy) {
+        // integer - float
+        intptr_t iix = TAG_TO_INTEGER(x);
+        double dy = rt_float_value(y);
+        return rt_make_float(((double)iix) - dy);
+    } else if(fx && iy) {
+        // float - integer
+        double dx = rt_float_value(x);
+        intptr_t iiy = TAG_TO_INTEGER(y);
+        return rt_make_float(dx - ((double)iiy));
+    }
+
+    throw std::exception();
+}
+
+extern "C" void *rt_mul(void *x, void *y) {
+    bool ix = electrum::is_integer(x);
+    bool iy = electrum::is_integer(y);
+
+    if(ix && iy) {
+        uintptr_t iix = TAG_TO_INTEGER(x);
+        uintptr_t iiy = TAG_TO_INTEGER(y);
+        return INTEGER_TO_TAG(iix * iiy);
+    }
+
+    bool fx = electrum::is_object_with_tag(x, kETypeTagFloat);
+    bool fy = electrum::is_object_with_tag(y, kETypeTagFloat);
+
+    if(fx && fy) {
+        // float * float
+        double dx = rt_float_value(x);
+        double dy = rt_float_value(y);
+        return rt_make_float(dx * dy);
+    } else if(ix && fy) {
+        // integer * float
+        intptr_t iix = TAG_TO_INTEGER(x);
+        double dy = rt_float_value(y);
+        return rt_make_float(((double)iix) * dy);
+    } else if(fx && iy) {
+        // float * integer
+        double dx = rt_float_value(x);
+        intptr_t iiy = TAG_TO_INTEGER(y);
+        return rt_make_float(dx * ((double)iiy));
+    }
+
+    throw std::exception();
+}
+
+extern "C" void *rt_div(void *x, void *y) {
+    bool ix = electrum::is_integer(x);
+    bool iy = electrum::is_integer(y);
+
+    if(iy && TAG_TO_INTEGER(y) == 0) {
+        // Div by zero
+        throw std::exception();
+    }
+
+    if(ix && iy) {
+        uintptr_t iix = TAG_TO_INTEGER(x);
+        uintptr_t iiy = TAG_TO_INTEGER(y);
+        return INTEGER_TO_TAG(iix / iiy);
+    }
+
+    bool fx = electrum::is_object_with_tag(x, kETypeTagFloat);
+    bool fy = electrum::is_object_with_tag(y, kETypeTagFloat);
+
+    if(fy && rt_float_value(y) == 0) {
+        // Div by zero
+        throw std::exception();
+    }
+
+    if(fx && fy) {
+        // float / float
+        double dx = rt_float_value(x);
+        double dy = rt_float_value(y);
+        return rt_make_float(dx / dy);
+    } else if(ix && fy) {
+        // integer / float
+        intptr_t iix = TAG_TO_INTEGER(x);
+        double dy = rt_float_value(y);
+        return rt_make_float(((double)iix) / dy);
+    } else if(fx && iy) {
+        // float / integer
+        double dx = rt_float_value(x);
+        intptr_t iiy = TAG_TO_INTEGER(y);
+        return rt_make_float(dx / ((double)iiy));
+    }
+
+    throw std::exception();
+}
+
 /**
  * Malloc a tagged object. It is assumed by the GC that this object will be
  * converted to a tagged pointer.

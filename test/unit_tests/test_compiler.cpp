@@ -342,3 +342,91 @@ TEST(Compiler, compilesLambdaWithRestArgs) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesArithmeticAdd) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compile_and_eval_string("(def-ffi-fn* + rt_add :el (:el :el))");
+
+    auto r1 = c.compile_and_eval_string("(+ 1   2  )");
+    auto r2 = c.compile_and_eval_string("(+ 1   2.0)");
+    auto r3 = c.compile_and_eval_string("(+ 1.0 2  )");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 3);
+
+    EXPECT_EQ(rt_is_float(r2), TRUE_PTR);
+    EXPECT_DOUBLE_EQ(rt_float_value(r2), 3.0);
+
+    EXPECT_EQ(rt_is_float(r3), TRUE_PTR);
+    EXPECT_DOUBLE_EQ(rt_float_value(r3), 3.0);
+
+    rt_deinit_gc();
+}
+
+TEST(Compiler, compilesArithmeticSub) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compile_and_eval_string("(def-ffi-fn* - rt_sub :el (:el :el))");
+
+    auto r1 = c.compile_and_eval_string("(- 2 1)");
+    auto r2 = c.compile_and_eval_string("(- 2.0 1)");
+    auto r3 = c.compile_and_eval_string("(- 2 1.0)");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 1);
+
+    EXPECT_EQ(rt_is_float(r2), TRUE_PTR);
+    EXPECT_DOUBLE_EQ(rt_float_value(r2), 1.0);
+
+    EXPECT_EQ(rt_is_float(r3), TRUE_PTR);
+    EXPECT_DOUBLE_EQ(rt_float_value(r3), 1.0);
+
+    rt_deinit_gc();
+}
+
+TEST(Compiler, compilesArithmeticMul) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compile_and_eval_string("(def-ffi-fn* * rt_mul :el (:el :el))");
+
+    auto r1 = c.compile_and_eval_string("(* 2 3)");
+    auto r2 = c.compile_and_eval_string("(* 2.0 3)");
+    auto r3 = c.compile_and_eval_string("(* 2 3.0)");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 6);
+
+    EXPECT_EQ(rt_is_float(r2), TRUE_PTR);
+    EXPECT_DOUBLE_EQ(rt_float_value(r2), 6.0);
+
+    EXPECT_EQ(rt_is_float(r3), TRUE_PTR);
+    EXPECT_DOUBLE_EQ(rt_float_value(r3), 6.0);
+
+    rt_deinit_gc();
+}
+
+TEST(Compiler, compilesArithmeticDiv) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compile_and_eval_string("(def-ffi-fn* / rt_div :el (:el :el))");
+
+    auto r1 = c.compile_and_eval_string("(/ 8 2)");
+    auto r2 = c.compile_and_eval_string("(/ 3.0 2)");
+    auto r3 = c.compile_and_eval_string("(/ 3 2.0)");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 4);
+
+    EXPECT_EQ(rt_is_float(r2), TRUE_PTR);
+    EXPECT_DOUBLE_EQ(rt_float_value(r2), 1.5);
+
+    EXPECT_EQ(rt_is_float(r3), TRUE_PTR);
+    EXPECT_DOUBLE_EQ(rt_float_value(r3), 1.5);
+
+    rt_deinit_gc();
+}
