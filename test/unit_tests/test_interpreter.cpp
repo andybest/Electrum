@@ -182,15 +182,15 @@ TEST(Interpreter, evaluatesFunctionFromVar) {
 TEST(Interpreter, unbound_symbol_lookup_throws_exception) {
     auto interp = Interpreter();
 
-    EXPECT_THROW(interp.evalExpr(make_symbol("a")), InterpreterException);
+    EXPECT_THROW(interp.evalExpr(makeSymbol("a")), InterpreterException);
 }
 
 TEST(Interpreter, do_executes_body_returns_last) {
-    auto expr1 = make_list({make_symbol("define"),
-                            make_symbol("a"),
-                            make_integer(1234)});
-    auto expr2 = make_integer(2345);
-    auto doForm = make_list({make_symbol("do"), expr1, expr2});
+    auto expr1 = make_list({makeSymbol("define"),
+                            makeSymbol("a"),
+                            makeInteger(1234)});
+    auto expr2 = makeInteger(2345);
+    auto doForm = make_list({makeSymbol("do"), expr1, expr2});
 
     auto interp = Interpreter();
     auto result = interp.evalExpr(doForm);
@@ -198,7 +198,7 @@ TEST(Interpreter, do_executes_body_returns_last) {
     EXPECT_EQ(result->tag, kTypeTagInteger);
     EXPECT_EQ(result->integerValue, 2345);
 
-    auto defResult = interp.evalExpr(make_symbol("a"));
+    auto defResult = interp.evalExpr(makeSymbol("a"));
     EXPECT_EQ(defResult->tag, kTypeTagInteger);
     EXPECT_EQ(defResult->integerValue, 1234);
 }
