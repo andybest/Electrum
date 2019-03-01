@@ -53,108 +53,108 @@
  * Type tags for objects
  */
 enum ETypeTag : uint64_t {
-    kETypeTagFloat,
-    kETypeTagString,
-    kETypeTagSymbol,
-    kETypeTagKeyword,
-    kETypeTagPair,
-    kETypeTagFunction,
-    kETypeTagInterpretedFunction,
-    kETypeTagEnvironment,
-    kETypeTagVar
+  kETypeTagFloat,
+  kETypeTagString,
+  kETypeTagSymbol,
+  kETypeTagKeyword,
+  kETypeTagPair,
+  kETypeTagFunction,
+  kETypeTagInterpretedFunction,
+  kETypeTagEnvironment,
+  kETypeTagVar
 };
 
 struct EObjectHeader {
-    uint32_t tag;
-    uint32_t gc_mark;
+  uint32_t tag;
+  uint32_t gc_mark;
 };
 
 struct EFloat {
-    EObjectHeader header;
-    double floatValue;
+  EObjectHeader header;
+  double floatValue;
 };
 
 struct EString {
-    EObjectHeader header;
-    uint64_t length;
-    char stringValue[];
+  EObjectHeader header;
+  uint64_t length;
+  char stringValue[];
 };
 
 struct ESymbol {
-    EObjectHeader header;
-    uint64_t length;
-    char name[];
+  EObjectHeader header;
+  uint64_t length;
+  char name[];
 };
 
 struct EKeyword {
-    EObjectHeader header;
-    uint64_t length;
-    char name[];
+  EObjectHeader header;
+  uint64_t length;
+  char name[];
 };
 
 struct EPair {
-    EObjectHeader header;
-    void *value;
-    void *next;
+  EObjectHeader header;
+  void* value;
+  void* next;
 };
 
 struct EVar {
-    EObjectHeader header;
-    void *sym;
-    void *val;
+  EObjectHeader header;
+  void* sym;
+  void* val;
 };
 
 struct ECompiledFunction {
-    EObjectHeader header;
-    uint32_t arity;
-    uint32_t has_rest_args;
+  EObjectHeader header;
+  uint32_t arity;
+  uint32_t has_rest_args;
 
-    /** Pointer to function implementation */
-    void *f_ptr;
+  /** Pointer to function implementation */
+  void* f_ptr;
 
-    uint64_t env_size;
+  uint64_t env_size;
 
-    /** Closure environment */
-    void* env[];
+  /** Closure environment */
+  void* env[];
 };
 
 struct EInterpretedFunction {
-    EObjectHeader header;
-    uint64_t arity;
+  EObjectHeader header;
+  uint64_t arity;
 
-    /** Argument names- a list of symbols */
-    void *argnames;
+  /** Argument names- a list of symbols */
+  void* argnames;
 
-    /** Body- A list of forms */
-    void *body;
+  /** Body- A list of forms */
+  void* body;
 
-    /** Closure environment */
-    void *env;
+  /** Closure environment */
+  void* env;
 };
 
 struct EEnvironment {
-    EObjectHeader header;
-    void *parent;
-    /** A list comprising of symbols followed by values */
-    void *values;
+  EObjectHeader header;
+  void* parent;
+  /** A list comprising of symbols followed by values */
+  void* values;
 };
 
 namespace electrum {
-    bool is_object(void *val);
+bool is_object(void* val);
 
-    bool is_integer(void *val);
+bool is_integer(void* val);
 
-    bool is_boolean(void *val);
+bool is_boolean(void* val);
 
-    bool is_object_with_tag(void *val, uint64_t tag);
+bool is_object_with_tag(void* val, uint64_t tag);
 
-    bool symbol_equal(void *s1, void *s2);
+bool symbol_equal(void* s1, void* s2);
 
-    void print_expr(void *expr);
+void print_expr(void* expr);
 
-    std::string kind_for_obj(void *obj);
+std::string kind_for_obj(void* obj);
 
-    std::string description_for_obj(void *obj);
+std::string description_for_obj(void* obj);
 }
 
 
@@ -164,68 +164,76 @@ void rt_init();
 void rt_init_gc(electrum::GCMode gc_mode);
 void rt_deinit_gc();
 
-electrum::GarbageCollector *rt_get_gc();
+electrum::GarbageCollector* rt_get_gc();
 
-void *rt_is_object(void *val);
+void* rt_is_object(void* val);
 
-extern "C" void *rt_make_boolean(int8_t booleanValue);
-extern "C" void *rt_is_boolean(void *val);
+extern "C" void* rt_make_boolean(int8_t booleanValue);
+extern "C" void* rt_is_boolean(void* val);
 
-extern "C" void *rt_make_integer(int64_t value);
-extern "C" void *rt_is_integer(void *val);
-extern "C" int64_t rt_integer_value(void *val);
+extern "C" void* rt_make_integer(int64_t value);
+extern "C" void* rt_is_integer(void* val);
+extern "C" int64_t rt_integer_value(void* val);
 
-extern "C" void *rt_make_float(double value);
-extern "C" void *rt_is_float(void *val);
-extern "C" double rt_float_value(void *val);
+extern "C" void* rt_make_float(double value);
+extern "C" void* rt_is_float(void* val);
+extern "C" double rt_float_value(void* val);
 
-extern "C" void *rt_make_symbol(const char *name);
-extern "C" void *rt_is_symbol(void *val);
+extern "C" void* rt_make_symbol(const char* name);
+extern "C" void* rt_is_symbol(void* val);
 
-extern "C" void *rt_make_string(const char *str);
-extern "C" void *rt_is_string(void *val);
-extern "C" const char *rt_string_value(void *val);
+extern "C" void* rt_make_string(const char* str);
+extern "C" void* rt_is_string(void* val);
+extern "C" const char* rt_string_value(void* val);
 
-extern "C" void *rt_make_var(void *sym);
-extern "C" void *rt_is_var(void *v);
-extern "C" void rt_set_var(void *v, void *val);
-extern "C" void *rt_deref_var(void *v);
+extern "C" void* rt_make_var(void* sym);
+extern "C" void* rt_is_var(void* v);
+extern "C" void rt_set_var(void* v, void* val);
+extern "C" void* rt_deref_var(void* v);
 
-extern "C" void *rt_is_pair(void *value);
-extern "C" void *rt_make_pair(void *value, void *next);
-extern "C" void *rt_car(void *pair);
-extern "C" void *rt_cdr(void *pair);
-extern "C" void *rt_set_car(void *pair, void *val);
-extern "C" void *rt_set_cdr(void *pair, void *next);
+extern "C" void* rt_is_pair(void* value);
+extern "C" void* rt_make_pair(void* value, void* next);
+extern "C" void* rt_car(void* pair);
+extern "C" void* rt_cdr(void* pair);
+extern "C" void* rt_set_car(void* pair, void* val);
+extern "C" void* rt_set_cdr(void* pair, void* next);
 
-void *rt_make_interpreted_function(void *argnames, uint64_t arity, void *body, void *env);
-void *rt_make_environment(void *parent);
-void *rt_environment_add(void *env, void *binding, void *value);
-void *rt_environment_get(void *env, void *binding);
-void *rt_gc_malloc_tagged_object(size_t size);
-extern "C" void rt_gc_add_root(void *obj);
+void* rt_make_interpreted_function(void* argnames, uint64_t arity, void* body, void* env);
+void* rt_make_environment(void* parent);
+void* rt_environment_add(void* env, void* binding, void* value);
+void* rt_environment_get(void* env, void* binding);
+void* rt_gc_malloc_tagged_object(size_t size);
+extern "C" void rt_gc_add_root(void* obj);
 
-extern "C" void *rt_apply_0(void*);
-extern "C" void *rt_apply_1(void*,void*);
-extern "C" void *rt_apply_2(void*,void*,void*);
-extern "C" void *rt_apply_3(void*,void*,void*,void*);
-extern "C" void *rt_apply_4(void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_5(void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_6(void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_7(void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_8(void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_9(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_10(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_11(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_12(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_13(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_14(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_15(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_16(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_17(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_18(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_19(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
-extern "C" void *rt_apply_20(void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*,void*);
+extern "C" void* rt_apply_0(void*);
+extern "C" void* rt_apply_1(void*, void*);
+extern "C" void* rt_apply_2(void*, void*, void*);
+extern "C" void* rt_apply_3(void*, void*, void*, void*);
+extern "C" void* rt_apply_4(void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_5(void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_6(void*, void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_7(void*, void*, void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_8(void*, void*, void*, void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_9(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_10(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_11(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_12(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_13(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*,
+        void*);
+extern "C" void* rt_apply_14(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*,
+        void*, void*);
+extern "C" void* rt_apply_15(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*,
+        void*, void*, void*);
+extern "C" void* rt_apply_16(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*,
+        void*, void*, void*, void*);
+extern "C" void* rt_apply_17(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*,
+        void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_18(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*,
+        void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_19(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*,
+        void*, void*, void*, void*, void*, void*, void*);
+extern "C" void* rt_apply_20(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*,
+        void*, void*, void*, void*, void*, void*, void*, void*);
 
 
 //}

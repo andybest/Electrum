@@ -51,46 +51,42 @@
 
 namespace electrum {
 
-    class ElectrumJit {
+class ElectrumJit {
 
-    private:
-        llvm::orc::ExecutionSession &es_;
-        std::shared_ptr<llvm::orc::SymbolResolver> resolver_;
-        std::unique_ptr<llvm::TargetMachine> target_machine_;
+private:
+    llvm::orc::ExecutionSession& es_;
+    std::shared_ptr<llvm::orc::SymbolResolver> resolver_;
+    std::unique_ptr<llvm::TargetMachine> target_machine_;
 
-        const llvm::DataLayout data_layout_;
-        llvm::orc::RTDyldObjectLinkingLayer object_layer_;
-        llvm::orc::IRCompileLayer<decltype(object_layer_), llvm::orc::SimpleCompiler> compile_layer_;
+    const llvm::DataLayout data_layout_;
+    llvm::orc::RTDyldObjectLinkingLayer object_layer_;
+    llvm::orc::IRCompileLayer<decltype(object_layer_), llvm::orc::SimpleCompiler> compile_layer_;
 
-        using OptimizeFunction =
-        std::function<std::unique_ptr<llvm::Module>(std::unique_ptr<llvm::Module>)>;
-        llvm::orc::IRTransformLayer <decltype(compile_layer_), OptimizeFunction > optimize_layer_;
+    using OptimizeFunction =
+    std::function<std::unique_ptr<llvm::Module>(std::unique_ptr<llvm::Module>)>;
+    llvm::orc::IRTransformLayer<decltype(compile_layer_), OptimizeFunction> optimize_layer_;
 
-        llvm::orc::JITCompileCallbackManager *compile_callback_mgr_;
-        std::unique_ptr<llvm::orc::IndirectStubsManager> indirect_stubs_mgr_;
-        void *stack_map_ptr_;
+    llvm::orc::JITCompileCallbackManager* compile_callback_mgr_;
+    std::unique_ptr<llvm::orc::IndirectStubsManager> indirect_stubs_mgr_;
+    void* stack_map_ptr_;
 
-    public:
-        using MyRemote = llvm::orc::remote::OrcRemoteTargetClient;
+public:
+    using MyRemote = llvm::orc::remote::OrcRemoteTargetClient;
 
-        ElectrumJit(llvm::orc::ExecutionSession &es);
+    ElectrumJit(llvm::orc::ExecutionSession& es);
+    llvm::TargetMachine& getTargetMachine();
 
-        llvm::TargetMachine &getTargetMachine();
+    llvm::orc::VModuleKey addModule(std::unique_ptr<llvm::Module> module);
+    void remove_module(llvm::orc::VModuleKey h);
 
-        llvm::orc::VModuleKey addModule(std::unique_ptr<llvm::Module> module);
+    llvm::JITSymbol find_symbol(const std::string& name);
+    llvm::JITTargetAddress get_symbol_address(const std::string& name);
 
-        llvm::JITSymbol find_symbol(const std::string &name);
-
-        llvm::JITTargetAddress get_symbol_address(const std::string &name);
-
-        void remove_module(llvm::orc::VModuleKey h);
-
-        void *get_stack_map_pointer() {
-            return stack_map_ptr_;
-        }
-    };
+    void* get_stack_map_pointer() {
+        return stack_map_ptr_;
+    }
+};
 
 }
-
 
 #endif //ELECTRUM_ELECTRUMJIT_H

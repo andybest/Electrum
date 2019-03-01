@@ -33,7 +33,6 @@ using namespace electrum;
 using std::shared_ptr;
 using std::make_shared;
 
-
 TEST(Interpreter, if_evaluates_correct_expressions) {
     // (if #t 1234 5678) == 1234
     // (if #f 1234 5678) == 5678
@@ -47,14 +46,14 @@ TEST(Interpreter, if_evaluates_correct_expressions) {
     auto alternative = rt_make_integer(5678);
 
     auto if1 = rt_make_pair(rt_make_symbol("if"),
-                            rt_make_pair(cond1,
-                                         rt_make_pair(subsequent,
-                                                      rt_make_pair(alternative, NIL_PTR))));
+            rt_make_pair(cond1,
+                    rt_make_pair(subsequent,
+                            rt_make_pair(alternative, NIL_PTR))));
 
     auto if2 = rt_make_pair(rt_make_symbol("if"),
-                            rt_make_pair(cond2,
-                                         rt_make_pair(subsequent,
-                                                      rt_make_pair(alternative, NIL_PTR))));
+            rt_make_pair(cond2,
+                    rt_make_pair(subsequent,
+                            rt_make_pair(alternative, NIL_PTR))));
 
     auto interp = Interpreter();
 
@@ -67,7 +66,8 @@ TEST(Interpreter, if_evaluates_correct_expressions) {
         EXPECT_TRUE(is_integer(result2));
         EXPECT_EQ(TAG_TO_INTEGER(result2), 5678);
 
-    } catch (InterpreterException &e) {
+    }
+    catch (InterpreterException& e) {
         GTEST_FATAL_FAILURE_(e.what());
     }
 
@@ -80,8 +80,8 @@ TEST(Interpreter, begin_returns_last_form) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto form = rt_make_pair(rt_make_symbol("begin"),
-                             rt_make_pair(rt_make_integer(1234),
-                                          rt_make_pair(rt_make_integer(5678), NIL_PTR)));
+            rt_make_pair(rt_make_integer(1234),
+                    rt_make_pair(rt_make_integer(5678), NIL_PTR)));
 
     auto interp = Interpreter();
 
@@ -89,7 +89,8 @@ TEST(Interpreter, begin_returns_last_form) {
         auto result = interp.evalExpr(form, nullptr);
         EXPECT_TRUE(is_integer(result));
         EXPECT_EQ(TAG_TO_INTEGER(result), 5678);
-    } catch (InterpreterException &e) {
+    }
+    catch (InterpreterException& e) {
         GTEST_FATAL_FAILURE_(e.what());
     }
 
@@ -102,22 +103,22 @@ TEST(Interpreter, runs_simple_lambda) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto form = rt_make_pair(rt_make_pair(rt_make_symbol("lambda"),
-                                          rt_make_pair(rt_make_pair(rt_make_symbol("x"), NIL_PTR),
-                                                       rt_make_pair(rt_make_symbol("x"), NIL_PTR))),
-                             rt_make_pair(rt_make_integer(1234), NIL_PTR));
+            rt_make_pair(rt_make_pair(rt_make_symbol("x"), NIL_PTR),
+                    rt_make_pair(rt_make_symbol("x"), NIL_PTR))),
+            rt_make_pair(rt_make_integer(1234), NIL_PTR));
 
     auto interp = Interpreter();
     try {
         auto result = interp.evalExpr(form);
         EXPECT_TRUE(is_integer(result));
         EXPECT_EQ(TAG_TO_INTEGER(result), 1234);
-    } catch (InterpreterException &e) {
+    }
+    catch (InterpreterException& e) {
         GTEST_FATAL_FAILURE_(e.what());
     }
 
     rt_deinit_gc();
 }
-
 
 TEST(Interpreter, define_stores_value) {
     // (define a 1234)
@@ -126,8 +127,8 @@ TEST(Interpreter, define_stores_value) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto def = rt_make_pair(rt_make_symbol("define"),
-                            rt_make_pair(rt_make_symbol("a"),
-                                         rt_make_pair(rt_make_integer(1234), NIL_PTR)));
+            rt_make_pair(rt_make_symbol("a"),
+                    rt_make_pair(rt_make_integer(1234), NIL_PTR)));
 
     auto interp = Interpreter();
 
@@ -137,7 +138,8 @@ TEST(Interpreter, define_stores_value) {
         auto result = interp.evalExpr(rt_make_symbol("a"));
         EXPECT_TRUE(is_integer(result));
         EXPECT_EQ(TAG_TO_INTEGER(result), 1234);
-    } catch (InterpreterException &e) {
+    }
+    catch (InterpreterException& e) {
         GTEST_FATAL_FAILURE_(e.what());
     }
 
@@ -151,16 +153,16 @@ TEST(Interpreter, evaluates_function_from_var) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     auto form = rt_make_pair(rt_make_symbol("define"),
-                             rt_make_pair(rt_make_symbol("f"),
-                                          rt_make_pair(rt_make_pair(rt_make_symbol("lambda"),
-                                                                    rt_make_pair(
-                                                                            rt_make_pair(rt_make_symbol("x"), NIL_PTR),
-                                                                            rt_make_pair(rt_make_symbol("x"),
-                                                                                         NIL_PTR))), NIL_PTR)));
+            rt_make_pair(rt_make_symbol("f"),
+                    rt_make_pair(rt_make_pair(rt_make_symbol("lambda"),
+                            rt_make_pair(
+                                    rt_make_pair(rt_make_symbol("x"), NIL_PTR),
+                                    rt_make_pair(rt_make_symbol("x"),
+                                            NIL_PTR))), NIL_PTR)));
 
     auto applyForm = rt_make_pair(rt_make_symbol("f"),
-                                  rt_make_pair(rt_make_integer(1234),
-                                               NIL_PTR));
+            rt_make_pair(rt_make_integer(1234),
+                    NIL_PTR));
 
     auto interp = Interpreter();
     try {
@@ -168,7 +170,8 @@ TEST(Interpreter, evaluates_function_from_var) {
         auto result = interp.evalExpr(applyForm);
         EXPECT_TRUE(is_integer(result));
         EXPECT_EQ(TAG_TO_INTEGER(result), 1234);
-    } catch (InterpreterException &e) {
+    }
+    catch (InterpreterException& e) {
         GTEST_FATAL_FAILURE_(e.what());
     }
 

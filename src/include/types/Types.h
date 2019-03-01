@@ -34,63 +34,63 @@
 
 namespace electrum {
 
-    using std::shared_ptr;
-    using std::vector;
-    using std::string;
-    using std::unordered_map;
+using std::shared_ptr;
+using std::vector;
+using std::string;
+using std::unordered_map;
 
-    enum TypeTag {
-        kTypeTagInteger,
-        kTypeTagFloat,
-        kTypeTagBoolean,
-        kTypeTagList,
-        kTypeTagString,
-        kTypeTagNil,
-        kTypeTagSymbol,
-        kTypeTagKeyword
-    };
+enum TypeTag {
+  kTypeTagInteger,
+  kTypeTagFloat,
+  kTypeTagBoolean,
+  kTypeTagList,
+  kTypeTagString,
+  kTypeTagNil,
+  kTypeTagSymbol,
+  kTypeTagKeyword
+};
 
-    struct SourcePosition {
-        size_t line;
-        size_t column;
-        shared_ptr<string> filename;
-    };
+struct SourcePosition {
+  size_t line;
+  size_t column;
+  shared_ptr<string> filename;
+};
 
-    struct ASTNode;
+struct ASTNode;
 
-    struct LispFunction {
-        /// List of binding names
-        vector<string> bindings;
+struct LispFunction {
+  /// List of binding names
+  vector<string> bindings;
 
-        /// If the function has a variable argument count
-        bool isVararg;
+  /// If the function has a variable argument count
+  bool isVararg;
 
-        /// The binding for the rest of the arguments
-        std::string varargBinding;
+  /// The binding for the rest of the arguments
+  std::string varargBinding;
 
-        /// The body of the function
-        shared_ptr<ASTNode> bodyForm;
-    };
+  /// The body of the function
+  shared_ptr<ASTNode> bodyForm;
+};
 
-    struct ASTNode {
-        TypeTag tag;
-        shared_ptr<SourcePosition> sourcePosition;
+struct ASTNode {
+  TypeTag tag;
+  shared_ptr<SourcePosition> sourcePosition;
 
-        union {
-            int64_t integerValue;
-            double floatValue;
-            bool booleanValue;
-        };
+  union {
+    int64_t integerValue;
+    double floatValue;
+    bool booleanValue;
+  };
 
-        shared_ptr<LispFunction> functionValue;
-        shared_ptr<vector<shared_ptr<ASTNode>>> listValue;
-        shared_ptr<string> stringValue;     // Used for string, symbol and keyword
-    };
+  shared_ptr<LispFunction> functionValue;
+  shared_ptr<vector<shared_ptr<ASTNode>>> listValue;
+  shared_ptr<string> stringValue;     // Used for string, symbol and keyword
+};
 
-    struct Environment {
-        shared_ptr<Environment> parent;
-        unordered_map<std::string, shared_ptr<ASTNode>> bindings;
-    };
+struct Environment {
+  shared_ptr<Environment> parent;
+  unordered_map<std::string, shared_ptr<ASTNode>> bindings;
+};
 }
 
 #endif //ELECTRUM_TYPES_H

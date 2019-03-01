@@ -26,16 +26,14 @@
 #define ELECTRUM_EHASHTABLE_H
 
 typedef struct {
-    char* key;
-    char* value;
+  char* key;
+  char* value;
 } EHashTableItem;
 
 typedef struct {
-    int size;
-    int count;
-    EHashTableItem** items;
+  int size;
+  int count;
+  EHashTableItem** items;
 } EHashTable;
-
-
 
 #endif //ELECTRUM_EHASHTABLE_H

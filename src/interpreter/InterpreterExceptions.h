@@ -32,35 +32,34 @@
 #include "types/Types.h"
 
 namespace electrum {
-    class InterpreterException : public std::exception {
-    public:
-        explicit InterpreterException(const char *message,
-                                      shared_ptr <SourcePosition> sourcePosition)
-                : message_(message),
-                  sourcePosition_(std::move(sourcePosition)) {
-        }
+class InterpreterException : public std::exception {
+public:
+    explicit InterpreterException(const char* message,
+            shared_ptr <SourcePosition> sourcePosition)
+            :message_(message),
+             sourcePosition_(std::move(sourcePosition)) {
+    }
 
-        explicit InterpreterException(std::string message,
-                                      shared_ptr <SourcePosition> sourcePosition)
-                : message_(std::move(message)),
-                  sourcePosition_(std::move(sourcePosition)) {
-        }
+    explicit InterpreterException(std::string message,
+            shared_ptr <SourcePosition> sourcePosition)
+            :message_(std::move(message)),
+             sourcePosition_(std::move(sourcePosition)) {
+    }
 
-        virtual ~InterpreterException() throw() {}
+    virtual ~InterpreterException() throw() { }
 
-        virtual const char *what() const throw() {
-            return message_.c_str();
-        }
+    virtual const char* what() const throw() {
+        return message_.c_str();
+    }
 
-        std::shared_ptr<SourcePosition> sourcePosition() {
-            return sourcePosition_;
-        }
+    std::shared_ptr<SourcePosition> sourcePosition() {
+        return sourcePosition_;
+    }
 
-    protected:
-        std::string message_;
-        std::shared_ptr<SourcePosition> sourcePosition_;
-    };
+protected:
+    std::string message_;
+    std::shared_ptr<SourcePosition> sourcePosition_;
+};
 }
-
 
 #endif //ELECTRUM_INTERPRETEREXCEPTIONS_H

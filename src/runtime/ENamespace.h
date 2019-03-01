@@ -31,25 +31,24 @@
 
 namespace electrum {
 
-    using std::unordered_map;
-    using std::make_shared;
-    using std::shared_ptr;
+using std::unordered_map;
+using std::make_shared;
+using std::shared_ptr;
 
-    class ENamespace {
-    public:
-        ENamespace(std::string name);
+class ENamespace {
+public:
+    ENamespace(std::string name);
 
-        //void* lookupBindingWithName(char *binding);
-        //void* lookupBindingWithSymbol(void *symbol);
-    private:
-        std::string name;
-        unordered_map<std::string, void*> mappings_;
-    };
-
-    static shared_ptr<unordered_map<std::string, shared_ptr<ENamespace>>> global_namespaces;
-
-    void init_global_namespaces();
+    //void* lookupBindingWithName(char *binding);
+    //void* lookupBindingWithSymbol(void *symbol);
+private:
+    std::string name;
+    unordered_map<std::string, void*> mappings_;
 };
 
+static shared_ptr<unordered_map<std::string, shared_ptr<ENamespace>>> global_namespaces;
+
+void init_global_namespaces();
+};
 
 #endif //ELECTRUM_NAMESPACE_H

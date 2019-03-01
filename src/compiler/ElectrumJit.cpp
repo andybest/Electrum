@@ -37,14 +37,14 @@ static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Modul
     fpm->add(llvm::createPlaceSafepointsPass());
     fpm->doInitialization();
 
-    for (auto &f: *module) {
+    for (auto& f: *module) {
         fpm->run(f);
     }
 
     std::string errors;
     auto error_stream = llvm::raw_string_ostream(errors);
     auto has_errors = llvm::verifyModule(*module, &error_stream, nullptr);
-    if(has_errors) {
+    if (has_errors) {
         error_stream.flush();
         std::cout << errors << std::endl;
         module->print(llvm::errs(), nullptr);
@@ -60,41 +60,41 @@ static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Modul
     return module;
 }
 
-ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession &es)
-    : es_(es),
-      resolver_(createLegacyLookupResolver(
-          es_,
-          [this](const std::string &Name) -> llvm::JITSymbol {
-            if (auto Sym = optimize_layer_.findSymbol(Name, false))
-                return Sym;
-            else if (auto Err = Sym.takeError())
-                return std::move(Err);
-            if (auto SymAddr =
-                llvm::RTDyldMemoryManager::getSymbolAddressInProcess(Name))
-                return llvm::JITSymbol(SymAddr, llvm::JITSymbolFlags::Exported);
-            return nullptr;
-          },
-          [](llvm::Error Err) { cantFail(std::move(Err), "lookupFlags failed"); })),
-      target_machine_(llvm::EngineBuilder().selectTarget()),
-      data_layout_(target_machine_->createDataLayout()),
-      object_layer_(es_,
-                    [this](llvm::orc::VModuleKey) {
-                      return llvm::orc::RTDyldObjectLinkingLayer::Resources{
-                          std::make_shared<JitMemoryManager>([this](void *stackMapPtr) {
-                            this->stack_map_ptr_ = stackMapPtr;
-                          }), resolver_};
-                    }),
-      compile_layer_(object_layer_, llvm::orc::SimpleCompiler(*target_machine_)),
-      optimize_layer_(compile_layer_, [this](std::unique_ptr<llvm::Module> M) {
-        return optimize_module(std::move(M));
-      }),
-      stack_map_ptr_(nullptr) {
+ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession& es)
+        :es_(es),
+         resolver_(createLegacyLookupResolver(
+                 es_,
+                 [this](const std::string& Name) -> llvm::JITSymbol {
+                   if (auto Sym = optimize_layer_.findSymbol(Name, false))
+                       return Sym;
+                   else if (auto Err = Sym.takeError())
+                       return std::move(Err);
+                   if (auto SymAddr =
+                           llvm::RTDyldMemoryManager::getSymbolAddressInProcess(Name))
+                       return llvm::JITSymbol(SymAddr, llvm::JITSymbolFlags::Exported);
+                   return nullptr;
+                 },
+                 [](llvm::Error Err) { cantFail(std::move(Err), "lookupFlags failed"); })),
+         target_machine_(llvm::EngineBuilder().selectTarget()),
+         data_layout_(target_machine_->createDataLayout()),
+         object_layer_(es_,
+                 [this](llvm::orc::VModuleKey) {
+                   return llvm::orc::RTDyldObjectLinkingLayer::Resources{
+                           std::make_shared<JitMemoryManager>([this](void* stackMapPtr) {
+                             this->stack_map_ptr_ = stackMapPtr;
+                           }), resolver_};
+                 }),
+         compile_layer_(object_layer_, llvm::orc::SimpleCompiler(*target_machine_)),
+         optimize_layer_(compile_layer_, [this](std::unique_ptr<llvm::Module> M) {
+           return optimize_module(std::move(M));
+         }),
+         stack_map_ptr_(nullptr) {
     llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 
     object_layer_.setProcessAllSections(true);
 }
 
-llvm::TargetMachine &ElectrumJit::getTargetMachine() { return *target_machine_; }
+llvm::TargetMachine& ElectrumJit::getTargetMachine() { return *target_machine_; }
 
 llvm::orc::VModuleKey ElectrumJit::addModule(std::unique_ptr<llvm::Module> module) {
     auto k = es_.allocateVModule();
@@ -102,14 +102,14 @@ llvm::orc::VModuleKey ElectrumJit::addModule(std::unique_ptr<llvm::Module> modul
     return k;
 }
 
-llvm::JITSymbol ElectrumJit::find_symbol(const std::string &name) {
+llvm::JITSymbol ElectrumJit::find_symbol(const std::string& name) {
     std::string mangled_name;
     llvm::raw_string_ostream mangled_name_stream(mangled_name);
     llvm::Mangler::getNameWithPrefix(mangled_name_stream, name, data_layout_);
     return optimize_layer_.findSymbol(name, false);
 }
 
-llvm::JITTargetAddress ElectrumJit::get_symbol_address(const std::string &name) {
+llvm::JITTargetAddress ElectrumJit::get_symbol_address(const std::string& name) {
     return llvm::cantFail(find_symbol(name).getAddress());
 }
 

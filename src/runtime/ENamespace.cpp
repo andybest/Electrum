@@ -26,22 +26,23 @@
 #include "Runtime.h"
 
 namespace electrum {
-    void init_global_namespaces() {
-        global_namespaces = make_shared<
-                unordered_map<std::string, shared_ptr<ENamespace>>>();
+void init_global_namespaces() {
+    global_namespaces = make_shared<
+            unordered_map<std::string, shared_ptr<ENamespace>>>();
+}
+
+shared_ptr<ENamespace> get_or_create_namespace(const std::string& name) {
+    auto result = global_namespaces->find(name);
+    if (result!=global_namespaces->end()) {
+        return result->second;
     }
 
-    shared_ptr<ENamespace> get_or_create_namespace(const std::string &name) {
-        auto result = global_namespaces->find(name);
-        if(result != global_namespaces->end()) {
-            return result->second;
-        }
+    auto ns = std::make_shared<ENamespace>(name);
+    (*global_namespaces)[name] = ns;
+    return ns;
+}
 
-        auto ns = std::make_shared<ENamespace>(name);
-        (*global_namespaces)[name] = ns;
-        return ns;
-    }
-
-    ENamespace::ENamespace(std::string name): name(name) {
-    }
+ENamespace::ENamespace(std::string name)
+        :name(name) {
+}
 }

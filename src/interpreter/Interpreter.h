@@ -31,35 +31,27 @@
 
 namespace electrum {
 
-    using std::shared_ptr;
-    using std::make_shared;
+using std::shared_ptr;
+using std::make_shared;
 
-    class Interpreter {
-    public:
-        Interpreter();
-        ~Interpreter();
+class Interpreter {
+public:
+    Interpreter();
+    ~Interpreter();
 
-        void *evalExpr(void *expr);
-        void *evalExpr(void *expr, void *env);
+    void* evalExpr(void* expr);
+    void* evalExpr(void* expr, void* env);
 
-    private:
-        void *rootEnvironment_;
-
-        void *lookup_symbol(void *symbol, void *env);
-
-        void *eval_if(void *expr, void *env);
-
-        void *eval_begin(void *symbol, void *env);
-
-        void *eval_lambda(void *expr, void *env);
-
-        void *eval_interpreted_function(void *expr);
-
-        void eval_define(void *expr, void *env);
-
-        std::pair<void *, void *> eval_apply(void *expr, void *proc, void *env);
-    };
+private:
+    void* rootEnvironment_;
+    void* lookup_symbol(void* symbol, void* env);
+    void* eval_if(void* expr, void* env);
+    void* eval_begin(void* symbol, void* env);
+    void* eval_lambda(void* expr, void* env);
+    void* eval_interpreted_function(void* expr);
+    void eval_define(void* expr, void* env);
+    std::pair<void*, void*> eval_apply(void* expr, void* proc, void* env);
+};
 }
-
 
 #endif //ELECTRUM_INTERPRETER_H

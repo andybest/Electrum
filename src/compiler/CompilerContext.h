@@ -36,84 +36,84 @@
 
 namespace electrum {
 
-    struct GlobalDef {
-        std::string name;
-        std::string mangled_name;
-    };
+struct GlobalDef {
+  std::string name;
+  std::string mangled_name;
+};
 
-    struct TopLevelInitializerDef {
-        /// The phases in which this initializer will be evaluated
-        EvaluationPhase evaluation_phases = kEvaluationPhaseNone;
+struct TopLevelInitializerDef {
+  /// The phases in which this initializer will be evaluated
+  EvaluationPhase evaluation_phases = kEvaluationPhaseNone;
 
-        /// Which phases the initializer has been evaluated in already
-        EvaluationPhase evaluated_in = kEvaluationPhaseNone;
+  /// Which phases the initializer has been evaluated in already
+  EvaluationPhase evaluated_in = kEvaluationPhaseNone;
 
-        /// The mangled name of the initializer function
-        std::string mangled_name;
-    };
+  /// The mangled name of the initializer function
+  std::string mangled_name;
+};
 
-    struct ContextState {
-        std::shared_ptr<llvm::IRBuilder<>> builder;
-        std::unique_ptr<llvm::Module> module;
-        std::vector<llvm::Value *> value_stack;
-        std::vector<llvm::Function *> func_stack;
-    };
+struct ContextState {
+  std::shared_ptr<llvm::IRBuilder<>> builder;
+  std::unique_ptr<llvm::Module> module;
+  std::vector<llvm::Value*> value_stack;
+  std::vector<llvm::Function*> func_stack;
+};
 
-    class CompilerContext {
-    private:
-        llvm::LLVMContext _context;
+class CompilerContext {
+private:
+    llvm::LLVMContext _context;
 
-        std::vector<std::shared_ptr<ContextState>> _state_stack;
+    std::vector<std::shared_ptr<ContextState>> _state_stack;
 
-    public:
-        std::vector<TopLevelInitializerDef> top_level_initializers;
+public:
+    std::vector<TopLevelInitializerDef> top_level_initializers;
 
-        std::vector<EvaluationPhase> evaluation_context_stack;
+    std::vector<EvaluationPhase> evaluation_context_stack;
 
-        /// The global macro expanders
-        std::unordered_map<std::string, std::shared_ptr<GlobalDef>> global_macros;
+    /// The global macro expanders
+    std::unordered_map<std::string, std::shared_ptr<GlobalDef>> global_macros;
 
-        /// The global var bindings
-        std::unordered_map<std::string, std::shared_ptr<GlobalDef>> global_bindings;
+    /// The global var bindings
+    std::unordered_map<std::string, std::shared_ptr<GlobalDef>> global_bindings;
 
-        /// The local bindings for the current level in the AST
-        std::vector<std::unordered_map<std::string, llvm::Value *>> local_bindings;
+    /// The local bindings for the current level in the AST
+    std::vector<std::unordered_map<std::string, llvm::Value*>> local_bindings;
 
-        /* State */
+    /* State */
 
-        void push_new_state(std::string module_name);
+    void push_new_state(std::string module_name);
 
-        std::shared_ptr<ContextState> current_state();
+    std::shared_ptr<ContextState> current_state();
 
-        std::unique_ptr<llvm::Module> pop_state();
+    std::unique_ptr<llvm::Module> pop_state();
 
-        /* Value Stack */
-        void push_value(llvm::Value *val);
+    /* Value Stack */
+    void push_value(llvm::Value* val);
 
-        llvm::Value *pop_value();
+    llvm::Value* pop_value();
 
-        /* Current Function */
+    /* Current Function */
 
-        void push_func(llvm::Function *func);
+    void push_func(llvm::Function* func);
 
-        llvm::Function *pop_func();
+    llvm::Function* pop_func();
 
-        llvm::Function *current_func();
+    llvm::Function* current_func();
 
-        /* Local Environment */
+    /* Local Environment */
 
-        void push_local_environment(const std::unordered_map<std::string, llvm::Value *> &new_env);
+    void push_local_environment(const std::unordered_map<std::string, llvm::Value*>& new_env);
 
-        void pop_local_environment();
+    void pop_local_environment();
 
-        llvm::Value *lookup_in_local_environment(std::string name);
+    llvm::Value* lookup_in_local_environment(std::string name);
 
-        llvm::Module * current_module();
+    llvm::Module* current_module();
 
-        llvm::LLVMContext &llvm_context();
+    llvm::LLVMContext& llvm_context();
 
-        std::shared_ptr<llvm::IRBuilder<>> current_builder();
-    };
+    std::shared_ptr<llvm::IRBuilder<>> current_builder();
+};
 }
 
 #endif //ELECTRUM_COMPILERCONTEXT_H

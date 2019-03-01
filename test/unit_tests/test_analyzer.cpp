@@ -190,9 +190,9 @@ TEST(Analyzer, analyzesInvoke) {
 
     EXPECT_EQ(invokeNode->args.size(), 2);
 
-    std::vector<int64_t> expected = { 1, 2 };
+    std::vector<int64_t> expected = {1, 2};
     int i = 0;
-    for(auto a: invokeNode->args) {
+    for (auto a: invokeNode->args) {
         EXPECT_EQ(a->nodeType(), kAnalyzerNodeTypeConstant);
         auto cNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(a);
         EXPECT_EQ(cNode->type, kAnalyzerConstantTypeInteger);
@@ -405,13 +405,11 @@ TEST(Analyzer, doesNotEvaluateArguments) {
     auto expandNode = std::dynamic_pointer_cast<MacroExpandAnalyzerNode>(doNode->returnValue);
     EXPECT_EQ(expandNode->args.size(), 3);
 
-
     EXPECT_EQ(expandNode->args[0]->nodeType(), kAnalyzerNodeTypeConstant);
     auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(expandNode->args[0]);
 
     EXPECT_EQ(arg1->type, kAnalyzerConstantTypeInteger);
     EXPECT_EQ(boost::get<int64_t>(arg1->value), 1);
-
 
     EXPECT_EQ(expandNode->args[1]->nodeType(), kAnalyzerNodeTypeConstant);
     auto arg2 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(expandNode->args[1]);
@@ -419,13 +417,11 @@ TEST(Analyzer, doesNotEvaluateArguments) {
     EXPECT_EQ(arg2->type, kAnalyzerConstantTypeSymbol);
     EXPECT_EQ(*boost::get<shared_ptr<std::string>>(arg2->value), "+");
 
-
     EXPECT_EQ(expandNode->args[2]->nodeType(), kAnalyzerNodeTypeConstant);
     auto arg3 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(expandNode->args[2]);
 
     EXPECT_EQ(arg3->type, kAnalyzerConstantTypeInteger);
     EXPECT_EQ(boost::get<int64_t>(arg3->value), 2);
-
 
     EXPECT_EQ(expandNode->macro->nodeType(), kAnalyzerNodeTypeDefMacro);
     auto macroNode = std::dynamic_pointer_cast<DefMacroAnalyzerNode>(expandNode->macro);
@@ -524,7 +520,7 @@ TEST(Analyzer, updatesEvaluationPhasesOfAllNodes) {
 
     auto node = an.analyze(val);
 
-    for(const auto &c: node->children()) {
+    for (const auto& c: node->children()) {
         EXPECT_EQ(c->evaluation_phase, kEvaluationPhaseLoadTime | kEvaluationPhaseCompileTime);
     }
 }

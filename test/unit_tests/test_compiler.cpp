@@ -326,7 +326,6 @@ TEST(Compiler, compilesLambdaWithRestArgs) {
                               "  (def-ffi-fn* car rt_car :el (:el))"
                               "  (def-ffi-fn* cdr rt_cdr :el (:el)))");
 
-
     auto r1 = c.compile_and_eval_string("((lambda (x & rest) x) 1 2 3)");
     auto r2 = c.compile_and_eval_string("((lambda (x & rest) (car rest)) 1 2 3)");
     auto r3 = c.compile_and_eval_string("((lambda (x & rest) (car (cdr rest))) 1 2 3)");

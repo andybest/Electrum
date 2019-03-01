@@ -32,50 +32,40 @@
 #include "LexerDefs.h"
 
 namespace electrum {
-    using std::shared_ptr;
-    using std::make_shared;
-    using std::string;
-    using std::pair;
-    using std::make_pair;
+using std::shared_ptr;
+using std::make_shared;
+using std::string;
+using std::pair;
+using std::make_pair;
 
-    class Parser {
+class Parser {
 
-      enum QuoteType {
-        kQuoteTypeQuote,
-        kQuoteTypeQuasiQuote,
-        kQuoteTypeUnquote
-      };
-
-        pair<shared_ptr<ASTNode>, vector<Token>::iterator> readTokens(vector<Token> tokens,
-                                                                      vector<Token>::iterator it) const;
-
-        shared_ptr<ASTNode> parseInteger(const electrum::Token &t) const;
-
-        shared_ptr<ASTNode> parseFloat(const Token &t) const;
-
-        shared_ptr<ASTNode> parseSymbol(const Token &t) const;
-
-        std::pair<shared_ptr<ASTNode>, vector<Token>::iterator> parseList(vector<Token> tokens,
-                                                                          vector<Token>::iterator it) const;
-
-        pair<shared_ptr<ASTNode>, vector<Token>::iterator> parseQuote(const vector<Token> tokens,
-                                                                      vector<Token>::iterator it,
-                                                                      QuoteType quote_type) const;
-
-    public:
-        std::shared_ptr<ASTNode> readString(string input) const;
-
-        shared_ptr<ASTNode> parseString(const Token &t) const;
-
-        shared_ptr<ASTNode> parseBoolean(const Token &t) const;
-
-        shared_ptr<ASTNode> parseKeyword(const Token &t) const;
-
-        shared_ptr<ASTNode> parseNil(const Token &t) const;
-
-        shared_ptr <ASTNode> readLispValue(void *val);
+    enum QuoteType {
+      kQuoteTypeQuote,
+      kQuoteTypeQuasiQuote,
+      kQuoteTypeUnquote
     };
-}
 
+    pair<shared_ptr<ASTNode>, vector<Token>::iterator> readTokens(vector<Token> tokens,
+            vector<Token>::iterator it) const;
+
+    shared_ptr<ASTNode> parseInteger(const electrum::Token& t) const;
+    shared_ptr<ASTNode> parseFloat(const Token& t) const;
+    shared_ptr<ASTNode> parseSymbol(const Token& t) const;
+    std::pair<shared_ptr<ASTNode>, vector<Token>::iterator> parseList(vector<Token> tokens,
+            vector<Token>::iterator it) const;
+    pair<shared_ptr<ASTNode>, vector<Token>::iterator> parseQuote(const vector<Token> tokens,
+            vector<Token>::iterator it,
+            QuoteType quote_type) const;
+
+public:
+    std::shared_ptr<ASTNode> readString(string input) const;
+    shared_ptr<ASTNode> parseString(const Token& t) const;
+    shared_ptr<ASTNode> parseBoolean(const Token& t) const;
+    shared_ptr<ASTNode> parseKeyword(const Token& t) const;
+    shared_ptr<ASTNode> parseNil(const Token& t) const;
+    shared_ptr<ASTNode> readLispValue(void* val);
+};
+}
 
 #endif //ELECTRUM_PARSER_H

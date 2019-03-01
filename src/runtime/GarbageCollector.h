@@ -25,7 +25,6 @@
 #ifndef ELECTRUM_GARBAGECOLLECTOR_H
 #define ELECTRUM_GARBAGECOLLECTOR_H
 
-
 #ifdef __cplusplus
 
 #include <memory>
@@ -36,66 +35,57 @@
 
 namespace electrum {
 
-    using std::shared_ptr;
-    using std::make_shared;
+using std::shared_ptr;
+using std::make_shared;
 
-    /**
-     * Decides how the Garbage collector will be run, and specifically
-     * if the LLVM Stackmap will be scanned for live references.
-     */
-    enum GCMode {
-        /** Interpreter initialized and owns the GC Instance. */
-                kGCModeInterpreterOwned,
+/**
+ * Decides how the Garbage collector will be run, and specifically
+ * if the LLVM Stackmap will be scanned for live references.
+ */
+enum GCMode {
+  /** Interpreter initialized and owns the GC Instance. */
+          kGCModeInterpreterOwned,
 
-        /** Compiler initialized and owns the GC instance. */
-                kGCModeCompilerOwned
-    };
+  /** Compiler initialized and owns the GC instance. */
+          kGCModeCompilerOwned
+};
 
-    class GarbageCollector {
-    public:
-        explicit GarbageCollector(GCMode mode);
-        ~GarbageCollector();
+class GarbageCollector {
+public:
+    explicit GarbageCollector(GCMode mode);
+    ~GarbageCollector();
 
-        void init_stackmap(void *stackmap);
+    void init_stackmap(void* stackmap);
+    frame_info_t* get_frame_info(uint64_t return_address);
+    void collect(void* stackPointer);
+    void traverse_object(void* obj);
+    void add_object_root(void* root);
+    bool remove_object_root(void* root);
+    void* malloc(size_t size);
+    void* malloc_tagged_object(size_t size);
+    void free(void* ptr);
 
-        frame_info_t *get_frame_info(uint64_t return_address);
+private:
+    std::vector<statepoint_table_t*> statepoint_tables_;
+    GCMode collector_mode_;
+    bool scan_stack_;
+    std::unordered_set<void*> object_roots_;
+    std::vector<void*> heap_objects_;
+    uint64_t sweep_heap();
+};
 
-        void collect(void *stackPointer);
-
-        void traverse_object(void *obj);
-
-        void add_object_root(void* root);
-
-        bool remove_object_root(void *root);
-
-        void *malloc(size_t size);
-
-        void *malloc_tagged_object(size_t size);
-
-        void free(void *ptr);
-
-    private:
-        std::vector<statepoint_table_t *> statepoint_tables_;
-        GCMode collector_mode_;
-        bool scan_stack_;
-        std::unordered_set<void *> object_roots_;
-        std::vector<void*> heap_objects_;
-        uint64_t sweep_heap();
-    };
-
-    static GarbageCollector *main_collector;
+static GarbageCollector* main_collector;
 }
 
 extern "C" {
 #endif  // __cplusplus
 
 /* Exported functions */
-void rt_gc_init_stackmap(void *stackmap);
+void rt_gc_init_stackmap(void* stackmap);
 void rt_enter_gc_impl(void*);
 
 #ifdef __cplusplus
 }
 #endif // _cplusplus
-
 
 #endif //ELECTRUM_GARBAGECOLLECTOR_H

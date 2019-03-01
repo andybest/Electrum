@@ -31,31 +31,31 @@
 #include <memory>
 
 namespace electrum {
-    enum TokenType {
-        kTokenTypeNoToken = 0,
-        kTokenTypeLParen,
-        kTokenTypeRParen,
-        kTokenTypeQuote,
-        kTokenTypeQuasiQuote,
-        kTokenTypeSpliceUnquote,
-        kTokenTypeUnquote,
-        kTokenTypeSymbol,
-        kTokenTypeKeyword,
-        kTokenTypeFloat,
-        kTokenTypeInteger,
-        kTokenTypeBoolean,
-        kTokenTypeString,
-        kTokenTypeNil,
-        kTokenTypeEOF
-    };
+enum TokenType {
+  kTokenTypeNoToken = 0,
+  kTokenTypeLParen,
+  kTokenTypeRParen,
+  kTokenTypeQuote,
+  kTokenTypeQuasiQuote,
+  kTokenTypeSpliceUnquote,
+  kTokenTypeUnquote,
+  kTokenTypeSymbol,
+  kTokenTypeKeyword,
+  kTokenTypeFloat,
+  kTokenTypeInteger,
+  kTokenTypeBoolean,
+  kTokenTypeString,
+  kTokenTypeNil,
+  kTokenTypeEOF
+};
 
-    struct Token {
-        TokenType type;
-        std::string text;
-        std::shared_ptr<std::string> filename;
-        size_t line;
-        size_t column;
-    };
+struct Token {
+  TokenType type;
+  std::string text;
+  std::shared_ptr<std::string> filename;
+  size_t line;
+  size_t column;
+};
 }
 
 #endif //ELECTRUM_LEXERDEFS_H

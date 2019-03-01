@@ -25,7 +25,6 @@
 #include <iostream>
 #include <lex.yy.h>
 
-
 int main() {
 
     return 0;
