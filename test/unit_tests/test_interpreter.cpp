@@ -33,7 +33,7 @@ using namespace electrum;
 using std::shared_ptr;
 using std::make_shared;
 
-TEST(Interpreter, if_evaluates_correct_expressions) {
+TEST(Interpreter, ifEvaluatesCorrectExpressions) {
     // (if #t 1234 5678) == 1234
     // (if #f 1234 5678) == 5678
 
@@ -74,7 +74,7 @@ TEST(Interpreter, if_evaluates_correct_expressions) {
     rt_deinit_gc();
 }
 
-TEST(Interpreter, begin_returns_last_form) {
+TEST(Interpreter, beginReturnsLastForm) {
     // (begin 1234 5678) == 5678
 
     rt_init_gc(kGCModeInterpreterOwned);
@@ -97,7 +97,7 @@ TEST(Interpreter, begin_returns_last_form) {
     rt_deinit_gc();
 }
 
-TEST(Interpreter, runs_simple_lambda) {
+TEST(Interpreter, runsSimpleLambda) {
     // ((lambda (x) x) 1234) == 1234
 
     rt_init_gc(kGCModeInterpreterOwned);
@@ -120,7 +120,7 @@ TEST(Interpreter, runs_simple_lambda) {
     rt_deinit_gc();
 }
 
-TEST(Interpreter, define_stores_value) {
+TEST(Interpreter, defineStoresValue) {
     // (define a 1234)
     // a == 1234
 
@@ -146,7 +146,7 @@ TEST(Interpreter, define_stores_value) {
     rt_deinit_gc();
 }
 
-TEST(Interpreter, evaluates_function_from_var) {
+TEST(Interpreter, evaluatesFunctionFromVar) {
     // (define f (lambda (x) x))
     // (f 1234) == 1234
 

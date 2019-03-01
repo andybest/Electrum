@@ -9,44 +9,44 @@
 
 using namespace electrum;
 
-TEST(Parser, parses_integer) {
+TEST(Parser, parsesInteger) {
     PARSE_STRING("1");
     ASSERT_INT(val, 1);
 }
 
-TEST(Parser, parses_float) {
+TEST(Parser, parsesFloat) {
     PARSE_STRING("1.2345");
     ASSERT_FLOAT(val, 1.2345);
 }
 
-TEST(Parser, parses_symbol) {
+TEST(Parser, parsesSymbol) {
     PARSE_STRING("lambda");
 
     EXPECT_EQ(val->tag, kTypeTagSymbol);
     EXPECT_EQ(*val->stringValue, "lambda");
 }
 
-TEST(Parser, parses_string) {
+TEST(Parser, parsesString) {
     PARSE_STRING("\"foo\"");
 
     EXPECT_EQ(val->tag, kTypeTagString);
     EXPECT_EQ(*val->stringValue, "foo");
 }
 
-TEST(Parser, parses_keyword) {
+TEST(Parser, parsesKeyword) {
     PARSE_STRING(":foo");
 
     EXPECT_EQ(val->tag, kTypeTagKeyword);
     EXPECT_EQ(*val->stringValue, "foo");
 }
 
-TEST(Parser, parses_nil) {
+TEST(Parser, parsesNil) {
     PARSE_STRING("nil");
 
     EXPECT_EQ(val->tag, kTypeTagNil);
 }
 
-TEST(Parser, parses_list) {
+TEST(Parser, parsesList) {
     PARSE_STRING("(1 2 3)");
 
     EXPECT_EQ(val->tag, kTypeTagList);
@@ -57,7 +57,7 @@ TEST(Parser, parses_list) {
     ASSERT_INT(val->listValue->at(2), 3);
 }
 
-TEST(Parser, parses_nested_list) {
+TEST(Parser, parsesNestedList) {
     PARSE_STRING("((1 2) 3 (4 (5)))");
 
     EXPECT_EQ(val->tag, kTypeTagList);
@@ -73,7 +73,7 @@ TEST(Parser, parses_nested_list) {
     EXPECT_EQ(val->listValue->at(2)->listValue->at(1)->listValue->size(), 1);
 }
 
-TEST(Parser, parses_quote_reader_macro) {
+TEST(Parser, parsesQuoteReaderMacro) {
     PARSE_STRING("'foo");
 
     EXPECT_EQ(val->tag, kTypeTagList);
@@ -86,7 +86,7 @@ TEST(Parser, parses_quote_reader_macro) {
     EXPECT_EQ(*val->listValue->at(1)->stringValue, "foo");
 }
 
-TEST(Parser, parses_quote_list_reader_macro) {
+TEST(Parser, parsesQuoteListReaderMacro) {
     PARSE_STRING("'(1 2)");
 
     EXPECT_EQ(val->tag, kTypeTagList);
@@ -105,7 +105,7 @@ TEST(Parser, parses_quote_list_reader_macro) {
     EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->integerValue, 2);
 }
 
-TEST(Parser, parses_quoted_quote) {
+TEST(Parser, parsesQuotedQuote) {
     PARSE_STRING("'(1 'a)");
 
     // (quote (1 (quote a)))
@@ -129,7 +129,7 @@ TEST(Parser, parses_quoted_quote) {
     EXPECT_EQ(*val->listValue->at(1)->listValue->at(1)->listValue->at(0)->stringValue, "quote");
 }
 
-TEST(Parser, parses_quasiquote_reader_macro) {
+TEST(Parser, parsesQuasiquoteReaderMacro) {
     PARSE_STRING("`(1 2)");
 
     EXPECT_EQ(val->tag, kTypeTagList);

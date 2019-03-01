@@ -7,7 +7,7 @@ using namespace electrum;
 
 #define TOKENIZE_STRING(str)    Lexer l((str)); auto tokens = l.getTokens()
 
-TEST(Lexer, lexes_simple_integers) {
+TEST(Lexer, lexesSimpleIntegers) {
     TOKENIZE_STRING("1 234 30456");
 
     EXPECT_EQ(tokens.size(), 3);
@@ -17,7 +17,7 @@ TEST(Lexer, lexes_simple_integers) {
     ASSERT_TOKEN(tokens[2], kTokenTypeInteger, "30456");
 }
 
-TEST(Lexer, lexes_simple_floats) {
+TEST(Lexer, lexesSimpleFloats) {
     TOKENIZE_STRING("0.1 0.0 1234.5678 1234.0 0.1234");
 
     EXPECT_EQ(tokens.size(), 5);
@@ -29,7 +29,7 @@ TEST(Lexer, lexes_simple_floats) {
     ASSERT_TOKEN(tokens[4], kTokenTypeFloat, "0.1234");
 }
 
-TEST(Lexer, lexes_parens) {
+TEST(Lexer, lexesParens) {
     TOKENIZE_STRING("( ) ()");
 
     EXPECT_EQ(tokens.size(), 4);
@@ -40,7 +40,7 @@ TEST(Lexer, lexes_parens) {
     ASSERT_TOKEN(tokens[3], kTokenTypeRParen, ")");
 }
 
-TEST(Lexer, lexes_symbols) {
+TEST(Lexer, lexesSymbols) {
     TOKENIZE_STRING("... +soup+ ->string lambda q <=? &");
 
     EXPECT_EQ(tokens.size(), 7);
@@ -54,7 +54,7 @@ TEST(Lexer, lexes_symbols) {
     ASSERT_TOKEN(tokens[6], kTokenTypeSymbol, "&");
 }
 
-TEST(Lexer, lexes_unicode_symbols) {
+TEST(Lexer, lexesUnicodeSymbols) {
     TOKENIZE_STRING(u8"λ \U0001F300 \U0001F900 \U0001F600 \U0001F680");
 
     EXPECT_EQ(tokens.size(), 5);
@@ -66,7 +66,7 @@ TEST(Lexer, lexes_unicode_symbols) {
     ASSERT_TOKEN(tokens[4], kTokenTypeSymbol, u8"\U0001F680"); // Transport & map symbols
 }
 
-TEST(Lexer, lexes_quote_quasiquote_unquote_spliceunquote) {
+TEST(Lexer, lexesQuoteQuasiquoteUnquoteSpliceUnquote) {
     TOKENIZE_STRING("`(foo ,bar 'baz ,@rest)");
 
     EXPECT_EQ(tokens.size(), 10);
@@ -83,7 +83,7 @@ TEST(Lexer, lexes_quote_quasiquote_unquote_spliceunquote) {
     ASSERT_TOKEN(tokens[9], kTokenTypeRParen, ")");
 }
 
-TEST(Lexer, lexes_string) {
+TEST(Lexer, lexesString) {
     TOKENIZE_STRING("\"Hello, world!\"");
 
     EXPECT_EQ(tokens.size(), 1);
@@ -91,7 +91,7 @@ TEST(Lexer, lexes_string) {
     ASSERT_TOKEN(tokens[0], kTokenTypeString, "\"Hello, world!\"");
 }
 
-TEST(Lexer, lexes_keyword) {
+TEST(Lexer, lexesKeyword) {
     TOKENIZE_STRING(":foo");
 
     EXPECT_EQ(tokens.size(), 1);
@@ -99,7 +99,7 @@ TEST(Lexer, lexes_keyword) {
     ASSERT_TOKEN(tokens[0], kTokenTypeKeyword, ":foo");
 }
 
-TEST(Lexer, lexes_does_not_lex_invalid_keyword) {
+TEST(Lexer, doesNotLexInvalidKeyword) {
     TOKENIZE_STRING("bar:foo");
 
     EXPECT_EQ(tokens.size(), 1);
@@ -107,7 +107,7 @@ TEST(Lexer, lexes_does_not_lex_invalid_keyword) {
     ASSERT_TOKEN(tokens[0], kTokenTypeSymbol, "bar:foo");
 }
 
-TEST(Lexer, lexes_nil) {
+TEST(Lexer, lexesNil) {
     TOKENIZE_STRING("nil");
 
     EXPECT_EQ(tokens.size(), 1);
