@@ -43,7 +43,8 @@ class Parser {
     enum QuoteType {
       kQuoteTypeQuote,
       kQuoteTypeQuasiQuote,
-      kQuoteTypeUnquote
+      kQuoteTypeUnquote,
+      kQuoteTypeUnquoteSplice
     };
 
     pair<shared_ptr<ASTNode>, vector<Token>::iterator> readTokens(vector<Token> tokens,

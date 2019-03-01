@@ -78,7 +78,7 @@ TEST(Lexer, lexesQuoteQuasiquoteUnquoteSpliceUnquote) {
     ASSERT_TOKEN(tokens[4], kTokenTypeSymbol, "bar");
     ASSERT_TOKEN(tokens[5], kTokenTypeQuote, "'");
     ASSERT_TOKEN(tokens[6], kTokenTypeSymbol, "baz");
-    ASSERT_TOKEN(tokens[7], kTokenTypeSpliceUnquote, ",@");
+    ASSERT_TOKEN(tokens[7], kTokenTypeUnquoteSplice, ",@");
     ASSERT_TOKEN(tokens[8], kTokenTypeSymbol, "rest");
     ASSERT_TOKEN(tokens[9], kTokenTypeRParen, ")");
 }

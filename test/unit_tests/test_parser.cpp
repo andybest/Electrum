@@ -147,3 +147,16 @@ TEST(Parser, parsesQuasiquoteReaderMacro) {
     EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->tag, kTypeTagInteger);
     EXPECT_EQ(val->listValue->at(1)->listValue->at(1)->integerValue, 2);
 }
+
+TEST(Parser, parsesUnquoteSplice) {
+    PARSE_STRING(",@a");
+
+    EXPECT_EQ(val->tag, kTypeTagList);
+    EXPECT_EQ(val->listValue->size(), 2);
+
+    EXPECT_EQ(val->listValue->at(0)->tag, kTypeTagSymbol);
+    EXPECT_EQ(*val->listValue->at(0)->stringValue, "unquote-splice");
+
+    EXPECT_EQ(val->listValue->at(1)->tag, kTypeTagSymbol);
+    EXPECT_EQ(*val->listValue->at(1)->stringValue, "a");
+}

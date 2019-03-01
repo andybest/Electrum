@@ -57,6 +57,9 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::readTokens(vector<Tok
         case kTokenTypeUnquote: {
             return parseQuote(tokens, ++it, kQuoteTypeUnquote);
         }
+        case kTokenTypeUnquoteSplice: {
+            return parseQuote(tokens, ++it, kQuoteTypeUnquoteSplice);
+        }
         case kTokenTypeLParen: {
             return parseList(tokens, ++it);
         }
@@ -219,6 +222,9 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(const vect
         break;
 
     case kQuoteTypeUnquote:sym->stringValue = make_shared<string>("unquote");
+        break;
+
+    case kQuoteTypeUnquoteSplice:sym->stringValue = make_shared<string>("unquote-splice");
         break;
     }
 

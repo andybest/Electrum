@@ -38,7 +38,7 @@ std::string tokenTypeName(TokenType type) {
         case kTokenTypeRParen: return "kTokenTypeRParen";
         case kTokenTypeQuote: return "kTokenTypeQuote";
         case kTokenTypeQuasiQuote: return "kTokenTypeQuasiQuote";
-        case kTokenTypeSpliceUnquote: return "kTokenTypeSpliceUnquote";
+        case kTokenTypeUnquoteSplice: return "kTokenTypeUnquoteSplice";
         case kTokenTypeUnquote: return "kTokenTypeUnquote";
         case kTokenTypeSymbol: return "kTokenTypeSymbol";
         case kTokenTypeFloat: return "kTokenTypeFloat";

@@ -81,7 +81,7 @@ STRING              \"([^\\\"]|\\\")*\"
 
 "'"                 { return kTokenTypeQuote; }
 "`"                 { return kTokenTypeQuasiQuote; }
-",@"                { return kTokenTypeSpliceUnquote; }
+",@"                { return kTokenTypeUnquoteSplice; }
 ","                 { return kTokenTypeUnquote; }
 
 ;.*$                /* Line Comment */
