@@ -62,13 +62,9 @@ struct ContextState {
 class CompilerContext {
 private:
     llvm::LLVMContext _context;
-
     std::vector<std::shared_ptr<ContextState>> _state_stack;
 
 public:
-    std::vector<TopLevelInitializerDef> top_level_initializers;
-
-    std::vector<EvaluationPhase> evaluation_context_stack;
 
     /// The global macro expanders
     std::unordered_map<std::string, std::shared_ptr<GlobalDef>> global_macros;
@@ -80,39 +76,28 @@ public:
     std::vector<std::unordered_map<std::string, llvm::Value*>> local_bindings;
 
     /* State */
-
-    void push_new_state(std::string module_name);
-
-    std::shared_ptr<ContextState> current_state();
-
-    std::unique_ptr<llvm::Module> pop_state();
+    void pushNewState(std::string module_name);
+    std::shared_ptr<ContextState> currentState();
+    std::unique_ptr<llvm::Module> popState();
 
     /* Value Stack */
-    void push_value(llvm::Value* val);
-
-    llvm::Value* pop_value();
+    void pushValue(llvm::Value* val);
+    llvm::Value* popValue();
 
     /* Current Function */
-
-    void push_func(llvm::Function* func);
-
-    llvm::Function* pop_func();
-
-    llvm::Function* current_func();
+    void pushFunc(llvm::Function* func);
+    llvm::Function* popFunc();
+    llvm::Function* currentFunc();
 
     /* Local Environment */
+    void pushLocalEnvironment(const std::unordered_map<std::string, llvm::Value*>& new_env);
+    void popLocalEnvironment();
+    llvm::Value* lookupInLocalEnvironment(std::string name);
 
-    void push_local_environment(const std::unordered_map<std::string, llvm::Value*>& new_env);
-
-    void pop_local_environment();
-
-    llvm::Value* lookup_in_local_environment(std::string name);
-
-    llvm::Module* current_module();
-
-    llvm::LLVMContext& llvm_context();
-
-    std::shared_ptr<llvm::IRBuilder<>> current_builder();
+    /* LLVM */
+    llvm::Module* currentModule();
+    llvm::LLVMContext& llvmContext();
+    std::shared_ptr<llvm::IRBuilder<>> currentBuilder();
 };
 }
 

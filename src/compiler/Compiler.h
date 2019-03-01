@@ -58,9 +58,9 @@ private:
     static const int kGCAddressSpace = 1;
 
     CompilerContext* currentContext() { return &compiler_context_; }
-    llvm::Module* currentModule() { return currentContext()->current_module(); }
-    llvm::LLVMContext& llvmContext() { return currentContext()->llvm_context(); }
-    shared_ptr<llvm::IRBuilder<>> currentBuilder() { return currentContext()->current_builder(); }
+    llvm::Module* currentModule() { return currentContext()->currentModule(); }
+    llvm::LLVMContext& llvmContext() { return currentContext()->llvmContext(); }
+    shared_ptr<llvm::IRBuilder<>> currentBuilder() { return currentContext()->currentBuilder(); }
 
     void* runInitializerWithJit(TopLevelInitializerDef& tl_def);
     TopLevelInitializerDef compileTopLevelNode(std::shared_ptr<AnalyzerNode> node);

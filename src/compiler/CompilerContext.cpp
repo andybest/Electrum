@@ -27,47 +27,47 @@
 namespace electrum {
 #pragma mark Value Stack
 
-void CompilerContext::push_value(llvm::Value* val) {
-    current_state()->value_stack.push_back(val);
+void CompilerContext::pushValue(llvm::Value* val) {
+    currentState()->value_stack.push_back(val);
 }
 
-llvm::Value* CompilerContext::pop_value() {
-    auto v = current_state()->value_stack.back();
-    current_state()->value_stack.pop_back();
+llvm::Value* CompilerContext::popValue() {
+    auto v = currentState()->value_stack.back();
+    currentState()->value_stack.pop_back();
     return v;
 }
 
 #pragma mark Current Function
 
-void CompilerContext::push_func(llvm::Function* func) {
-    current_state()->func_stack.push_back(func);
+void CompilerContext::pushFunc(llvm::Function* func) {
+    currentState()->func_stack.push_back(func);
 }
 
-llvm::Function* CompilerContext::pop_func() {
-    auto f = current_state()->func_stack.back();
-    current_state()->func_stack.pop_back();
+llvm::Function* CompilerContext::popFunc() {
+    auto f = currentState()->func_stack.back();
+    currentState()->func_stack.pop_back();
     return f;
 }
 
-llvm::Function* CompilerContext::current_func() {
+llvm::Function* CompilerContext::currentFunc() {
     // If there are no functions on the stack, return the current top level initializer
-    if (current_state()->func_stack.empty()) {
+    if (currentState()->func_stack.empty()) {
         return nullptr;
     }
-    return current_state()->func_stack.back();
+    return currentState()->func_stack.back();
 }
 
 #pragma mark Local Environment
 
-void CompilerContext::push_local_environment(const std::unordered_map<std::string, llvm::Value*>& new_env) {
+void CompilerContext::pushLocalEnvironment(const std::unordered_map<std::string, llvm::Value*>& new_env) {
     local_bindings.push_back(new_env);
 }
 
-void CompilerContext::pop_local_environment() {
+void CompilerContext::popLocalEnvironment() {
     local_bindings.pop_back();
 }
 
-llvm::Value* CompilerContext::lookup_in_local_environment(const std::string name) {
+llvm::Value* CompilerContext::lookupInLocalEnvironment(const std::string name) {
     for (auto it = local_bindings.rbegin(); it!=local_bindings.rend(); ++it) {
         auto env = *it;
         auto result = env.find(name);
@@ -80,19 +80,19 @@ llvm::Value* CompilerContext::lookup_in_local_environment(const std::string name
     return nullptr;
 }
 
-llvm::Module* CompilerContext::current_module() {
-    return current_state()->module.get();
+llvm::Module* CompilerContext::currentModule() {
+    return currentState()->module.get();
 }
 
-llvm::LLVMContext& CompilerContext::llvm_context() {
+llvm::LLVMContext& CompilerContext::llvmContext() {
     return _context;
 }
 
-std::shared_ptr<llvm::IRBuilder<>> CompilerContext::current_builder() {
-    return current_state()->builder;
+std::shared_ptr<llvm::IRBuilder<>> CompilerContext::currentBuilder() {
+    return currentState()->builder;
 }
 
-void CompilerContext::push_new_state(std::string module_name) {
+void CompilerContext::pushNewState(std::string module_name) {
     auto s = std::make_shared<ContextState>();
 
     s->module = std::make_unique<llvm::Module>(module_name, _context);
@@ -100,12 +100,12 @@ void CompilerContext::push_new_state(std::string module_name) {
     _state_stack.push_back(s);
 }
 
-std::shared_ptr<ContextState> CompilerContext::current_state() {
+std::shared_ptr<ContextState> CompilerContext::currentState() {
     assert(!_state_stack.empty());
     return _state_stack.back();
 }
 
-std::unique_ptr<llvm::Module> CompilerContext::pop_state() {
+std::unique_ptr<llvm::Module> CompilerContext::popState() {
     auto state = _state_stack.back();
     _state_stack.pop_back();
 

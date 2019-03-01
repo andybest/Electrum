@@ -62,7 +62,7 @@ void* Compiler::compileAndEvalString(std::string str) {
     Parser p;
     auto ast = p.readString(std::move(str));
 
-    currentContext()->push_new_state("jit_module");
+    currentContext()->pushNewState("jit_module");
     createGCEntry();
 
     // Analyze as a top level form
@@ -97,11 +97,11 @@ TopLevelInitializerDef Compiler::compileTopLevelNode(std::shared_ptr<AnalyzerNod
             llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace), false),
             llvm::GlobalValue::LinkageTypes::ExternalLinkage,
             mangled_name,
-            currentContext()->current_module());
+            currentContext()->currentModule());
 
     mainfunc->setGC("statepoint-example");
 
-    currentContext()->push_func(mainfunc);
+    currentContext()->pushFunc(mainfunc);
 
     auto entry = llvm::BasicBlock::Create(llvmContext(), "entry", mainfunc);
 
@@ -109,13 +109,13 @@ TopLevelInitializerDef Compiler::compileTopLevelNode(std::shared_ptr<AnalyzerNod
     compileNode(std::move(node));
 
     // Return result.
-    auto result = currentContext()->pop_value();
+    auto result = currentContext()->popValue();
 
     // TODO: Figure out what to do with return values rather than adding as a root
     //buildGcAddRoot(result);
 
     currentBuilder()->CreateRet(result);
-    currentContext()->pop_func();
+    currentContext()->popFunc();
 
     return initializer;
 }
@@ -124,7 +124,7 @@ void* Compiler::runInitializerWithJit(TopLevelInitializerDef& tl_def) {
     static int cnt = 0;
 
     if (currentModule()->getFunction(tl_def.mangled_name)!=nullptr) {
-        jit_->addModule(currentContext()->pop_state());
+        jit_->addModule(currentContext()->popState());
 
         auto stackmap_ptr = jit_->get_stack_map_pointer();
         if (stackmap_ptr!=nullptr) {
@@ -133,7 +133,7 @@ void* Compiler::runInitializerWithJit(TopLevelInitializerDef& tl_def) {
 
         std::stringstream ss;
         ss << "jit_module__" << cnt;
-        currentContext()->push_new_state(ss.str());
+        currentContext()->pushNewState(ss.str());
         createGCEntry();
     }
 
@@ -149,7 +149,7 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
     std::stringstream moduless;
     moduless << "expander_module_" << cnt;
 
-    currentContext()->push_new_state(moduless.str());
+    currentContext()->pushNewState(moduless.str());
     createGCEntry();
 
     std::stringstream ss;
@@ -159,11 +159,11 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
             llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace), false),
             llvm::GlobalValue::LinkageTypes::ExternalLinkage,
             ss.str(),
-            currentContext()->current_module());
+            currentContext()->currentModule());
 
     mainfunc->setGC("statepoint-example");
 
-    currentContext()->push_func(mainfunc);
+    currentContext()->pushFunc(mainfunc);
 
     auto entry = llvm::BasicBlock::Create(llvmContext(), "entry", mainfunc);
 
@@ -171,15 +171,15 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
     compileMacroExpand(node);
 
     // Return result.
-    auto result = currentContext()->pop_value();
+    auto result = currentContext()->popValue();
 
     // TODO: Figure out what to do with return values rather than adding as a root
     buildGcAddRoot(result);
 
     currentBuilder()->CreateRet(result);
-    currentContext()->pop_func();
+    currentContext()->popFunc();
 
-    jit_->addModule(currentContext()->pop_state());
+    jit_->addModule(currentContext()->popState());
 
     auto faddr = jit_->get_symbol_address(ss.str());
     rt_gc_init_stackmap(jit_->get_stack_map_pointer());
@@ -195,19 +195,19 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
 }
 
 void Compiler::createGCEntry() {
-    auto gc_type = llvm::FunctionType::get(llvm::Type::getVoidTy(currentContext()->llvm_context()), false);
+    auto gc_type = llvm::FunctionType::get(llvm::Type::getVoidTy(currentContext()->llvmContext()), false);
     auto gcfunc = llvm::dyn_cast<llvm::Function>(
-            currentContext()->current_module()->getOrInsertFunction("gc.safepoint_poll", gc_type));
+            currentContext()->currentModule()->getOrInsertFunction("gc.safepoint_poll", gc_type));
 
     gcfunc->addFnAttr(llvm::Attribute::NoUnwind);
 
-    auto gc_entry = llvm::BasicBlock::Create(currentContext()->llvm_context(), "entry", gcfunc);
-    llvm::IRBuilder<> b(currentContext()->llvm_context());
+    auto gc_entry = llvm::BasicBlock::Create(currentContext()->llvmContext(), "entry", gcfunc);
+    llvm::IRBuilder<> b(currentContext()->llvmContext());
     b.SetInsertPoint(gc_entry);
 
-    auto dogc = currentContext()->current_module()->getOrInsertFunction("rt_enter_gc",
+    auto dogc = currentContext()->currentModule()->getOrInsertFunction("rt_enter_gc",
             llvm::Type::getVoidTy(currentContext()
-                    ->llvm_context()));
+                    ->llvmContext()));
     b.CreateCall(dogc);
     b.CreateRet(nullptr);
 }
@@ -272,13 +272,13 @@ void Compiler::compileConstant(std::shared_ptr<ConstantValueAnalyzerNode> node) 
     default:throw CompilerException("Unrecognized constant type", node->sourcePosition);
     }
 
-    currentContext()->push_value(v);
+    currentContext()->pushValue(v);
 }
 
 void Compiler::compileConstantList(const std::shared_ptr<ConstantListAnalyzerNode>& node) {
     // Special case- the empty list is nil
     if (node->values.empty()) {
-        currentContext()->push_value(makeNil());
+        currentContext()->pushValue(makeNil());
         return;
     }
 
@@ -286,17 +286,17 @@ void Compiler::compileConstantList(const std::shared_ptr<ConstantListAnalyzerNod
 
     for (auto it = node->values.rbegin(); it!=node->values.rend(); ++it) {
         compileNode(*it);
-        head = makePair(currentContext()->pop_value(), head);
+        head = makePair(currentContext()->popValue(), head);
     }
 
-    currentContext()->push_value(head);
+    currentContext()->pushValue(head);
 }
 
 void Compiler::compileDo(const std::shared_ptr<DoAnalyzerNode>& node) {
     // Compile each node in the body, disregarding the result
     for (const auto& child: node->statements) {
         compileNode(child);
-        currentContext()->pop_value();
+        currentContext()->popValue();
     }
 
     // Compile the last node, keeping the result on the stack
@@ -312,32 +312,32 @@ void Compiler::compileIf(const std::shared_ptr<IfAnalyzerNode>& node) {
     auto result = currentBuilder()->CreateAlloca(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
             0, nullptr, "if_result");
 
-    auto cond = currentBuilder()->CreateICmpEQ(getBooleanValue(currentContext()->pop_value()),
+    auto cond = currentBuilder()->CreateICmpEQ(getBooleanValue(currentContext()->popValue()),
             llvm::ConstantInt::get(llvm::IntegerType::getInt8Ty(llvmContext()),
                     0));
 
-    auto iftrueblock = llvm::BasicBlock::Create(llvmContext(), "if_true", currentContext()->current_func());
-    auto iffalseblock = llvm::BasicBlock::Create(llvmContext(), "if_false", currentContext()->current_func());
-    auto endifblock = llvm::BasicBlock::Create(llvmContext(), "endif", currentContext()->current_func());
+    auto iftrueblock = llvm::BasicBlock::Create(llvmContext(), "if_true", currentContext()->currentFunc());
+    auto iffalseblock = llvm::BasicBlock::Create(llvmContext(), "if_false", currentContext()->currentFunc());
+    auto endifblock = llvm::BasicBlock::Create(llvmContext(), "endif", currentContext()->currentFunc());
 
     currentBuilder()->CreateCondBr(cond, iffalseblock, iftrueblock);
 
     // True branch
     currentBuilder()->SetInsertPoint(iftrueblock);
     compileNode(node->consequent);
-    currentBuilder()->CreateStore(currentContext()->pop_value(), result);
+    currentBuilder()->CreateStore(currentContext()->popValue(), result);
     currentBuilder()->CreateBr(endifblock);
 
     // False branch
     currentBuilder()->SetInsertPoint(iffalseblock);
     compileNode(node->alternative);
-    currentBuilder()->CreateStore(currentContext()->pop_value(), result);
+    currentBuilder()->CreateStore(currentContext()->popValue(), result);
     currentBuilder()->CreateBr(endifblock);
 
     // End if
     currentBuilder()->SetInsertPoint(endifblock);
     // Push the result of the if expression to the compiler stack
-    currentContext()->push_value(currentBuilder()->CreateLoad(result));
+    currentContext()->pushValue(currentBuilder()->CreateLoad(result));
 }
 
 void Compiler::compileVarLookup(const std::shared_ptr<VarLookupNode>& node) {
@@ -357,13 +357,13 @@ void Compiler::compileVarLookup(const std::shared_ptr<VarLookupNode>& node) {
         auto v = currentBuilder()->CreateLoad(var);
 
         auto val = buildDerefVar(v);
-        currentContext()->push_value(val);
+        currentContext()->pushValue(val);
         return;
     }
 
-    auto result = currentContext()->lookup_in_local_environment(*node->name);
+    auto result = currentContext()->lookupInLocalEnvironment(*node->name);
     if (result!=nullptr) {
-        currentContext()->push_value(result);
+        currentContext()->pushValue(result);
         return;
     }
 
@@ -442,16 +442,16 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
 
     // Push the arguments onto the environment stack so that the compiler
     // can look them up later
-    currentContext()->push_local_environment(local_env);
-    currentContext()->push_func(lambda);
+    currentContext()->pushLocalEnvironment(local_env);
+    currentContext()->pushFunc(lambda);
 
     // Compile the body of the function
     compileNode(node->body);
-    currentBuilder()->CreateRet(currentContext()->pop_value());
+    currentBuilder()->CreateRet(currentContext()->popValue());
 
     // Scope ended, pop the arguments from the environment stack
-    currentContext()->pop_local_environment();
-    currentContext()->pop_func();
+    currentContext()->popLocalEnvironment();
+    currentContext()->popFunc();
 
     // Restore back to previous insert point
     currentBuilder()->SetInsertPoint(insert_block, insert_point);
@@ -462,10 +462,10 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
             node->closed_overs.size());
 
     for (uint64_t i = 0; i<node->closed_overs.size(); i++) {
-        buildLambdaSetEnv(closure, i, currentContext()->lookup_in_local_environment(node->closed_overs[i]));
+        buildLambdaSetEnv(closure, i, currentContext()->lookupInLocalEnvironment(node->closed_overs[i]));
     }
 
-    currentContext()->push_value(closure);
+    currentContext()->pushValue(closure);
 
     ++cnt;
 }
@@ -495,9 +495,9 @@ void Compiler::compileDef(const std::shared_ptr<DefAnalyzerNode>& node) {
     compileNode(node->value);
 
     // Set initial value for var
-    buildSetVar(v, currentContext()->pop_value());
+    buildSetVar(v, currentContext()->popValue());
 
-    currentContext()->push_value(makeNil());
+    currentContext()->pushValue(makeNil());
 
     auto d = std::make_shared<GlobalDef>();
     d->name = *node->name;
@@ -508,18 +508,18 @@ void Compiler::compileDef(const std::shared_ptr<DefAnalyzerNode>& node) {
 
 void Compiler::compileMaybeInvoke(const std::shared_ptr<MaybeInvokeAnalyzerNode>& node) {
     compileNode(node->fn);
-    auto fn = currentContext()->pop_value();
+    auto fn = currentContext()->popValue();
 
     auto list_node = std::make_shared<ConstantListAnalyzerNode>();
     list_node->sourcePosition = node->sourcePosition;
     list_node->evaluation_phase = node->evaluation_phase;
     list_node->values = node->args;
     compileNode(list_node);
-    auto args = currentContext()->pop_value();
+    auto args = currentContext()->popValue();
 
     // TODO: Is there a better way to save the args?
     buildGcAddRoot(args);
-    currentContext()->push_value(buildApply(fn, args));
+    currentContext()->pushValue(buildApply(fn, args));
     buildGcRemoveRoot(args);
 
 //    std::vector<llvm::Value *> args;
@@ -527,7 +527,7 @@ void Compiler::compileMaybeInvoke(const std::shared_ptr<MaybeInvokeAnalyzerNode>
 //
 //    for (const auto &a: node->args) {
 //        compileNode(a);
-//        args.push_back(currentContext()->pop_value());
+//        args.push_back(currentContext()->popValue());
 //    }
 //
 //    args.push_back(fn);
@@ -549,7 +549,7 @@ void Compiler::compileMaybeInvoke(const std::shared_ptr<MaybeInvokeAnalyzerNode>
 //
 //    auto result = currentBuilder()->CreateCall(fn_ptr, args);
 //
-//    currentContext()->push_value(result);
+//    currentContext()->pushValue(result);
 }
 
 void Compiler::compileDefFFIFn(const std::shared_ptr<electrum::DefFFIFunctionNode>& node) {
@@ -631,7 +631,7 @@ void Compiler::compileDefFFIFn(const std::shared_ptr<electrum::DefFFIFunctionNod
     // Set initial value for var
     buildSetVar(v, makeClosure(node->arg_types.size(), false, ffi_wrapper, 0));
 
-    currentContext()->push_value(makeNil());
+    currentContext()->pushValue(makeNil());
 
     auto d = std::make_shared<GlobalDef>();
     d->name = *node->binding;
@@ -694,16 +694,16 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 
     // Push the arguments onto the environment stack so that the compiler
     // can look them up later
-    currentContext()->push_local_environment(local_env);
-    currentContext()->push_func(expander);
+    currentContext()->pushLocalEnvironment(local_env);
+    currentContext()->pushFunc(expander);
 
     // Compile the body of the expander
     compileNode(node->body);
-    currentBuilder()->CreateRet(currentContext()->pop_value());
+    currentBuilder()->CreateRet(currentContext()->popValue());
 
     // Scope ended, pop the arguments from the environment stack
-    currentContext()->pop_local_environment();
-    currentContext()->pop_func();
+    currentContext()->popLocalEnvironment();
+    currentContext()->popFunc();
 
     // Restore back to previous insert point
     currentBuilder()->SetInsertPoint(insert_block, insert_point);
@@ -714,7 +714,7 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
             node->closed_overs.size());
 
     for (uint64_t i = 0; i<node->closed_overs.size(); i++) {
-        buildLambdaSetEnv(closure, i, currentContext()->lookup_in_local_environment(node->closed_overs[i]));
+        buildLambdaSetEnv(closure, i, currentContext()->lookupInLocalEnvironment(node->closed_overs[i]));
     }
 
 
@@ -736,14 +736,14 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
     // Store var in global
     currentBuilder()->CreateStore(closure, glob, false);
 
-    currentContext()->push_value(makeNil());
+    currentContext()->pushValue(makeNil());
 
     auto d = std::make_shared<GlobalDef>();
     d->name = *node->name;
     d->mangled_name = mangled_name;
 
     currentContext()->global_macros[*node->name] = d;
-    currentContext()->push_value(makeNil());
+    currentContext()->pushValue(makeNil());
 }
 
 void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAnalyzerNode>& node) {
@@ -767,7 +767,7 @@ void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAna
 
     for (const auto& a: node->args) {
         compileNode(a);
-        args.push_back(currentContext()->pop_value());
+        args.push_back(currentContext()->popValue());
     }
 
     args.push_back(expanderClosure);
@@ -788,7 +788,7 @@ void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAna
 
     auto expander_result = currentBuilder()->CreateCall(fn_ptr, args);
 
-    currentContext()->push_value(expander_result);
+    currentContext()->pushValue(expander_result);
 }
 
 std::string Compiler::mangleSymbolName(const std::string ns, const std::string& name) {
