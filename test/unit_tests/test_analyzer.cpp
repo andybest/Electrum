@@ -531,7 +531,7 @@ TEST(Analyzer, collapsesTopLevelForms) {
     Analyzer an;
 
     auto node = an.analyze(val);
-    auto nodes = an.collapse_top_level_forms(node);
+    auto nodes = an.collapseTopLevelForms(node);
 
     EXPECT_EQ(nodes.size(), 4);
 

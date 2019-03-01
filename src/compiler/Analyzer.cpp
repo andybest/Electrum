@@ -1,3 +1,5 @@
+#include <utility>
+
 /*
  MIT License
 
@@ -36,12 +38,12 @@ Analyzer::Analyzer()
 }
 
 shared_ptr<AnalyzerNode> Analyzer::analyze(shared_ptr<ASTNode> form, uint64_t depth, EvaluationPhase phase) {
-    push_evaluation_phase(phase);
+    pushEvaluationPhase(phase);
 
-    auto node = analyzeForm(form);
-    run_passes(node, depth);
+    auto node = analyzeForm(std::move(form));
+    runPasses(node, depth);
 
-    pop_evaluation_phase();
+    popEvaluationPhase();
     assert(evaluation_phases_.empty());
 
     return node;
@@ -63,7 +65,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode> form) {
     return shared_ptr<AnalyzerNode>();
 }
 
-vector<shared_ptr<AnalyzerNode>> Analyzer::collapse_top_level_forms(const shared_ptr<AnalyzerNode> node) {
+vector<shared_ptr<AnalyzerNode>> Analyzer::collapseTopLevelForms(shared_ptr<AnalyzerNode> node) {
     if (node->node_depth>0) {
         return {node};
     }
@@ -72,8 +74,8 @@ vector<shared_ptr<AnalyzerNode>> Analyzer::collapse_top_level_forms(const shared
     case kAnalyzerNodeTypeDo:
     case kAnalyzerNodeTypeEvalWhen: {
         vector<shared_ptr<AnalyzerNode>> nodes;
-        for (auto c: node->children()) {
-            for (auto r: collapse_top_level_forms(c)) {
+        for (const auto& c: node->children()) {
+            for (const auto& r: collapseTopLevelForms(c)) {
                 nodes.push_back(r);
             }
         }
@@ -84,15 +86,15 @@ vector<shared_ptr<AnalyzerNode>> Analyzer::collapse_top_level_forms(const shared
     }
 }
 
-vector<string> Analyzer::analyze_closed_overs(const shared_ptr<AnalyzerNode> node) {
+vector<string> Analyzer::analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node) {
     if (node->collected_closed_overs) {
         return node->closed_overs;
     }
 
     vector<string> closed_overs;
 
-    for (auto child: node->children()) {
-        for (auto v: analyze_closed_overs(child)) {
+    for (const auto& child: node->children()) {
+        for (const auto& v: analyzeClosedOvers(child)) {
             closed_overs.push_back(v);
         }
     }
@@ -141,9 +143,9 @@ vector<string> Analyzer::analyze_closed_overs(const shared_ptr<AnalyzerNode> nod
         break;
     }
     case kAnalyzerNodeTypeVarLookup: {
-        auto varNode = std::dynamic_pointer_cast<VarLookupNode>(node);
-        if (!varNode->is_global) {
-            closed_overs.push_back(*varNode->name);
+        auto var_node = std::dynamic_pointer_cast<VarLookupNode>(node);
+        if (!var_node->is_global) {
+            closed_overs.push_back(*var_node->name);
         }
         break;
     }
@@ -156,7 +158,7 @@ vector<string> Analyzer::analyze_closed_overs(const shared_ptr<AnalyzerNode> nod
     return closed_overs;
 }
 
-void Analyzer::update_depth_for_node(const shared_ptr<AnalyzerNode> node, uint64_t starting_depth) {
+void Analyzer::updateDepthForNode(const shared_ptr<AnalyzerNode> node, uint64_t starting_depth) {
     if (node->node_depth>=0) {
         return;
     }
@@ -173,22 +175,22 @@ void Analyzer::update_depth_for_node(const shared_ptr<AnalyzerNode> node, uint64
     }
 
     for (const auto& c: node->children()) {
-        update_depth_for_node(c, new_depth);
+        updateDepthForNode(c, new_depth);
     }
 }
 
-void Analyzer::assert_eval_when_for_compile_is_top_level(shared_ptr<AnalyzerNode> node) {
+void Analyzer::assertEvalWhenForCompileIsTopLevel(shared_ptr<AnalyzerNode> node) {
     if (node->nodeType()==kAnalyzerNodeTypeEvalWhen && node->node_depth>0) {
         throw CompilerException("eval-when forms can only be used at the top-level.",
                 node->sourcePosition);
     }
 
     for (auto c: node->children()) {
-        assert_eval_when_for_compile_is_top_level(c);
+        assertEvalWhenForCompileIsTopLevel(c);
     }
 }
 
-void Analyzer::update_evaluation_phase(shared_ptr<AnalyzerNode> node, EvaluationPhase phase) {
+void Analyzer::updateEvaluationPhase(shared_ptr<AnalyzerNode> node, EvaluationPhase phase) {
     EvaluationPhase p = phase;
 
     if (node->nodeType()==kAnalyzerNodeTypeEvalWhen) {
@@ -199,36 +201,36 @@ void Analyzer::update_evaluation_phase(shared_ptr<AnalyzerNode> node, Evaluation
     node->evaluation_phase = p;
 
     for (auto c: node->children()) {
-        update_evaluation_phase(c, p);
+        updateEvaluationPhase(c, p);
     }
 }
 
-void Analyzer::run_passes(std::shared_ptr<electrum::AnalyzerNode> node, uint64_t depth) {
-    analyze_closed_overs(node);
+void Analyzer::runPasses(std::shared_ptr<electrum::AnalyzerNode> node, uint64_t depth) {
+    analyzeClosedOvers(node);
 
     // Calculate the depth for each node
-    update_depth_for_node(node, depth);
+    updateDepthForNode(node, depth);
 
     // If any eval-when forms appear that are not top-level, throw an error.
-    assert_eval_when_for_compile_is_top_level(node);
+    assertEvalWhenForCompileIsTopLevel(node);
 
     // Update the evaluation phase of all of the nodes, with a default of load time evaluation.
-    update_evaluation_phase(node, kEvaluationPhaseLoadTime);
+    updateEvaluationPhase(node, kEvaluationPhaseLoadTime);
 }
 
 shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
-    auto symName = form->stringValue;
+    auto sym_name = form->stringValue;
 
     if (is_quoting_ || (quasi_quote_state_.size()>0 && quasi_quote_state_.back())) {
         auto node = make_shared<ConstantValueAnalyzerNode>();
         node->sourcePosition = form->sourcePosition;
         node->type = kAnalyzerConstantTypeSymbol;
-        node->value = symName;
+        node->value = sym_name;
 
         return node;
     }
 
-    if (lookup_in_local_env(*symName)!=nullptr) {
+    if (lookupInLocalEnv(*sym_name)!=nullptr) {
         auto node = make_shared<VarLookupNode>();
         node->sourcePosition = form->sourcePosition;
         node->name = form->stringValue;
@@ -236,12 +238,12 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
         return node;
     }
 
-    auto globalResult = global_env_.find(*symName);
+    auto globalResult = global_env_.find(*sym_name);
     if (globalResult!=global_env_.end()) {
         auto def = globalResult->second;
 
         if (in_macro_ && !(def.phase & kEvaluationPhaseCompileTime)) {
-            throw CompilerException("The symbol "+*symName+" is not visible to the compiler",
+            throw CompilerException("The symbol "+*sym_name+" is not visible to the compiler",
                     form->sourcePosition);
         }
 
@@ -252,7 +254,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
         return node;
     }
 
-    throw CompilerException("Unbound variable '"+*symName+"'",
+    throw CompilerException("Unbound variable '"+*sym_name+"'",
             form->sourcePosition);
 }
 
@@ -445,33 +447,31 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDo(const shared_ptr<ASTNode> form) {
 
 shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode> form) {
     assert(form->tag==kTypeTagList);
-    auto listPtr = form->listValue;
-    assert(!listPtr->empty());
+    auto list_ptr = form->listValue;
+    assert(!list_ptr->empty());
 
-    if (listPtr->size()<2) {
+    if (list_ptr->size()<2) {
         // Lambda forms must contain an argument list
         throw CompilerException("Lambda forms must have an argument list",
                 form->sourcePosition);
     }
 
-    if (listPtr->at(1)->tag!=kTypeTagList) {
+    if (list_ptr->at(1)->tag!=kTypeTagList) {
         // Lambda arguments must be a list
         throw CompilerException("Lambda arguments must be a list",
-                listPtr->at(1)->sourcePosition);
+                list_ptr->at(1)->sourcePosition);
     }
 
-    auto argList = listPtr->at(1)->listValue;
+    auto arg_list = list_ptr->at(1)->listValue;
 
-    std::vector<shared_ptr<AnalyzerNode>>
-            argNameNodes;
-    std::vector<shared_ptr<std::string>>
-            argNames;
+    std::vector<shared_ptr<AnalyzerNode>> arg_name_nodes;
+    std::vector<shared_ptr<std::string>> arg_names;
 
     bool has_rest_arg = false;
     shared_ptr<string> rest_arg_name;
     int rest_count = 0;
 
-    for (auto arg: *argList) {
+    for (auto arg: *arg_list) {
         if (arg->tag!=kTypeTagSymbol) {
             // Lambda arguments must be symbols
             throw CompilerException("Lambda arguments must be symbols",
@@ -496,43 +496,43 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode> form)
         sym->sourcePosition = arg->sourcePosition;
         sym->value = arg->stringValue;
         sym->type = kAnalyzerConstantTypeSymbol;
-        argNameNodes.push_back(sym);
+        arg_name_nodes.push_back(sym);
 
-        argNames.push_back(arg->stringValue);
+        arg_names.push_back(arg->stringValue);
     }
 
-    push_local_env();
+    pushLocalEnv();
 
-    for (int i = 0; i<argNames.size(); ++i) {
-        store_in_local_env(*argNames[i], std::make_shared<ConstantValueAnalyzerNode>());
+    for (int i = 0; i<arg_names.size(); ++i) {
+        storeInLocalEnv(*arg_names[i], std::make_shared<ConstantValueAnalyzerNode>());
     }
 
     if (has_rest_arg) {
-        store_in_local_env(*rest_arg_name, std::make_shared<ConstantValueAnalyzerNode>());
+        storeInLocalEnv(*rest_arg_name, std::make_shared<ConstantValueAnalyzerNode>());
     }
 
-    if (listPtr->size()<3) {
+    if (list_ptr->size()<3) {
         // Lambda forms must have at least one body expression
         throw CompilerException("Lambda forms must have at least one body expression",
                 form->sourcePosition);
     }
 
     auto body = std::make_shared<DoAnalyzerNode>();
-    body->sourcePosition = listPtr->at(2)->sourcePosition;
+    body->sourcePosition = list_ptr->at(2)->sourcePosition;
 
     // Add all but the last statements to 'statements'
-    for (auto it = listPtr->begin()+2; it<listPtr->end()-1; ++it) {
+    for (auto it = list_ptr->begin()+2; it<list_ptr->end()-1; ++it) {
         body->statements.push_back(analyzeForm(*it));
     }
 
     // Add the last statement to 'returnValue'
-    body->returnValue = analyzeForm(*(listPtr->end()-1));
+    body->returnValue = analyzeForm(*(list_ptr->end()-1));
 
     auto node = std::make_shared<LambdaAnalyzerNode>();
 
     node->sourcePosition = form->sourcePosition;
-    node->arg_names = argNames;
-    node->arg_name_nodes = argNameNodes;
+    node->arg_names = arg_names;
+    node->arg_name_nodes = arg_name_nodes;
     node->body = body;
 
     if (has_rest_arg) {
@@ -540,7 +540,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode> form)
         node->rest_arg_name = rest_arg_name;
     }
 
-    pop_local_env();
+    popLocalEnv();
 
     return node;
 }
@@ -575,14 +575,12 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode> form) 
 
     auto binding = listPtr->at(1)->stringValue;
 
-    auto argList = listPtr->at(2)->listValue;
+    auto arg_list = listPtr->at(2)->listValue;
 
-    std::vector<shared_ptr<AnalyzerNode>>
-            argNameNodes;
-    std::vector<shared_ptr<std::string>>
-            argNames;
+    std::vector<shared_ptr<AnalyzerNode>> arg_name_nodes;
+    std::vector<shared_ptr<std::string>> arg_names;
 
-    for (const auto& arg: *argList) {
+    for (const auto& arg: *arg_list) {
         if (arg->tag!=kTypeTagSymbol) {
             throw CompilerException("Defmacro arguments must be symbols",
                     arg->sourcePosition);
@@ -592,15 +590,15 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode> form) 
         sym->sourcePosition = arg->sourcePosition;
         sym->value = arg->stringValue;
         sym->type = kAnalyzerConstantTypeSymbol;
-        argNameNodes.push_back(sym);
+        arg_name_nodes.push_back(sym);
 
-        argNames.push_back(arg->stringValue);
+        arg_names.push_back(arg->stringValue);
     }
 
-    push_local_env();
+    pushLocalEnv();
 
-    for (auto& argName : argNames) {
-        store_in_local_env(*argName, std::make_shared<ConstantValueAnalyzerNode>());
+    for (auto& arg_name : arg_names) {
+        storeInLocalEnv(*arg_name, std::make_shared<ConstantValueAnalyzerNode>());
     }
 
     if (listPtr->size()<4) {
@@ -628,13 +626,13 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode> form) 
 
     node->sourcePosition = form->sourcePosition;
     node->name = binding;
-    node->arg_names = argNames;
-    node->arg_name_nodes = argNameNodes;
+    node->arg_names = arg_names;
+    node->arg_name_nodes = arg_name_nodes;
     node->body = body;
 
     global_macros_[*binding] = node;
 
-    pop_local_env();
+    popLocalEnv();
 
     return node;
 }
@@ -708,7 +706,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDef(shared_ptr<ASTNode> form) {
     auto valueNode = analyzeForm(listPtr->at(2));
 
     AnalyzerDefinition d;
-    d.phase = current_evaluation_phase();
+    d.phase = currentEvaluationPhase();
     d.node = valueNode;
 
     global_env_[*name] = d;
@@ -799,7 +797,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDefFFIFn(shared_ptr<ASTNode> form) {
     node->arg_types = args;
 
     AnalyzerDefinition d;
-    d.phase = current_evaluation_phase();
+    d.phase = currentEvaluationPhase();
     d.node = node;
 
     global_env_[*binding] = d;
@@ -925,7 +923,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeEvalWhen(shared_ptr<ASTNode> form) {
     node->sourcePosition = form->sourcePosition;
     node->phases = phases;
 
-    push_evaluation_phase(phases);
+    pushEvaluationPhase(phases);
 
     // Add all but the last form to body
     for (auto it = listPtr->begin()+2; it<listPtr->end()-1; ++it) {
@@ -935,7 +933,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeEvalWhen(shared_ptr<ASTNode> form) {
     // Add the last form to 'last'
     node->last = analyzeForm(*(listPtr->end()-1));
 
-    pop_evaluation_phase();
+    popEvaluationPhase();
 
     return node;
 }
@@ -950,15 +948,15 @@ shared_ptr<AnalyzerNode> Analyzer::initialBindingWithName(const std::string& nam
     return nullptr;
 }
 
-void Analyzer::push_local_env() {
+void Analyzer::pushLocalEnv() {
     local_envs_.push_back({});
 }
 
-void Analyzer::pop_local_env() {
+void Analyzer::popLocalEnv() {
     local_envs_.pop_back();
 }
 
-shared_ptr<AnalyzerNode> Analyzer::lookup_in_local_env(std::string name) {
+shared_ptr<AnalyzerNode> Analyzer::lookupInLocalEnv(std::string name) {
     for (auto it = local_envs_.rbegin(); it!=local_envs_.rend(); ++it) {
         auto env = *it;
 
@@ -972,22 +970,22 @@ shared_ptr<AnalyzerNode> Analyzer::lookup_in_local_env(std::string name) {
     return nullptr;
 }
 
-void Analyzer::store_in_local_env(std::string name, shared_ptr<AnalyzerNode> initialValue) {
-    local_envs_.at(local_envs_.size()-1)[name] = initialValue;
+void Analyzer::storeInLocalEnv(std::string name, shared_ptr<AnalyzerNode> initial_value) {
+    local_envs_.at(local_envs_.size()-1)[name] = initial_value;
 }
 
-void Analyzer::push_evaluation_phase(EvaluationPhase phase) {
+void Analyzer::pushEvaluationPhase(EvaluationPhase phase) {
     evaluation_phases_.push_back(phase);
 }
 
-EvaluationPhase Analyzer::pop_evaluation_phase() {
+EvaluationPhase Analyzer::popEvaluationPhase() {
     assert(!evaluation_phases_.empty());
     auto p = evaluation_phases_.back();
     evaluation_phases_.pop_back();
     return p;
 }
 
-EvaluationPhase Analyzer::current_evaluation_phase() {
+EvaluationPhase Analyzer::currentEvaluationPhase() {
     return evaluation_phases_.back();
 }
 

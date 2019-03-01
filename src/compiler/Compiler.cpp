@@ -67,7 +67,7 @@ void* Compiler::compileAndEvalString(std::string str) {
 
     // Analyze as a top level form
     auto node = analyzer_.analyze(ast, 0);
-    auto toplevel_forms = analyzer_.collapse_top_level_forms(node);
+    auto toplevel_forms = analyzer_.collapseTopLevelForms(node);
     void* rv = NIL_PTR;
 
     // Run each top level initializer
