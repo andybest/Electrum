@@ -74,15 +74,16 @@ public:
     using MyRemote = llvm::orc::remote::OrcRemoteTargetClient;
 
     ElectrumJit(llvm::orc::ExecutionSession& es);
+
     llvm::TargetMachine& getTargetMachine();
 
     llvm::orc::VModuleKey addModule(std::unique_ptr<llvm::Module> module);
-    void remove_module(llvm::orc::VModuleKey h);
+    void removeModule(llvm::orc::VModuleKey h);
 
-    llvm::JITSymbol find_symbol(const std::string& name);
-    llvm::JITTargetAddress get_symbol_address(const std::string& name);
+    llvm::JITSymbol findSymbol(const std::string& name);
+    llvm::JITTargetAddress getSymbolAddress(const std::string& name);
 
-    void* get_stack_map_pointer() {
+    void* getStackMapPointer() {
         return stack_map_ptr_;
     }
 };

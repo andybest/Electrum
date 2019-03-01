@@ -102,18 +102,18 @@ llvm::orc::VModuleKey ElectrumJit::addModule(std::unique_ptr<llvm::Module> modul
     return k;
 }
 
-llvm::JITSymbol ElectrumJit::find_symbol(const std::string& name) {
+llvm::JITSymbol ElectrumJit::findSymbol(const std::string& name) {
     std::string mangled_name;
     llvm::raw_string_ostream mangled_name_stream(mangled_name);
     llvm::Mangler::getNameWithPrefix(mangled_name_stream, name, data_layout_);
     return optimize_layer_.findSymbol(name, false);
 }
 
-llvm::JITTargetAddress ElectrumJit::get_symbol_address(const std::string& name) {
-    return llvm::cantFail(find_symbol(name).getAddress());
+llvm::JITTargetAddress ElectrumJit::getSymbolAddress(const std::string& name) {
+    return llvm::cantFail(findSymbol(name).getAddress());
 }
 
-void ElectrumJit::remove_module(llvm::orc::VModuleKey h) {
+void ElectrumJit::removeModule(llvm::orc::VModuleKey h) {
     llvm::cantFail(optimize_layer_.removeModule(h));
 }
 

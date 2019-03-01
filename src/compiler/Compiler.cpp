@@ -126,7 +126,7 @@ void* Compiler::runInitializerWithJit(TopLevelInitializerDef& tl_def) {
     if (currentModule()->getFunction(tl_def.mangled_name)!=nullptr) {
         jit_->addModule(currentContext()->popState());
 
-        auto stackmap_ptr = jit_->get_stack_map_pointer();
+        auto stackmap_ptr = jit_->getStackMapPointer();
         if (stackmap_ptr!=nullptr) {
             rt_gc_init_stackmap(stackmap_ptr);
         }
@@ -137,7 +137,7 @@ void* Compiler::runInitializerWithJit(TopLevelInitializerDef& tl_def) {
         createGCEntry();
     }
 
-    auto f_addr = jit_->get_symbol_address(tl_def.mangled_name);
+    auto f_addr = jit_->getSymbolAddress(tl_def.mangled_name);
     typedef void* (* InitFunc)();
     auto f_ptr = reinterpret_cast<InitFunc>(f_addr);
     return f_ptr();
@@ -181,8 +181,8 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
 
     jit_->addModule(currentContext()->popState());
 
-    auto faddr = jit_->get_symbol_address(ss.str());
-    rt_gc_init_stackmap(jit_->get_stack_map_pointer());
+    auto faddr = jit_->getSymbolAddress(ss.str());
+    rt_gc_init_stackmap(jit_->getStackMapPointer());
 
     typedef void* (* MainPtr)();
 
