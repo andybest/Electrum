@@ -381,61 +381,61 @@ class Analyzer {
 public:
     Analyzer();
 
-    shared_ptr<AnalyzerNode> analyze(shared_ptr<ASTNode> form, uint64_t depth = 0,
+    shared_ptr<AnalyzerNode> analyze(const shared_ptr<ASTNode>& form, uint64_t depth = 0,
             EvaluationPhase phase = kEvaluationPhaseLoadTime);
     shared_ptr<AnalyzerNode> initialBindingWithName(const std::string& name);
 
     /// Collapses the given node into a vector of top level forms
-    vector <shared_ptr<AnalyzerNode>> collapseTopLevelForms(shared_ptr<AnalyzerNode> node);
+    vector <shared_ptr<AnalyzerNode>> collapseTopLevelForms(const shared_ptr<AnalyzerNode>& node);
 private:
 
     /* Passes */
     /// Run all analyzer passes
-    void runPasses(shared_ptr<AnalyzerNode> node, uint64_t depth = 0);
+    void runPasses(const shared_ptr<AnalyzerNode>& node, uint64_t depth = 0);
 
     /// Recursively updates the node's `node_depth` value, starting at `starting_depth`
-    void updateDepthForNode(shared_ptr<AnalyzerNode> node, uint64_t starting_depth = 0);
+    void updateDepthForNode(const shared_ptr<AnalyzerNode>& node, uint64_t starting_depth = 0);
 
     /// Asserts that all `eval-when` forms are at the top level
-    void assertEvalWhenForCompileIsTopLevel(shared_ptr<AnalyzerNode> node);
+    void assertEvalWhenForCompileIsTopLevel(const shared_ptr<AnalyzerNode>& node);
 
     /// Recursively updates the evaluation phase of all nodes that are inside eval-when forms
-    void updateEvaluationPhase(shared_ptr<AnalyzerNode> node, EvaluationPhase phase);
+    void updateEvaluationPhase(const shared_ptr<AnalyzerNode>& node, EvaluationPhase phase);
 
     /// Recursively walks the node tree and generates a list of closed overs for each node
     vector <string> analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node);
 
     /* Analyzers */
-    shared_ptr<AnalyzerNode> analyzeForm(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeSymbol(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeInteger(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeFloat(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeString(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeNil(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeKeyword(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeBoolean(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeList(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeIf(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeDo(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeLambda(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeMacro(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeMacroExpand(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeDef(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeMaybeInvoke(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeDefFFIFn(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeQuote(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeQuasiQuote(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeUnquote(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> analyzeEvalWhen(shared_ptr<ASTNode> form);
-    shared_ptr<AnalyzerNode> maybeAnalyzeSpecialForm(shared_ptr<string> symbolName, shared_ptr<ASTNode> form);
+    shared_ptr<AnalyzerNode> analyzeForm(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeSymbol(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeInteger(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeFloat(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeString(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeNil(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeKeyword(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeBoolean(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeList(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeIf(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeDo(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeLambda(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeMacro(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeMacroExpand(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeDef(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeMaybeInvoke(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeDefFFIFn(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeQuote(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeQuasiQuote(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeUnquote(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeEvalWhen(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> maybeAnalyzeSpecialForm(const shared_ptr<string>& symbol_name, const shared_ptr<ASTNode>& form);
 
-    typedef shared_ptr<AnalyzerNode> (Analyzer::*AnalyzerFunc)(shared_ptr<ASTNode>);
+    typedef shared_ptr<AnalyzerNode> (Analyzer::*AnalyzerFunc)(const shared_ptr<ASTNode>&);
 
     /* Environment */
     void pushLocalEnv();
     void popLocalEnv();
-    shared_ptr<AnalyzerNode> lookupInLocalEnv(std::string name);
-    void storeInLocalEnv(std::string name, shared_ptr<AnalyzerNode> initial_value);
+    shared_ptr<AnalyzerNode> lookupInLocalEnv(const std::string& name);
+    void storeInLocalEnv(const std::string& name, shared_ptr<AnalyzerNode> initial_value);
 
     /* Evaluation Phase */
     void pushEvaluationPhase(EvaluationPhase phase);

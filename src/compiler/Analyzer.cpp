@@ -37,10 +37,10 @@ Analyzer::Analyzer()
          in_macro_(false) {
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyze(shared_ptr<ASTNode> form, uint64_t depth, EvaluationPhase phase) {
+shared_ptr<AnalyzerNode> Analyzer::analyze(const shared_ptr<ASTNode>& form, uint64_t depth, EvaluationPhase phase) {
     pushEvaluationPhase(phase);
 
-    auto node = analyzeForm(std::move(form));
+    auto node = analyzeForm(form);
     runPasses(node, depth);
 
     popEvaluationPhase();
@@ -49,7 +49,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyze(shared_ptr<ASTNode> form, uint64_t de
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode>& form) {
 
     switch (form->tag) {
     case kTypeTagInteger:return analyzeInteger(form);
@@ -65,7 +65,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode> form) {
     return shared_ptr<AnalyzerNode>();
 }
 
-vector<shared_ptr<AnalyzerNode>> Analyzer::collapseTopLevelForms(shared_ptr<AnalyzerNode> node) {
+vector<shared_ptr<AnalyzerNode>> Analyzer::collapseTopLevelForms(const shared_ptr<AnalyzerNode>& node) {
     if (node->node_depth>0) {
         return {node};
     }
@@ -110,15 +110,13 @@ vector<string> Analyzer::analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node
                         closed_overs.end(),
                         [&lambdaNode](auto c) {
                           // Exclude args and rest args from closed overs
-                          for (auto n: lambdaNode->arg_names) {
+                          for (const auto& n: lambdaNode->arg_names) {
                               if (*n==c) {
                                   return true;
                               }
                           }
-                          if (lambdaNode->has_rest_arg && *lambdaNode->rest_arg_name==c) {
-                              return true;
-                          }
-                          return false;
+
+                          return lambdaNode->has_rest_arg && *lambdaNode->rest_arg_name==c;
                         }),
                 closed_overs.end());
         break;
@@ -132,7 +130,7 @@ vector<string> Analyzer::analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node
                 std::remove_if(closed_overs.begin(),
                         closed_overs.end(),
                         [&defMacroNode](auto c) {
-                          for (auto n: defMacroNode->arg_names) {
+                          for (const auto& n: defMacroNode->arg_names) {
                               if (*n==c) {
                                   return true;
                               }
@@ -158,7 +156,7 @@ vector<string> Analyzer::analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node
     return closed_overs;
 }
 
-void Analyzer::updateDepthForNode(const shared_ptr<AnalyzerNode> node, uint64_t starting_depth) {
+void Analyzer::updateDepthForNode(const shared_ptr<AnalyzerNode>& node, uint64_t starting_depth) {
     if (node->node_depth>=0) {
         return;
     }
@@ -179,18 +177,18 @@ void Analyzer::updateDepthForNode(const shared_ptr<AnalyzerNode> node, uint64_t 
     }
 }
 
-void Analyzer::assertEvalWhenForCompileIsTopLevel(shared_ptr<AnalyzerNode> node) {
+void Analyzer::assertEvalWhenForCompileIsTopLevel(const shared_ptr<AnalyzerNode>& node) {
     if (node->nodeType()==kAnalyzerNodeTypeEvalWhen && node->node_depth>0) {
         throw CompilerException("eval-when forms can only be used at the top-level.",
                 node->sourcePosition);
     }
 
-    for (auto c: node->children()) {
+    for (const auto& c: node->children()) {
         assertEvalWhenForCompileIsTopLevel(c);
     }
 }
 
-void Analyzer::updateEvaluationPhase(shared_ptr<AnalyzerNode> node, EvaluationPhase phase) {
+void Analyzer::updateEvaluationPhase(const shared_ptr<AnalyzerNode>& node, EvaluationPhase phase) {
     EvaluationPhase p = phase;
 
     if (node->nodeType()==kAnalyzerNodeTypeEvalWhen) {
@@ -200,12 +198,12 @@ void Analyzer::updateEvaluationPhase(shared_ptr<AnalyzerNode> node, EvaluationPh
 
     node->evaluation_phase = p;
 
-    for (auto c: node->children()) {
+    for (const auto& c: node->children()) {
         updateEvaluationPhase(c, p);
     }
 }
 
-void Analyzer::runPasses(std::shared_ptr<electrum::AnalyzerNode> node, uint64_t depth) {
+void Analyzer::runPasses(const std::shared_ptr<electrum::AnalyzerNode>& node, uint64_t depth) {
     analyzeClosedOvers(node);
 
     // Calculate the depth for each node
@@ -218,10 +216,10 @@ void Analyzer::runPasses(std::shared_ptr<electrum::AnalyzerNode> node, uint64_t 
     updateEvaluationPhase(node, kEvaluationPhaseLoadTime);
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(const shared_ptr<ASTNode>& form) {
     auto sym_name = form->stringValue;
 
-    if (is_quoting_ || (quasi_quote_state_.size()>0 && quasi_quote_state_.back())) {
+    if (is_quoting_ || (!quasi_quote_state_.empty() && quasi_quote_state_.back())) {
         auto node = make_shared<ConstantValueAnalyzerNode>();
         node->sourcePosition = form->sourcePosition;
         node->type = kAnalyzerConstantTypeSymbol;
@@ -258,7 +256,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(shared_ptr<ASTNode> form) {
             form->sourcePosition);
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeInteger(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeInteger(const shared_ptr<ASTNode>& form) {
     auto node = make_shared<ConstantValueAnalyzerNode>();
     node->type = kAnalyzerConstantTypeInteger;
     node->value = form->integerValue;
@@ -266,7 +264,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeInteger(const shared_ptr<ASTNode> form
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeFloat(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeFloat(const shared_ptr<ASTNode>& form) {
     auto node = make_shared<ConstantValueAnalyzerNode>();
     node->type = kAnalyzerConstantTypeFloat;
     node->value = form->floatValue;
@@ -274,7 +272,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeFloat(const shared_ptr<ASTNode> form) 
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeBoolean(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeBoolean(const shared_ptr<ASTNode>& form) {
     auto node = make_shared<ConstantValueAnalyzerNode>();
     node->type = kAnalyzerConstantTypeBoolean;
     node->value = form->booleanValue;
@@ -282,7 +280,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeBoolean(const shared_ptr<ASTNode> form
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeString(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeString(const shared_ptr<ASTNode>& form) {
     auto node = make_shared<ConstantValueAnalyzerNode>();
     node->type = kAnalyzerConstantTypeString;
     node->value = form->stringValue;
@@ -290,7 +288,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeString(const shared_ptr<ASTNode> form)
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeNil(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeNil(const shared_ptr<ASTNode>& form) {
     auto node = make_shared<ConstantValueAnalyzerNode>();
     node->type = kAnalyzerConstantTypeNil;
     node->value = form->stringValue;
@@ -298,7 +296,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeNil(const shared_ptr<ASTNode> form) {
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeKeyword(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeKeyword(const shared_ptr<ASTNode>& form) {
     auto node = make_shared<ConstantValueAnalyzerNode>();
     node->type = kAnalyzerConstantTypeKeyword;
     node->value = form->stringValue;
@@ -306,11 +304,11 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeKeyword(const shared_ptr<ASTNode> form
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeList(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeList(const shared_ptr<ASTNode>& form) {
     auto listPtr = form->listValue;
     auto listSize = listPtr->size();
 
-    if (is_quoting_ || (quasi_quote_state_.size()>0 && quasi_quote_state_.back())) {
+    if (is_quoting_ || (!quasi_quote_state_.empty() && quasi_quote_state_.back())) {
         // Special case for unquote
         if (listSize>0 && listPtr->at(0)->tag==kTypeTagSymbol && *listPtr->at(0)->stringValue=="unquote") {
             return analyzeUnquote(form);
@@ -319,7 +317,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeList(const shared_ptr<ASTNode> form) {
         auto node = make_shared<ConstantListAnalyzerNode>();
         node->sourcePosition = form->sourcePosition;
 
-        for (auto item: *listPtr) {
+        for (const auto& item: *listPtr) {
             node->values.push_back(analyzeForm(item));
         }
 
@@ -352,14 +350,14 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeList(const shared_ptr<ASTNode> form) {
     throw std::exception(); // TODO: Replace with proper exception
 }
 
-shared_ptr<AnalyzerNode> Analyzer::maybeAnalyzeSpecialForm(const shared_ptr<string> symbolName,
-        const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::maybeAnalyzeSpecialForm(const shared_ptr<string>& symbol_name,
+        const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
 
     // If an analysis function exists for the symbol, return the result
-    auto analyseFunc = specialForms.find(*symbolName);
+    auto analyseFunc = specialForms.find(*symbol_name);
     if (analyseFunc!=specialForms.end()) {
         auto func = analyseFunc->second;
         return (this->*func)(form);
@@ -368,7 +366,7 @@ shared_ptr<AnalyzerNode> Analyzer::maybeAnalyzeSpecialForm(const shared_ptr<stri
     return nullptr;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeMaybeInvoke(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeMaybeInvoke(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
@@ -390,7 +388,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMaybeInvoke(const shared_ptr<ASTNode> 
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeIf(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeIf(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
@@ -421,7 +419,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeIf(const shared_ptr<ASTNode> form) {
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeDo(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeDo(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
@@ -445,7 +443,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDo(const shared_ptr<ASTNode> form) {
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto list_ptr = form->listValue;
     assert(!list_ptr->empty());
@@ -471,7 +469,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode> form)
     shared_ptr<string> rest_arg_name;
     int rest_count = 0;
 
-    for (auto arg: *arg_list) {
+    for (const auto& arg: *arg_list) {
         if (arg->tag!=kTypeTagSymbol) {
             // Lambda arguments must be symbols
             throw CompilerException("Lambda arguments must be symbols",
@@ -503,8 +501,8 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode> form)
 
     pushLocalEnv();
 
-    for (int i = 0; i<arg_names.size(); ++i) {
-        storeInLocalEnv(*arg_names[i], std::make_shared<ConstantValueAnalyzerNode>());
+    for (auto& arg_name : arg_names) {
+        storeInLocalEnv(*arg_name, std::make_shared<ConstantValueAnalyzerNode>());
     }
 
     if (has_rest_arg) {
@@ -545,7 +543,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode> form)
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
@@ -637,7 +635,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode> form) 
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeMacroExpand(shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeMacroExpand(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
@@ -675,7 +673,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacroExpand(shared_ptr<ASTNode> form) 
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeDef(shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeDef(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
@@ -719,7 +717,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDef(shared_ptr<ASTNode> form) {
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeDefFFIFn(shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeDefFFIFn(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
@@ -776,7 +774,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDefFFIFn(shared_ptr<ASTNode> form) {
     vector<FFIType> args;
     args.reserve(arg_types->size());
 
-    for (auto argPtr: *arg_types) {
+    for (const auto& argPtr: *arg_types) {
         if (argPtr->tag!=kTypeTagKeyword) {
             throw CompilerException("def-ffi-fn* arg type must be a keyword",
                     argPtr->sourcePosition);
@@ -805,7 +803,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDefFFIFn(shared_ptr<ASTNode> form) {
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeQuote(shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeQuote(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto list_ptr = form->listValue;
     assert(!list_ptr->empty());
@@ -829,7 +827,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeQuote(shared_ptr<ASTNode> form) {
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeQuasiQuote(shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeQuasiQuote(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto list_ptr = form->listValue;
     assert(!list_ptr->empty());
@@ -853,7 +851,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeQuasiQuote(shared_ptr<ASTNode> form) {
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeUnquote(shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeUnquote(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto list_ptr = form->listValue;
     assert(!list_ptr->empty());
@@ -883,7 +881,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeUnquote(shared_ptr<ASTNode> form) {
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::analyzeEvalWhen(shared_ptr<ASTNode> form) {
+shared_ptr<AnalyzerNode> Analyzer::analyzeEvalWhen(const shared_ptr<ASTNode>& form) {
     assert(form->tag==kTypeTagList);
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
@@ -902,7 +900,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeEvalWhen(shared_ptr<ASTNode> form) {
 
     EvaluationPhase phases = kEvaluationPhaseNone;
 
-    for (auto p: *listPtr->at(1)->listValue) {
+    for (const auto& p: *listPtr->at(1)->listValue) {
         if (p->tag!=kTypeTagKeyword) {
             throw CompilerException("eval-when phase must be a keyword",
                     p->sourcePosition);
@@ -949,14 +947,14 @@ shared_ptr<AnalyzerNode> Analyzer::initialBindingWithName(const std::string& nam
 }
 
 void Analyzer::pushLocalEnv() {
-    local_envs_.push_back({});
+    local_envs_.emplace_back();
 }
 
 void Analyzer::popLocalEnv() {
     local_envs_.pop_back();
 }
 
-shared_ptr<AnalyzerNode> Analyzer::lookupInLocalEnv(std::string name) {
+shared_ptr<AnalyzerNode> Analyzer::lookupInLocalEnv(const std::string& name) {
     for (auto it = local_envs_.rbegin(); it!=local_envs_.rend(); ++it) {
         auto env = *it;
 
@@ -970,8 +968,8 @@ shared_ptr<AnalyzerNode> Analyzer::lookupInLocalEnv(std::string name) {
     return nullptr;
 }
 
-void Analyzer::storeInLocalEnv(std::string name, shared_ptr<AnalyzerNode> initial_value) {
-    local_envs_.at(local_envs_.size()-1)[name] = initial_value;
+void Analyzer::storeInLocalEnv(const std::string& name, shared_ptr<AnalyzerNode> initial_value) {
+    local_envs_.at(local_envs_.size()-1)[name] = std::move(initial_value);
 }
 
 void Analyzer::pushEvaluationPhase(EvaluationPhase phase) {
