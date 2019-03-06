@@ -50,19 +50,22 @@ shared_ptr<AnalyzerNode> Analyzer::analyze(const shared_ptr<ASTNode>& form, uint
 }
 
 shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode>& form) {
+    shared_ptr<AnalyzerNode> node;
 
     switch (form->tag) {
-    case kTypeTagInteger:return analyzeInteger(form);
-    case kTypeTagFloat:return analyzeFloat(form);
-    case kTypeTagBoolean:return analyzeBoolean(form);
-    case kTypeTagString:return analyzeString(form);
-    case kTypeTagKeyword:return analyzeKeyword(form);
-    case kTypeTagSymbol:return analyzeSymbol(form);
-    case kTypeTagList:return analyzeList(form);
-    case kTypeTagNil:return analyzeNil(form);
+    case kTypeTagInteger:node = analyzeInteger(form); break;
+    case kTypeTagFloat:node = analyzeFloat(form); break;
+    case kTypeTagBoolean:node = analyzeBoolean(form); break;
+    case kTypeTagString:node = analyzeString(form); break;
+    case kTypeTagKeyword:node = analyzeKeyword(form); break;
+    case kTypeTagSymbol:node = analyzeSymbol(form); break;
+    case kTypeTagList:node = analyzeList(form); break;
+    case kTypeTagNil:node = analyzeNil(form); break;
     }
 
-    return shared_ptr<AnalyzerNode>();
+    assert(node->sourcePosition != nullptr);
+
+    return node;
 }
 
 vector<shared_ptr<AnalyzerNode>> Analyzer::collapseTopLevelForms(const shared_ptr<AnalyzerNode>& node) {
@@ -372,6 +375,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMaybeInvoke(const shared_ptr<ASTNode>&
     assert(!listPtr->empty());
 
     auto node = std::make_shared<MaybeInvokeAnalyzerNode>();
+    node->sourcePosition = form->sourcePosition;
     node->args.reserve(listPtr->size()-1);
 
     bool first = true;
@@ -403,6 +407,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeIf(const shared_ptr<ASTNode>& form) {
     auto consequentForm = listPtr->at(2);
 
     auto node = make_shared<IfAnalyzerNode>();
+    node->sourcePosition = form->sourcePosition;
     node->condition = analyzeForm(conditionForm);
     node->consequent = analyzeForm(consequentForm);
 
@@ -431,6 +436,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDo(const shared_ptr<ASTNode>& form) {
     }
 
     auto node = make_shared<DoAnalyzerNode>();
+    node->sourcePosition = form->sourcePosition;
 
     // Add all but the last statements to 'statements'
     for (auto it = listPtr->begin()+1; it<listPtr->end()-1; ++it) {
@@ -654,6 +660,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacroExpand(const shared_ptr<ASTNode>&
     auto macro = result->second;
 
     auto node = make_shared<MacroExpandAnalyzerNode>();
+    node->sourcePosition = form->sourcePosition;
     node->macro = macro;
     node->args.reserve(listPtr->size()-1);
     node->do_evaluate = true;
@@ -789,6 +796,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDefFFIFn(const shared_ptr<ASTNode>& fo
     }
 
     auto node = make_shared<DefFFIFunctionNode>();
+    node->sourcePosition = form->sourcePosition;
     node->binding = binding;
     node->func_name = fn_name;
     node->return_type = ret_type;

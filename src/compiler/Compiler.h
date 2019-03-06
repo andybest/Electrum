@@ -103,6 +103,7 @@ private:
     llvm::Value* buildGcRemoveRoot(llvm::Value* obj);
     llvm::Value* buildApply(llvm::Value* f, llvm::Value* args);
 
+    llvm::DISubroutineType* createFunctionDebugType(int num_args);
 };
 }
 

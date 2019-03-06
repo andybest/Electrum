@@ -22,6 +22,7 @@
  SOFTWARE.
 */
 
+#include <include/types/Types.h>
 #include "CompilerContext.h"
 
 namespace electrum {
@@ -92,11 +93,30 @@ std::shared_ptr<llvm::IRBuilder<>> CompilerContext::currentBuilder() {
     return currentState()->builder;
 }
 
+std::shared_ptr<llvm::DIBuilder> CompilerContext::currentDIBuilder() {
+    return currentState()->debug_info->builder;
+}
+
+std::shared_ptr<DebugInfo> CompilerContext::currentDebugInfo() {
+    return currentState()->debug_info;
+}
+
 void CompilerContext::pushNewState(std::string module_name) {
     auto s = std::make_shared<ContextState>();
 
     s->module = std::make_unique<llvm::Module>(module_name, _context);
     s->builder = std::make_shared<llvm::IRBuilder<>>(_context);
+    s->debug_info = std::make_shared<DebugInfo>();
+    s->debug_info->builder = std::make_shared<llvm::DIBuilder>(*s->module);
+
+    s->debug_info->compile_unit = s->debug_info->builder->createCompileUnit(
+            llvm::dwarf::DW_LANG_C,
+            s->debug_info->builder->createFile("fib.ks", "."),
+            "Electrum Compiler",
+            false,
+            "",
+            0);
+
     _state_stack.push_back(s);
 }
 
@@ -109,6 +129,37 @@ std::unique_ptr<llvm::Module> CompilerContext::popState() {
     auto state = _state_stack.back();
     _state_stack.pop_back();
 
+    // TODO: Is this the best place for this?
+    state->debug_info->builder->finalize();
     return std::move(state->module);
+}
+
+#pragma mark - DebugInfo
+
+void CompilerContext::emitLocation(const std::shared_ptr<SourcePosition>& position) {
+    llvm::DIScope *scope = currentDebugInfo()->currentScope();
+
+    currentBuilder()->SetCurrentDebugLocation(
+            llvm::DebugLoc::get(
+                    position->line,
+                    position->column,
+                    scope
+                    ));
+}
+
+llvm::DIScope* DebugInfo::currentScope() {
+    if(lexical_blocks.empty()) {
+        return compile_unit;
+    }
+    return lexical_blocks.back();
+}
+
+llvm::DIType* DebugInfo::getVoidPtrType() {
+    if(this->void_ptr_type != nullptr) {
+        return void_ptr_type;
+    }
+
+    void_ptr_type = builder->createBasicType("variable", 64, llvm::dwarf::DW_ATE_address);
+    return void_ptr_type;
 }
 }

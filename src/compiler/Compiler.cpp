@@ -101,6 +101,24 @@ TopLevelInitializerDef Compiler::compileTopLevelNode(std::shared_ptr<AnalyzerNod
 
     mainfunc->setGC("statepoint-example");
 
+    /* Function Debug Info */
+    llvm::DIScope *f_ctx = currentContext()->currentDebugInfo()->currentScope();
+    auto subprogram = currentContext()->currentDIBuilder()->createFunction(
+            f_ctx,
+            ss.str(),
+            llvm::StringRef(),
+            f_ctx->getFile(),
+            0,
+            this->createFunctionDebugType(0),
+            false,
+            true,
+            0,
+            llvm::DINode::FlagPrototyped,
+            false);
+    mainfunc->setSubprogram(subprogram);
+    currentContext()->currentDebugInfo()->lexical_blocks.push_back(subprogram);
+    currentContext()->emitLocation(node->sourcePosition);
+
     currentContext()->pushFunc(mainfunc);
 
     auto entry = llvm::BasicBlock::Create(llvmContext(), "entry", mainfunc);
@@ -116,6 +134,8 @@ TopLevelInitializerDef Compiler::compileTopLevelNode(std::shared_ptr<AnalyzerNod
 
     currentBuilder()->CreateRet(result);
     currentContext()->popFunc();
+
+    currentContext()->currentDebugInfo()->lexical_blocks.pop_back();
 
     return initializer;
 }
@@ -163,6 +183,24 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
 
     mainfunc->setGC("statepoint-example");
 
+    /* Function Debug Info */
+    llvm::DIScope *f_ctx = currentContext()->currentDebugInfo()->currentScope();
+    auto subprogram = currentContext()->currentDIBuilder()->createFunction(
+            f_ctx,
+            ss.str(),
+            llvm::StringRef(),
+            f_ctx->getFile(),
+            0,
+            this->createFunctionDebugType(0),
+            false,
+            true,
+            0,
+            llvm::DINode::FlagPrototyped,
+            false);
+    mainfunc->setSubprogram(subprogram);
+    currentContext()->currentDebugInfo()->lexical_blocks.push_back(subprogram);
+    currentContext()->emitLocation(node->sourcePosition);
+
     currentContext()->pushFunc(mainfunc);
 
     auto entry = llvm::BasicBlock::Create(llvmContext(), "entry", mainfunc);
@@ -178,6 +216,8 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
 
     currentBuilder()->CreateRet(result);
     currentContext()->popFunc();
+
+    currentContext()->currentDebugInfo()->lexical_blocks.pop_back();
 
     jit_->addModule(currentContext()->popState());
 
@@ -213,6 +253,8 @@ void Compiler::createGCEntry() {
 }
 
 void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
+    currentContext()->emitLocation(node->sourcePosition);
+
     switch (node->nodeType()) {
     case kAnalyzerNodeTypeConstant:compileConstant(std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(node));
         break;
@@ -242,7 +284,7 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
         else {
             auto expansion = compileAndEvalExpander(macro_expand_node);
             Parser p;
-            auto form = p.readLispValue(expansion);
+            auto form = p.readLispValue(expansion, node->sourcePosition);
             auto expanded_node = analyzer_.analyze(form, node->node_depth, node->evaluation_phase);
             compileNode(expanded_node);
         }
@@ -407,6 +449,24 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
 
     lambda->setGC("statepoint-example");
 
+    /* Function Debug Info */
+    llvm::DIScope *f_ctx = currentContext()->currentDebugInfo()->currentScope();
+    auto subprogram = currentContext()->currentDIBuilder()->createFunction(f_ctx,
+            ss.str(),
+            llvm::StringRef(),
+            f_ctx->getFile(),
+            node->sourcePosition->line,
+            this->createFunctionDebugType(node->arg_name_nodes.size() + (node->has_rest_arg ? 1 : 0)),
+            false,
+            true,
+            0,
+            llvm::DINode::FlagPrototyped,
+            false);
+    lambda->setSubprogram(subprogram);
+
+    currentContext()->currentDebugInfo()->lexical_blocks.push_back(subprogram);
+    currentContext()->emitLocation(node->sourcePosition);
+
     auto entry_block = llvm::BasicBlock::Create(llvmContext(), "entry", lambda);
     currentBuilder()->SetInsertPoint(entry_block);
 
@@ -417,7 +477,27 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
         auto& arg = *arg_it;
         arg.setName(*arg_name);
 
+        auto arg_pos = node->arg_name_nodes[arg_num]->sourcePosition;
+
         local_env[*arg_name] = &arg;
+
+        auto d = currentContext()->currentDIBuilder()->createParameterVariable(
+                currentContext()->currentDebugInfo()->currentScope(),
+                *arg_name,
+                arg_num,
+                f_ctx->getFile(),
+                node->arg_name_nodes[arg_num]->sourcePosition->line,
+                currentContext()->currentDebugInfo()->void_ptr_type,
+                true);
+
+        currentContext()->currentDIBuilder()->insertDeclare(
+                &arg,
+                d,
+                currentContext()->currentDIBuilder()->createExpression(),
+                llvm::DebugLoc::get(arg_pos->line,
+                        arg_pos->column,
+                        currentContext()->currentDebugInfo()->currentScope()),
+                currentBuilder()->GetInsertBlock());
 
         ++arg_num;
         ++arg_it;
@@ -449,12 +529,17 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
     compileNode(node->body);
     currentBuilder()->CreateRet(currentContext()->popValue());
 
+    currentContext()->currentDebugInfo()->lexical_blocks.pop_back();
+
     // Scope ended, pop the arguments from the environment stack
     currentContext()->popLocalEnvironment();
     currentContext()->popFunc();
 
     // Restore back to previous insert point
     currentBuilder()->SetInsertPoint(insert_block, insert_point);
+
+    // Emit location, as the following will be called from the parent scope
+    currentContext()->emitLocation(node->sourcePosition);
 
     auto closure = makeClosure(node->arg_names.size(),
             node->has_rest_arg,
@@ -669,6 +754,26 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 
     expander->setGC("statepoint-example");
 
+    /* Function Debug Info */
+    llvm::DIScope *f_ctx = currentContext()->currentDebugInfo()->currentScope();
+    auto subprogram = currentContext()->currentDIBuilder()->createFunction(
+            f_ctx,
+            ss.str(),
+            llvm::StringRef(),
+            f_ctx->getFile(),
+            node->sourcePosition->line,
+            this->createFunctionDebugType(node->arg_name_nodes.size()),
+            false,
+            true,
+            0,
+            llvm::DINode::FlagPrototyped,
+            false);
+    expander->setSubprogram(subprogram);
+
+    currentContext()->currentDebugInfo()->lexical_blocks.push_back(subprogram);
+    currentContext()->emitLocation(node->sourcePosition);
+
+
     auto entry_block = llvm::BasicBlock::Create(llvmContext(), "entry", expander);
     currentBuilder()->SetInsertPoint(entry_block);
 
@@ -680,6 +785,26 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
         arg.setName(*arg_name);
 
         local_env[*arg_name] = &arg;
+
+        auto arg_pos = node->arg_name_nodes[arg_num]->sourcePosition;
+
+        auto d = currentContext()->currentDIBuilder()->createParameterVariable(
+                currentContext()->currentDebugInfo()->currentScope(),
+                *arg_name,
+                arg_num,
+                f_ctx->getFile(),
+                node->arg_name_nodes[arg_num]->sourcePosition->line,
+                currentContext()->currentDebugInfo()->void_ptr_type,
+                true);
+
+        currentContext()->currentDIBuilder()->insertDeclare(
+                &arg,
+                d,
+                currentContext()->currentDIBuilder()->createExpression(),
+                llvm::DebugLoc::get(arg_pos->line,
+                        arg_pos->column,
+                        currentContext()->currentDebugInfo()->currentScope()),
+                currentBuilder()->GetInsertBlock());
 
         ++arg_num;
         ++arg_it;
@@ -707,6 +832,9 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 
     // Restore back to previous insert point
     currentBuilder()->SetInsertPoint(insert_block, insert_point);
+
+    currentContext()->currentDebugInfo()->lexical_blocks.pop_back();
+    currentContext()->emitLocation(node->sourcePosition);
 
     auto closure = makeClosure(node->arg_names.size(),
             false,
@@ -1009,6 +1137,21 @@ llvm::Value* Compiler::buildApply(llvm::Value* f, llvm::Value* args) {
             llvm::Type::getInt8PtrTy(llvmContext(), kGCAddressSpace));
 
     return currentBuilder()->CreateCall(func, {f, args});
+}
+
+llvm::DISubroutineType* Compiler::createFunctionDebugType(int num_args) {
+    llvm::SmallVector<llvm::Metadata *, 8> element_types;
+
+    auto arg_type = currentContext()->currentDebugInfo()->getVoidPtrType();
+
+    // Add the result type.
+    element_types.push_back(arg_type);
+
+    for (unsigned i = 0, e = num_args; i != e; ++i)
+        element_types.push_back(arg_type);
+
+    return currentContext()->currentDIBuilder()->createSubroutineType(
+            currentContext()->currentDIBuilder()->getOrCreateTypeArray(element_types));
 }
 
 } // namespace electrum

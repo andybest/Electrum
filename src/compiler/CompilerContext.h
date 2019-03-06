@@ -32,6 +32,8 @@
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/DIBuilder.h>
+#include <llvm/IR/DebugInfo.h>
 #include "EvaluationPhase.h"
 
 namespace electrum {
@@ -52,8 +54,19 @@ struct TopLevelInitializerDef {
   std::string mangled_name;
 };
 
+struct DebugInfo {
+  std::shared_ptr<llvm::DIBuilder> builder;
+  llvm::DICompileUnit *compile_unit;
+  std::vector<llvm::DIScope*> lexical_blocks;
+
+  llvm::DIScope *currentScope();
+  llvm::DIType* getVoidPtrType();
+  llvm::DIBasicType* void_ptr_type;
+};
+
 struct ContextState {
   std::shared_ptr<llvm::IRBuilder<>> builder;
+  std::shared_ptr<DebugInfo> debug_info;
   std::unique_ptr<llvm::Module> module;
   std::vector<llvm::Value*> value_stack;
   std::vector<llvm::Function*> func_stack;
@@ -98,6 +111,11 @@ public:
     llvm::Module* currentModule();
     llvm::LLVMContext& llvmContext();
     std::shared_ptr<llvm::IRBuilder<>> currentBuilder();
+    std::shared_ptr<llvm::DIBuilder> currentDIBuilder();
+    std::shared_ptr<DebugInfo> currentDebugInfo();
+
+    /* Debug Info */
+    void emitLocation(const shared_ptr<SourcePosition>& position);
 };
 }
 

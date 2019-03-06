@@ -65,7 +65,7 @@ public:
     shared_ptr<ASTNode> parseBoolean(const Token& t) const;
     shared_ptr<ASTNode> parseKeyword(const Token& t) const;
     shared_ptr<ASTNode> parseNil(const Token& t) const;
-    shared_ptr<ASTNode> readLispValue(void* val);
+    shared_ptr<ASTNode> readLispValue(void* val, const shared_ptr<SourcePosition>& ptr);
 };
 }
 

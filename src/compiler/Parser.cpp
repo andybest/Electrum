@@ -269,7 +269,7 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(const vect
     return std::make_pair(val, it);
 }
 
-shared_ptr<ASTNode> Parser::readLispValue(void* val) {
+shared_ptr<ASTNode> Parser::readLispValue(void* val, const shared_ptr<SourcePosition>& source_position) {
     auto form = make_shared<ASTNode>();
 
     if (rt_is_integer(val)==TRUE_PTR) {
@@ -300,13 +300,13 @@ shared_ptr<ASTNode> Parser::readLispValue(void* val) {
         auto head = val;
         while (rt_is_pair(head)==TRUE_PTR) {
             auto current = rt_car(head);
-            list->push_back(readLispValue(current));
+            list->push_back(readLispValue(current, source_position));
 
             head = rt_cdr(head);
         }
 
         if (head!=NIL_PTR) {
-            list->push_back(readLispValue(head));
+            list->push_back(readLispValue(head, source_position));
         }
 
         form->listValue = list;
@@ -318,6 +318,7 @@ shared_ptr<ASTNode> Parser::readLispValue(void* val) {
         throw std::exception();
     }
 
+    form->sourcePosition = source_position;
     return form;
 }
 }

@@ -137,6 +137,15 @@ TEST(Compiler, compilesDef) {
     rt_deinit_gc();
 }
 
+TEST(Compiler, compilesLambda) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compileAndEvalString("(lambda (x) x)");
+
+    rt_deinit_gc();
+}
+
 TEST(Compiler, compilesBasicLambda) {
     rt_init_gc(kGCModeInterpreterOwned);
 
