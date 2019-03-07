@@ -28,6 +28,7 @@
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/JITSymbol.h>
+#include <llvm/ExecutionEngine/JITEventListener.h>
 #include <llvm/ExecutionEngine/RTDyldMemoryManager.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/ExecutionEngine/Orc/Core.h>
@@ -69,6 +70,8 @@ private:
     llvm::orc::JITCompileCallbackManager* compile_callback_mgr_;
     std::unique_ptr<llvm::orc::IndirectStubsManager> indirect_stubs_mgr_;
     void* stack_map_ptr_;
+
+    llvm::JITEventListener *gdb_listener_;
 
 public:
     using MyRemote = llvm::orc::remote::OrcRemoteTargetClient;

@@ -23,6 +23,7 @@
 */
 
 #include <include/types/Types.h>
+#include <sstream>
 #include "CompilerContext.h"
 
 namespace electrum {
@@ -109,9 +110,15 @@ void CompilerContext::pushNewState(std::string module_name) {
     s->debug_info = std::make_shared<DebugInfo>();
     s->debug_info->builder = std::make_shared<llvm::DIBuilder>(*s->module);
 
+    // TODO: Temporary
+    static int count = 0;
+
+    std::stringstream ss;
+    ss << "REPL_" << count << ".el";
+
     s->debug_info->compile_unit = s->debug_info->builder->createCompileUnit(
             llvm::dwarf::DW_LANG_C,
-            s->debug_info->builder->createFile("fib.ks", "."),
+            s->debug_info->builder->createFile(ss.str(), "."),
             "Electrum Compiler",
             false,
             "",

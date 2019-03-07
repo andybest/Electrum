@@ -83,6 +83,12 @@ ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession& es)
                            std::make_shared<JitMemoryManager>([this](void* stackMapPtr) {
                              this->stack_map_ptr_ = stackMapPtr;
                            }), resolver_};
+                 },
+
+                 // Notify Loaded
+                 [this](llvm::orc::VModuleKey, const llvm::object::ObjectFile& obj,
+                         const llvm::RuntimeDyld::LoadedObjectInfo& info) {
+                   this->gdb_listener_->NotifyObjectEmitted(obj, info);
                  }),
          compile_layer_(object_layer_, llvm::orc::SimpleCompiler(*target_machine_)),
          optimize_layer_(compile_layer_, [this](std::unique_ptr<llvm::Module> M) {
@@ -92,6 +98,7 @@ ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession& es)
     llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 
     object_layer_.setProcessAllSections(true);
+    gdb_listener_ = llvm::JITEventListener::createGDBRegistrationListener();
 }
 
 llvm::TargetMachine& ElectrumJit::getTargetMachine() { return *target_machine_; }

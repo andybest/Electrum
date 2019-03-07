@@ -769,6 +769,10 @@ extern "C" void* rt_div(void* x, void* y) {
     throw std::exception();
 }
 
+extern "C" void* rt_test_throw() {
+    throw std::exception();
+}
+
 /**
  * Malloc a tagged object. It is assumed by the GC that this object will be
  * converted to a tagged pointer.
