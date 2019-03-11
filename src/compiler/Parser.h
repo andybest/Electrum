@@ -60,7 +60,7 @@ class Parser {
             QuoteType quote_type) const;
 
 public:
-    std::shared_ptr<ASTNode> readString(string input) const;
+    shared_ptr<ASTNode> readString(const string& input, const string& filename) const;
     shared_ptr<ASTNode> parseString(const Token& t) const;
     shared_ptr<ASTNode> parseBoolean(const Token& t) const;
     shared_ptr<ASTNode> parseKeyword(const Token& t) const;

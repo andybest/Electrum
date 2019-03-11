@@ -1,5 +1,3 @@
-#include <utility>
-
 /*
  MIT License
 
@@ -31,8 +29,10 @@
 #include "Parser.h"
 #include <runtime/Runtime.h>
 
-#include <llvm/Support/raw_ostream.h>
+#include <boost/filesystem.hpp>
+#include <utility>
 
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/CodeGen/GCs.h>
 #include <llvm/CodeGen/GCStrategy.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -43,8 +43,8 @@
 #include <llvm/ExecutionEngine/Orc/IRCompileLayer.h>
 #include <llvm/ExecutionEngine/Orc/LambdaResolver.h>
 #include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Target/TargetMachine.h"
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Target/TargetMachine.h>
 
 namespace electrum {
 
@@ -58,11 +58,28 @@ Compiler::Compiler() {
     jit_ = std::make_shared<ElectrumJit>(es_);
 }
 
-void* Compiler::compileAndEvalString(std::string str) {
-    Parser p;
-    auto ast = p.readString(std::move(str));
+void* Compiler::compileAndEvalString(const std::string& str) {
+    static int cnt = 0;
+    auto temp_path = boost::filesystem::temp_directory_path();
+    std::stringstream ss;
+    ss << "repl_" << cnt << ".el";
+    temp_path /= ss.str();
 
-    currentContext()->pushNewState("jit_module");
+    ++cnt;
+
+    // Write the contents of the repl to a temporary file, so that the debugger can find it
+    auto temp_file = fopen(temp_path.string().c_str(), "w");
+    fputs(str.c_str(), temp_file);
+    fflush(temp_file);
+    fclose(temp_file);
+
+    auto fname = temp_path.filename();
+    temp_path.remove_filename();
+
+    Parser p;
+    auto ast = p.readString(str, temp_path.string());
+
+    currentContext()->pushNewState("jit_module", temp_path.string() + "/", fname.string());
     createGCEntry();
 
     // Analyze as a top level form
@@ -102,7 +119,7 @@ TopLevelInitializerDef Compiler::compileTopLevelNode(std::shared_ptr<AnalyzerNod
     mainfunc->setGC("statepoint-example");
 
     /* Function Debug Info */
-    llvm::DIScope *f_ctx = currentContext()->currentDebugInfo()->currentScope();
+    llvm::DIScope* f_ctx = currentContext()->currentDebugInfo()->currentScope();
     auto subprogram = currentContext()->currentDIBuilder()->createFunction(
             f_ctx,
             ss.str(),
@@ -153,7 +170,7 @@ void* Compiler::runInitializerWithJit(TopLevelInitializerDef& tl_def) {
 
         std::stringstream ss;
         ss << "jit_module__" << cnt;
-        currentContext()->pushNewState(ss.str());
+        currentContext()->pushNewState(ss.str(), "/tmp", "tl.el");
         createGCEntry();
     }
 
@@ -169,7 +186,7 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
     std::stringstream moduless;
     moduless << "expander_module_" << cnt;
 
-    currentContext()->pushNewState(moduless.str());
+    currentContext()->pushNewState(moduless.str(), "/tmp", "expander.el");
     createGCEntry();
 
     std::stringstream ss;
@@ -184,7 +201,7 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
     mainfunc->setGC("statepoint-example");
 
     /* Function Debug Info */
-    llvm::DIScope *f_ctx = currentContext()->currentDebugInfo()->currentScope();
+    llvm::DIScope* f_ctx = currentContext()->currentDebugInfo()->currentScope();
     auto subprogram = currentContext()->currentDIBuilder()->createFunction(
             f_ctx,
             ss.str(),
@@ -450,19 +467,22 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
     lambda->setGC("statepoint-example");
 
     /* Function Debug Info */
-    llvm::DIScope *f_ctx = currentContext()->currentDebugInfo()->currentScope();
+    llvm::DIScope* f_ctx = currentContext()->currentDebugInfo()->currentScope();
     auto subprogram = currentContext()->currentDIBuilder()->createFunction(f_ctx,
             ss.str(),
             llvm::StringRef(),
             f_ctx->getFile(),
             node->sourcePosition->line,
-            this->createFunctionDebugType(node->arg_name_nodes.size() + (node->has_rest_arg ? 1 : 0)),
+            this->createFunctionDebugType(node->arg_name_nodes.size()+(node->has_rest_arg ? 1 : 0)),
             false,
             true,
             0,
             llvm::DINode::FlagPrototyped,
             false);
     lambda->setSubprogram(subprogram);
+
+    std::cout << subprogram->getFilename().str() << std::endl;
+    std::cout << subprogram->getDirectory().str() << std::endl;
 
     currentContext()->currentDebugInfo()->lexical_blocks.push_back(subprogram);
     currentContext()->emitLocation(node->sourcePosition);
@@ -530,6 +550,7 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
     currentBuilder()->CreateRet(currentContext()->popValue());
 
     currentContext()->currentDebugInfo()->lexical_blocks.pop_back();
+    currentContext()->currentDIBuilder()->finalizeSubprogram(subprogram);
 
     // Scope ended, pop the arguments from the environment stack
     currentContext()->popLocalEnvironment();
@@ -755,7 +776,7 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
     expander->setGC("statepoint-example");
 
     /* Function Debug Info */
-    llvm::DIScope *f_ctx = currentContext()->currentDebugInfo()->currentScope();
+    llvm::DIScope* f_ctx = currentContext()->currentDebugInfo()->currentScope();
     auto subprogram = currentContext()->currentDIBuilder()->createFunction(
             f_ctx,
             ss.str(),
@@ -772,7 +793,6 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 
     currentContext()->currentDebugInfo()->lexical_blocks.push_back(subprogram);
     currentContext()->emitLocation(node->sourcePosition);
-
 
     auto entry_block = llvm::BasicBlock::Create(llvmContext(), "entry", expander);
     currentBuilder()->SetInsertPoint(entry_block);
@@ -1140,14 +1160,14 @@ llvm::Value* Compiler::buildApply(llvm::Value* f, llvm::Value* args) {
 }
 
 llvm::DISubroutineType* Compiler::createFunctionDebugType(int num_args) {
-    llvm::SmallVector<llvm::Metadata *, 8> element_types;
+    llvm::SmallVector<llvm::Metadata*, 8> element_types;
 
     auto arg_type = currentContext()->currentDebugInfo()->getVoidPtrType();
 
     // Add the result type.
     element_types.push_back(arg_type);
 
-    for (unsigned i = 0, e = num_args; i != e; ++i)
+    for (unsigned i = 0, e = num_args; i!=e; ++i)
         element_types.push_back(arg_type);
 
     return currentContext()->currentDIBuilder()->createSubroutineType(

@@ -34,6 +34,7 @@
 #include <llvm/IR/Value.h>
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/DebugInfo.h>
+#include <boost/filesystem/path.hpp>
 #include "EvaluationPhase.h"
 
 namespace electrum {
@@ -72,7 +73,7 @@ struct ContextState {
   std::vector<llvm::Function*> func_stack;
 };
 
-class CompilerContext {
+class  CompilerContext {
 private:
     llvm::LLVMContext _context;
     std::vector<std::shared_ptr<ContextState>> _state_stack;
@@ -89,7 +90,7 @@ public:
     std::vector<std::unordered_map<std::string, llvm::Value*>> local_bindings;
 
     /* State */
-    void pushNewState(std::string module_name);
+    void pushNewState(string module_name, const string& directory, const string& filename);
     std::shared_ptr<ContextState> currentState();
     std::unique_ptr<llvm::Module> popState();
 

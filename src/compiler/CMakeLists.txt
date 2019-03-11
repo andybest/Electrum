@@ -24,6 +24,7 @@ add_library(${CMAKE_PROJECT_NAME}c_lib STATIC
         ${HEADER_FILES}
         ${SOURCE_FILES})
 
+
 # Add location of Homebrew'd LLVM if on MacOS
 if(APPLE)
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/llvm)
@@ -55,8 +56,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}c_lib ${llvm_libs})
 
 # Boost
 
-find_package(Boost 1.59.0 REQUIRED)
+find_package(Boost 1.59.0 REQUIRED system filesystem)
 include_directories(${Boost_INCLUDE_DIR})
+
+target_link_libraries(${CMAKE_PROJECT_NAME}c_lib ${Boost_LIBRARIES})
 
 target_link_libraries(${CMAKE_PROJECT_NAME}c_lib ${CMAKE_PROJECT_NAME}_lexer)
 target_link_libraries(${CMAKE_PROJECT_NAME}c_lib ${CMAKE_PROJECT_NAME}_runtime)

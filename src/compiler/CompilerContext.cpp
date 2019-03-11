@@ -24,6 +24,7 @@
 
 #include <include/types/Types.h>
 #include <sstream>
+#include <boost/filesystem/path.hpp>
 #include "CompilerContext.h"
 
 namespace electrum {
@@ -102,7 +103,7 @@ std::shared_ptr<DebugInfo> CompilerContext::currentDebugInfo() {
     return currentState()->debug_info;
 }
 
-void CompilerContext::pushNewState(std::string module_name) {
+void CompilerContext::pushNewState(string module_name, const string& directory, const string& filename) {
     auto s = std::make_shared<ContextState>();
 
     s->module = std::make_unique<llvm::Module>(module_name, _context);
@@ -110,15 +111,9 @@ void CompilerContext::pushNewState(std::string module_name) {
     s->debug_info = std::make_shared<DebugInfo>();
     s->debug_info->builder = std::make_shared<llvm::DIBuilder>(*s->module);
 
-    // TODO: Temporary
-    static int count = 0;
-
-    std::stringstream ss;
-    ss << "REPL_" << count << ".el";
-
     s->debug_info->compile_unit = s->debug_info->builder->createCompileUnit(
             llvm::dwarf::DW_LANG_C,
-            s->debug_info->builder->createFile(ss.str(), "."),
+            s->debug_info->builder->createFile(filename, directory),
             "Electrum Compiler",
             false,
             "",

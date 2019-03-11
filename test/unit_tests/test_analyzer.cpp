@@ -29,7 +29,7 @@
 
 using namespace electrum;
 
-#define PARSE_STRING(s) Parser p; auto val = p.readString((s))
+#define PARSE_STRING(s) Parser p; auto val = p.readString(s, "")
 
 TEST(Analyzer, analyzesConstantInteger) {
     PARSE_STRING("1234");

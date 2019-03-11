@@ -28,8 +28,9 @@
 
 namespace electrum {
 
-std::shared_ptr<ASTNode> Parser::readString(const string input) const {
+shared_ptr<ASTNode> Parser::readString(const string& input, const string& filename) const {
     auto lexer = Lexer(input);
+    lexer.filename = std::make_shared<string>(filename);
     auto tokens = lexer.getTokens();
 
     return readTokens(tokens, tokens.begin()).first;

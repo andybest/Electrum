@@ -44,7 +44,7 @@ class Compiler {
 public:
     Compiler();
 
-    void* compileAndEvalString(std::string str);
+    void* compileAndEvalString(const std::string& str);
     void* compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> node);
 
 private:
