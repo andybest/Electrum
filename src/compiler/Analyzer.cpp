@@ -53,17 +53,25 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode>& form) 
     shared_ptr<AnalyzerNode> node;
 
     switch (form->tag) {
-    case kTypeTagInteger:node = analyzeInteger(form); break;
-    case kTypeTagFloat:node = analyzeFloat(form); break;
-    case kTypeTagBoolean:node = analyzeBoolean(form); break;
-    case kTypeTagString:node = analyzeString(form); break;
-    case kTypeTagKeyword:node = analyzeKeyword(form); break;
-    case kTypeTagSymbol:node = analyzeSymbol(form); break;
-    case kTypeTagList:node = analyzeList(form); break;
-    case kTypeTagNil:node = analyzeNil(form); break;
+    case kTypeTagInteger:node = analyzeInteger(form);
+        break;
+    case kTypeTagFloat:node = analyzeFloat(form);
+        break;
+    case kTypeTagBoolean:node = analyzeBoolean(form);
+        break;
+    case kTypeTagString:node = analyzeString(form);
+        break;
+    case kTypeTagKeyword:node = analyzeKeyword(form);
+        break;
+    case kTypeTagSymbol:node = analyzeSymbol(form);
+        break;
+    case kTypeTagList:node = analyzeList(form);
+        break;
+    case kTypeTagNil:node = analyzeNil(form);
+        break;
     }
 
-    assert(node->sourcePosition != nullptr);
+    assert(node->sourcePosition!=nullptr);
 
     return node;
 }
@@ -941,6 +949,52 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeEvalWhen(const shared_ptr<ASTNode>& fo
 
     popEvaluationPhase();
 
+    return node;
+}
+
+shared_ptr<AnalyzerNode> Analyzer::analyzeTry(const shared_ptr<ASTNode>& form) {
+    assert(form->tag==kTypeTagList);
+    auto listPtr = form->listValue;
+    assert(!listPtr->empty());
+
+    vector<shared_ptr<AnalyzerNode>> b;
+
+    for(int i = 1; i < listPtr->size(); i++){
+        auto f = listPtr->at(i);
+        b.push_back(analyzeForm(f));
+    }
+
+    vector<shared_ptr<AnalyzerNode>> body_nodes;
+    while (!b.empty() && b[0]->nodeType()!=kAnalyzerNodeTypeCatch) {
+        body_nodes.push_back(*b.begin());
+        b.erase(b.begin());
+    }
+
+    vector<shared_ptr<CatchAnalyzerNode>> catch_nodes;
+    for (auto n: b) {
+        if(n->nodeType() != kAnalyzerNodeTypeCatch) {
+            throw CompilerException("Expected catch form", n->sourcePosition);
+        }
+
+        catch_nodes.push_back(std::dynamic_pointer_cast<CatchAnalyzerNode>(n));
+    }
+
+    if(catch_nodes.empty()) {
+        throw CompilerException("Expected at least one catch form", form->sourcePosition);
+    }
+
+    auto node = make_shared<TryAnalyzerNode>();
+    node->sourcePosition = form->sourcePosition;
+    node->body = body_nodes;
+    node->catch_nodes = catch_nodes;
+
+    return node;
+}
+
+shared_ptr<AnalyzerNode> Analyzer::analyzeCatch(const shared_ptr<ASTNode>& form) {
+
+    auto node = make_shared<CatchAnalyzerNode>();
+    node->sourcePosition = form->sourcePosition;
     return node;
 }
 

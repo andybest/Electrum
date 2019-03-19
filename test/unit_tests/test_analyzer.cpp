@@ -547,3 +547,40 @@ TEST(Analyzer, collapsesTopLevelForms) {
     // eval-when nodes are collapsed
     EXPECT_EQ(nodes[3]->evaluation_phase, kEvaluationPhaseCompileTime);
 }
+
+TEST(Analyzer, analyzesTryCatch) {
+    PARSE_STRING("(try"
+                 "  1234"
+                 "  5678"
+                 "  (catch ('fooerror e)"
+                 "    (println e))"
+                 "  (catch ('barerror e)"
+                 "    (println \"Another error!\")"
+                 "    (println e)))");
+
+    Analyzer an;
+
+    auto node = an.analyze(val);
+
+    ASSERT_EQ(node->nodeType(), kAnalyzerNodeTypeTry);
+
+    auto tryNode = std::dynamic_pointer_cast<TryAnalyzerNode>(node);
+
+    ASSERT_EQ(tryNode->body.size(), 2);
+    EXPECT_EQ(tryNode->body[0]->nodeType(), kAnalyzerNodeTypeConstant);
+    EXPECT_EQ(tryNode->body[1]->nodeType(), kAnalyzerNodeTypeConstant);
+
+    ASSERT_EQ(tryNode->catch_nodes.size(), 2);
+
+    auto catch1 = tryNode->catch_nodes[0];
+    auto catch2 = tryNode->catch_nodes[1];
+
+    EXPECT_EQ(*catch1->exception_type, "fooerror");
+    EXPECT_EQ(*catch2->exception_type, "barerror");
+
+    EXPECT_EQ(*catch1->exception_binding, "e");
+    EXPECT_EQ(*catch2->exception_binding, "e");
+
+    EXPECT_EQ(catch1->body.size(), 1);
+    EXPECT_EQ(catch2->body.size(), 2);
+}
