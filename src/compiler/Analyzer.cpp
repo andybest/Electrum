@@ -992,9 +992,52 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeTry(const shared_ptr<ASTNode>& form) {
 }
 
 shared_ptr<AnalyzerNode> Analyzer::analyzeCatch(const shared_ptr<ASTNode>& form) {
+    assert(form->tag==kTypeTagList);
+    auto listPtr = form->listValue;
+    assert(!listPtr->empty());
+
+    if (listPtr->size() < 3) {
+        throw CompilerException("Catch form must have a binding and a body", form->sourcePosition);
+    }
+
+    if (listPtr->at(1)->tag != kTypeTagList) {
+        throw CompilerException("Catch: expected a list", listPtr->at(1)->sourcePosition);
+    }
+
+    auto bindingList = listPtr->at(1)->listValue;
+
+    if(bindingList->size() != 2) {
+        throw CompilerException("Catch binding must contain an exception type and a binding name", listPtr->at(1)->sourcePosition);
+    }
+
+    if(bindingList->at(0)->tag != kTypeTagSymbol) {
+        throw CompilerException("Catch: expected an exception type symbol", bindingList->at(0)->sourcePosition);
+    }
+
+    if(bindingList->at(1)->tag != kTypeTagSymbol) {
+        throw CompilerException("Catch: expected a binding symbol", bindingList->at(1)->sourcePosition);
+    }
+
+    auto exception_type = bindingList->at(0)->stringValue;
+    auto exception_binding = bindingList->at(1)->stringValue;
+
+    vector<shared_ptr<AnalyzerNode>> body;
+
+    pushLocalEnv();
+    storeInLocalEnv(*exception_binding, std::make_shared<ConstantValueAnalyzerNode>());
+
+    for(int i = 2; i < listPtr->size(); i++) {
+        body.push_back(analyzeForm(listPtr->at(i)));
+    }
+
+    popLocalEnv();
 
     auto node = make_shared<CatchAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
+    node->exception_type = exception_type;
+    node->exception_binding = exception_binding;
+    node->body = body;
+
     return node;
 }
 

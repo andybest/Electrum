@@ -25,6 +25,7 @@
 #include "gtest/gtest.h"
 #include "compiler/Compiler.h"
 #include "runtime/Runtime.h"
+#include <exception>
 
 using namespace electrum;
 

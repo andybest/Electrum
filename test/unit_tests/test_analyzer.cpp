@@ -552,11 +552,11 @@ TEST(Analyzer, analyzesTryCatch) {
     PARSE_STRING("(try"
                  "  1234"
                  "  5678"
-                 "  (catch ('fooerror e)"
-                 "    (println e))"
-                 "  (catch ('barerror e)"
-                 "    (println \"Another error!\")"
-                 "    (println e)))");
+                 "  (catch (fooerror e)"
+                 "    nil)"
+                 "  (catch (barerror e)"
+                 "    nil"
+                 "    e))");
 
     Analyzer an;
 
