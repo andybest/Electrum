@@ -65,12 +65,38 @@ struct DebugInfo {
   llvm::DIBasicType* void_ptr_type;
 };
 
+struct EHCompileInfo {
+  llvm::BasicBlock *catch_dest;
+};
+
+struct ScopeInfo {
+  vector<shared_ptr<EHCompileInfo>> eh_stack;
+
+  void pushEHInfo(shared_ptr<EHCompileInfo> eh_info) {
+      eh_stack.push_back(eh_info);
+  }
+
+  void popEHInfo() {
+      assert(!eh_stack.empty());
+      eh_stack.pop_back();
+  }
+
+  shared_ptr<EHCompileInfo> currentEHInfo() {
+      if(eh_stack.empty()) {
+          return nullptr;
+      }
+
+      return eh_stack.back();
+  }
+};
+
 struct ContextState {
   std::shared_ptr<llvm::IRBuilder<>> builder;
   std::shared_ptr<DebugInfo> debug_info;
   std::unique_ptr<llvm::Module> module;
   std::vector<llvm::Value*> value_stack;
   std::vector<llvm::Function*> func_stack;
+  vector<shared_ptr<ScopeInfo>> _scope_stack;
 };
 
 class  CompilerContext {
@@ -117,6 +143,11 @@ public:
 
     /* Debug Info */
     void emitLocation(const shared_ptr<SourcePosition>& position);
+
+    /* Scope */
+    void pushScope();
+    void popScope();
+    shared_ptr<ScopeInfo> currentScope();
 };
 }
 

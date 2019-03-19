@@ -102,6 +102,7 @@ private:
     llvm::Value* buildGcAddRoot(llvm::Value* obj);
     llvm::Value* buildGcRemoveRoot(llvm::Value* obj);
     llvm::Value* buildApply(llvm::Value* f, llvm::Value* args);
+    llvm::Value* buildApplyInvoke(llvm::Value* f, llvm::Value* args, shared_ptr<EHCompileInfo> eh_info);
 
     llvm::DISubroutineType* createFunctionDebugType(int num_args);
 };

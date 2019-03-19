@@ -119,7 +119,11 @@ void CompilerContext::pushNewState(string module_name, const string& directory, 
             "",
             0);
 
+
     _state_stack.push_back(s);
+
+    // Initial top level scope
+    pushScope();
 }
 
 std::shared_ptr<ContextState> CompilerContext::currentState() {
@@ -134,6 +138,20 @@ std::unique_ptr<llvm::Module> CompilerContext::popState() {
     // TODO: Is this the best place for this?
     state->debug_info->builder->finalize();
     return std::move(state->module);
+}
+
+void CompilerContext::pushScope() {
+    currentState()->_scope_stack.push_back(std::make_shared<ScopeInfo>());
+}
+
+void CompilerContext::popScope() {
+    assert(!currentState()->_scope_stack.empty());
+    currentState()->_scope_stack.pop_back();
+}
+
+shared_ptr<ScopeInfo> CompilerContext::currentScope() {
+    assert(!currentState()->_scope_stack.empty());
+    return currentState()->_scope_stack.back();
 }
 
 #pragma mark - DebugInfo
@@ -164,4 +182,5 @@ llvm::DIType* DebugInfo::getVoidPtrType() {
     void_ptr_type = builder->createBasicType("variable", 64, llvm::dwarf::DW_ATE_address);
     return void_ptr_type;
 }
+
 }

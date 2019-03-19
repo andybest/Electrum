@@ -490,6 +490,8 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
     auto entry_block = llvm::BasicBlock::Create(llvmContext(), "entry", lambda);
     currentBuilder()->SetInsertPoint(entry_block);
 
+    currentContext()->pushScope();
+
     std::unordered_map<std::string, llvm::Value*> local_env;
     int arg_num = 0;
     auto arg_it = lambda->args().begin();
@@ -559,6 +561,8 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
     // Restore back to previous insert point
     currentBuilder()->SetInsertPoint(insert_block, insert_point);
 
+    currentContext()->popScope();
+
     // Emit location, as the following will be called from the parent scope
     currentContext()->emitLocation(node->sourcePosition);
 
@@ -625,7 +629,13 @@ void Compiler::compileMaybeInvoke(const std::shared_ptr<MaybeInvokeAnalyzerNode>
 
     // TODO: Is there a better way to save the args?
     buildGcAddRoot(args);
-    currentContext()->pushValue(buildApply(fn, args));
+
+    auto eh_info = currentContext()->currentScope()->currentEHInfo();
+    if(eh_info != nullptr) {
+        currentContext()->pushValue(buildApplyInvoke(fn, args, eh_info));
+    } else {
+        currentContext()->pushValue(buildApply(fn, args));
+    }
     buildGcRemoveRoot(args);
 
 //    std::vector<llvm::Value *> args;
@@ -794,6 +804,8 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
     currentContext()->currentDebugInfo()->lexical_blocks.push_back(subprogram);
     currentContext()->emitLocation(node->sourcePosition);
 
+    currentContext()->pushScope();
+
     auto entry_block = llvm::BasicBlock::Create(llvmContext(), "entry", expander);
     currentBuilder()->SetInsertPoint(entry_block);
 
@@ -852,6 +864,8 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 
     // Restore back to previous insert point
     currentBuilder()->SetInsertPoint(insert_block, insert_point);
+
+    currentContext()->popScope();
 
     currentContext()->currentDebugInfo()->lexical_blocks.pop_back();
     currentContext()->emitLocation(node->sourcePosition);
@@ -1157,6 +1171,18 @@ llvm::Value* Compiler::buildApply(llvm::Value* f, llvm::Value* args) {
             llvm::Type::getInt8PtrTy(llvmContext(), kGCAddressSpace));
 
     return currentBuilder()->CreateCall(func, {f, args});
+}
+
+llvm::Value* Compiler::buildApplyInvoke(llvm::Value* f, llvm::Value* args, shared_ptr<EHCompileInfo> eh_info) {
+    auto func = currentModule()->getOrInsertFunction("rt_apply",
+            llvm::Type::getInt8PtrTy(llvmContext(), kGCAddressSpace),
+            llvm::Type::getInt8PtrTy(llvmContext(), kGCAddressSpace),
+            llvm::Type::getInt8PtrTy(llvmContext(), kGCAddressSpace));
+
+    auto cont_block = llvm::BasicBlock::Create(llvmContext(), "cont");
+    auto inv = currentBuilder()->CreateInvoke(func, cont_block, eh_info->catch_dest, {f, args});
+    currentBuilder()->SetInsertPoint(cont_block);
+    return inv;
 }
 
 llvm::DISubroutineType* Compiler::createFunctionDebugType(int num_args) {
