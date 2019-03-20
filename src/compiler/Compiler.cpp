@@ -79,7 +79,7 @@ void* Compiler::compileAndEvalString(const std::string& str) {
     Parser p;
     auto ast = p.readString(str, temp_path.string());
 
-    currentContext()->pushNewState("jit_module", temp_path.string() + "/", fname.string());
+    currentContext()->pushNewState("jit_module", temp_path.string()+"/", fname.string());
     createGCEntry();
 
     // Analyze as a top level form
@@ -307,6 +307,8 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
         }
         break;
     }
+    case kAnalyzerNodeTypeTry: compileTry(std::dynamic_pointer_cast<TryAnalyzerNode>(node));
+        break;
 
     default:throw CompilerException("Unrecognized node type", node->sourcePosition);
     }
@@ -631,9 +633,10 @@ void Compiler::compileMaybeInvoke(const std::shared_ptr<MaybeInvokeAnalyzerNode>
     buildGcAddRoot(args);
 
     auto eh_info = currentContext()->currentScope()->currentEHInfo();
-    if(eh_info != nullptr) {
+    if (eh_info!=nullptr) {
         currentContext()->pushValue(buildApplyInvoke(fn, args, eh_info));
-    } else {
+    }
+    else {
         currentContext()->pushValue(buildApply(fn, args));
     }
     buildGcRemoveRoot(args);
@@ -951,6 +954,74 @@ void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAna
     auto expander_result = currentBuilder()->CreateCall(fn_ptr, args);
 
     currentContext()->pushValue(expander_result);
+}
+
+void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
+    // Create a value on the stack that will be returned either from a try or catch block
+    auto rv = currentBuilder()->CreateAlloca(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
+            kGCAddressSpace);
+
+    // Block that will contain all of the landing pads
+    auto catch_block = llvm::BasicBlock::Create(llvmContext(), "catch");
+
+    // Block that will be jumped to at the end of the try/catch blocks
+    auto done_block = llvm::BasicBlock::Create(llvmContext(), "try_done");
+
+    // Set up EHCompileInfo so that any calls compiled in the try block know to use 'invoke' rather
+    // than 'call', and where to unwind to.
+    auto eh_info = make_shared<EHCompileInfo>();
+    eh_info->catch_dest = catch_block;
+    currentContext()->currentScope()->pushEHInfo(eh_info);
+
+    // Compile try block
+
+    for (int i = 0; i<node->body.size(); i++) {
+        compileNode(node->body[i]);
+
+        if (i<node->body.size()-1) {
+            currentContext()->popValue();
+        }
+    }
+
+    currentBuilder()->CreateStore(currentContext()->popValue(), rv);
+    currentBuilder()->CreateBr(done_block);
+    currentContext()->currentScope()->popEHInfo();
+
+    // Compile catch blocks
+    //currentBuilder()->SetInsertPoint(catch_block);
+
+    for (int i = 0; i<node->catch_nodes.size(); i++) {
+        auto catch_node = node->catch_nodes[i];
+
+        std::unordered_map<std::string, llvm::Value*> local_env;
+
+        auto landing_pad = currentBuilder()->CreateLandingPad(llvm::IntegerType::getInt8PtrTy:w
+                (llvmContext(), kGCAddressSpace),
+                1);
+
+        local_env[*catch_node->exception_binding] = landing_pad;
+                //currentBuilder()->CreateExtractValue(landing_pad, 0);
+        currentContext()->pushLocalEnvironment(local_env);
+
+        auto exc_type_str = catch_node->exception_type;
+        auto exc_type = currentBuilder()->CreateGlobalStringPtr(*exc_type_str);
+        landing_pad->addClause(exc_type);
+
+        for (int j = 0; j<catch_node->body.size(); j++) {
+            compileNode(catch_node->body[i]);
+
+            if (j<catch_node->body.size()-1) {
+                currentContext()->popValue();
+            }
+        }
+
+        currentBuilder()->CreateStore(currentContext()->popValue(), rv);
+        currentBuilder()->CreateBr(done_block);
+        currentContext()->popLocalEnvironment();
+    }
+
+    currentBuilder()->SetInsertPoint(done_block);
+    currentContext()->pushValue(rv);
 }
 
 std::string Compiler::mangleSymbolName(const std::string ns, const std::string& name) {
