@@ -117,7 +117,7 @@ void CompilerContext::pushNewState(string module_name, const string& directory, 
             "Electrum Compiler",
             false,
             "",
-            0);
+            1);
 
 
     _state_stack.push_back(s);

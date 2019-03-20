@@ -272,8 +272,10 @@ extern "C" void rt_init_gc(void* stackmap) {
 }
 
 extern "C" void rt_gc_init_stackmap(void* stackmap) {
-    auto collector = rt_get_gc();
-    collector->init_stackmap(stackmap);
+    if(stackmap != nullptr) {
+        auto collector = rt_get_gc();
+        collector->init_stackmap(stackmap);
+    }
 }
 
 extern "C" void rt_gc_add_root(void* obj) {

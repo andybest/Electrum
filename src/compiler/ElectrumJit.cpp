@@ -41,6 +41,21 @@ static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Modul
         fpm->run(f);
     }
 
+//    auto error_stream = llvm::raw_string_ostream(errors);
+//    auto has_errors = llvm::verifyModule(*module, &error_stream, nullptr);
+//    if (has_errors) {
+//        error_stream.flush();
+//        std::cout << errors << std::endl;
+//        module->print(llvm::errs(), nullptr);
+//        throw std::exception();
+//    }
+
+    module->print(llvm::errs(), nullptr);
+
+    llvm::legacy::PassManager pm;
+    pm.add(llvm::createRewriteStatepointsForGCLegacyPass());
+    pm.run(*module);
+
     std::string errors;
     auto error_stream = llvm::raw_string_ostream(errors);
     auto has_errors = llvm::verifyModule(*module, &error_stream, nullptr);
@@ -50,12 +65,6 @@ static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Modul
         module->print(llvm::errs(), nullptr);
         throw std::exception();
     }
-
-    module->print(llvm::errs(), nullptr);
-
-    llvm::legacy::PassManager pm;
-    pm.add(llvm::createRewriteStatepointsForGCLegacyPass());
-    pm.run(*module);
 
     return module;
 }
@@ -106,6 +115,9 @@ llvm::TargetMachine& ElectrumJit::getTargetMachine() { return *target_machine_; 
 llvm::orc::VModuleKey ElectrumJit::addModule(std::unique_ptr<llvm::Module> module) {
     auto k = es_.allocateVModule();
     llvm::cantFail(optimize_layer_.addModule(k, std::move(module)));
+
+    auto error = optimize_layer_.emitAndFinalize(k);
+    //llvm::handleAllErrors();
     return k;
 }
 

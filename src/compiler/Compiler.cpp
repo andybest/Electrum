@@ -957,15 +957,21 @@ void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAna
 }
 
 void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
+    if(!currentContext()->currentFunc()->hasPersonalityFn()) {
+        auto personality_type = llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(llvmContext()), true);
+        auto p_fn = currentModule()->getOrInsertFunction("_el_rt_eh_personality", personality_type);
+        currentContext()->currentFunc()->setPersonalityFn(p_fn);
+    }
+
     // Create a value on the stack that will be returned either from a try or catch block
     auto rv = currentBuilder()->CreateAlloca(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
-            kGCAddressSpace);
+            0, nullptr, "exc_rv");
 
     // Block that will contain all of the landing pads
-    auto catch_block = llvm::BasicBlock::Create(llvmContext(), "catch");
+    auto catch_block = llvm::BasicBlock::Create(llvmContext(), "catch", currentContext()->currentFunc());
 
     // Block that will be jumped to at the end of the try/catch blocks
-    auto done_block = llvm::BasicBlock::Create(llvmContext(), "try_done");
+    auto done_block = llvm::BasicBlock::Create(llvmContext(), "try_done", currentContext()->currentFunc());
 
     // Set up EHCompileInfo so that any calls compiled in the try block know to use 'invoke' rather
     // than 'call', and where to unwind to.
@@ -988,15 +994,14 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
     currentContext()->currentScope()->popEHInfo();
 
     // Compile catch blocks
-    //currentBuilder()->SetInsertPoint(catch_block);
+    currentBuilder()->SetInsertPoint(catch_block);
 
     for (int i = 0; i<node->catch_nodes.size(); i++) {
         auto catch_node = node->catch_nodes[i];
 
         std::unordered_map<std::string, llvm::Value*> local_env;
 
-        auto landing_pad = currentBuilder()->CreateLandingPad(llvm::IntegerType::getInt8PtrTy:w
-                (llvmContext(), kGCAddressSpace),
+        auto landing_pad = currentBuilder()->CreateLandingPad(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
                 1);
 
         local_env[*catch_node->exception_binding] = landing_pad;
@@ -1021,7 +1026,7 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
     }
 
     currentBuilder()->SetInsertPoint(done_block);
-    currentContext()->pushValue(rv);
+    currentContext()->pushValue(currentBuilder()->CreateLoad(rv));
 }
 
 std::string Compiler::mangleSymbolName(const std::string ns, const std::string& name) {
@@ -1250,7 +1255,7 @@ llvm::Value* Compiler::buildApplyInvoke(llvm::Value* f, llvm::Value* args, share
             llvm::Type::getInt8PtrTy(llvmContext(), kGCAddressSpace),
             llvm::Type::getInt8PtrTy(llvmContext(), kGCAddressSpace));
 
-    auto cont_block = llvm::BasicBlock::Create(llvmContext(), "cont");
+    auto cont_block = llvm::BasicBlock::Create(llvmContext(), "cont", currentContext()->currentFunc());
     auto inv = currentBuilder()->CreateInvoke(func, cont_block, eh_info->catch_dest, {f, args});
     currentBuilder()->SetInsertPoint(cont_block);
     return inv;
