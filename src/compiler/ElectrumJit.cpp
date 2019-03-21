@@ -52,9 +52,10 @@ static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Modul
 
     module->print(llvm::errs(), nullptr);
 
-    llvm::legacy::PassManager pm;
+    /*llvm::legacy::PassManager pm;
     pm.add(llvm::createRewriteStatepointsForGCLegacyPass());
     pm.run(*module);
+     */
 
     std::string errors;
     auto error_stream = llvm::raw_string_ostream(errors);

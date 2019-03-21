@@ -957,8 +957,17 @@ void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAna
 }
 
 void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
-    if(!currentContext()->currentFunc()->hasPersonalityFn()) {
-        auto personality_type = llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(llvmContext()), true);
+    if (!currentContext()->currentFunc()->hasPersonalityFn()) {
+        auto personality_type = llvm::FunctionType::get(
+                llvm::IntegerType::getInt32Ty(llvmContext()),
+                {llvm::IntegerType::getInt32Ty(llvmContext()),
+                 llvm::IntegerType::getInt32Ty(llvmContext()),
+                 llvm::IntegerType::getInt64Ty(llvmContext()),
+                 llvm::IntegerType::getInt64Ty(llvmContext()),
+                 llvm::IntegerType::getInt8PtrTy(llvmContext(), 0),
+                 llvm::IntegerType::getInt8PtrTy(llvmContext(), 0)},
+                false);
+
         auto p_fn = currentModule()->getOrInsertFunction("_el_rt_eh_personality", personality_type);
         currentContext()->currentFunc()->setPersonalityFn(p_fn);
     }
@@ -1001,11 +1010,12 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
 
         std::unordered_map<std::string, llvm::Value*> local_env;
 
-        auto landing_pad = currentBuilder()->CreateLandingPad(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
-                1);
+        auto lp_type = llvm::StructType::get(llvmContext(),
+                {llvm::IntegerType::getInt8PtrTy(llvmContext(), 0)},
+                false);
+        auto landing_pad = currentBuilder()->CreateLandingPad(lp_type, 1);
 
         local_env[*catch_node->exception_binding] = landing_pad;
-                //currentBuilder()->CreateExtractValue(landing_pad, 0);
         currentContext()->pushLocalEnvironment(local_env);
 
         auto exc_type_str = catch_node->exception_type;
