@@ -60,12 +60,12 @@ private:
     std::unique_ptr<llvm::TargetMachine> target_machine_;
 
     const llvm::DataLayout data_layout_;
-    llvm::orc::RTDyldObjectLinkingLayer object_layer_;
-    llvm::orc::IRCompileLayer<decltype(object_layer_), llvm::orc::SimpleCompiler> compile_layer_;
+    llvm::orc::LegacyRTDyldObjectLinkingLayer object_layer_;
+    llvm::orc::LegacyIRCompileLayer<decltype(object_layer_), llvm::orc::SimpleCompiler> compile_layer_;
 
     using OptimizeFunction =
     std::function<std::unique_ptr<llvm::Module>(std::unique_ptr<llvm::Module>)>;
-    llvm::orc::IRTransformLayer<decltype(compile_layer_), OptimizeFunction> optimize_layer_;
+    llvm::orc::LegacyIRTransformLayer<decltype(compile_layer_), OptimizeFunction> optimize_layer_;
 
     llvm::orc::JITCompileCallbackManager* compile_callback_mgr_;
     std::unique_ptr<llvm::orc::IndirectStubsManager> indirect_stubs_mgr_;

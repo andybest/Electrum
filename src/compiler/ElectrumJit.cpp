@@ -89,7 +89,7 @@ ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession& es)
          data_layout_(target_machine_->createDataLayout()),
          object_layer_(es_,
                  [this](llvm::orc::VModuleKey) {
-                   return llvm::orc::RTDyldObjectLinkingLayer::Resources{
+                   return llvm::orc::LegacyRTDyldObjectLinkingLayer::Resources{
                            std::make_shared<JitMemoryManager>([this](void* stackMapPtr) {
                              this->stack_map_ptr_ = stackMapPtr;
                            }), resolver_};
@@ -98,7 +98,8 @@ ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession& es)
                  // Notify Loaded
                  [this](llvm::orc::VModuleKey, const llvm::object::ObjectFile& obj,
                          const llvm::RuntimeDyld::LoadedObjectInfo& info) {
-                   this->gdb_listener_->NotifyObjectEmitted(obj, info);
+                   //this->gdb_listener_->notifyObjectLoaded();
+                   //NotifyObjectEmitted(obj, info);
                  }),
          compile_layer_(object_layer_, llvm::orc::SimpleCompiler(*target_machine_)),
          optimize_layer_(compile_layer_, [this](std::unique_ptr<llvm::Module> M) {
@@ -118,7 +119,6 @@ llvm::orc::VModuleKey ElectrumJit::addModule(std::unique_ptr<llvm::Module> modul
     llvm::cantFail(optimize_layer_.addModule(k, std::move(module)));
 
     auto error = optimize_layer_.emitAndFinalize(k);
-    //llvm::handleAllErrors();
     return k;
 }
 
