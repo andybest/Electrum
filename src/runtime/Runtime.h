@@ -61,7 +61,8 @@ enum ETypeTag : uint64_t {
   kETypeTagFunction,
   kETypeTagInterpretedFunction,
   kETypeTagEnvironment,
-  kETypeTagVar
+  kETypeTagVar,
+  kETypeTagException
 };
 
 struct EObjectHeader {

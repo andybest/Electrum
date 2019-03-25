@@ -22,7 +22,7 @@
  SOFTWARE.
 */
 
-#import "Runtime.h"
+#include "Runtime.h"
 
 extern "C" void rt_assert_tag(void*, ETypeTag);
 extern "C" void* rt_compiled_function_get_ptr(void*);
