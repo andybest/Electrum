@@ -1041,6 +1041,47 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeCatch(const shared_ptr<ASTNode>& form)
     return node;
 }
 
+shared_ptr<AnalyzerNode> Analyzer::analyzeThrow(const shared_ptr<ASTNode> &form) {
+    assert(form->tag==kTypeTagList);
+    auto listPtr = form->listValue;
+    assert(!listPtr->empty());
+
+    if(listPtr->size() < 2) {
+        throw CompilerException("Throw needs argument", form->sourcePosition);
+    }
+
+    if(listPtr->size() > 3) {
+        throw CompilerException("Throw: Unexpected argument", listPtr->at(3)->sourcePosition);
+    }
+
+    auto node = make_shared<ThrowAnalyzerNode>();
+
+    auto exc_type_node = analyzeForm(listPtr->at(1));
+
+    if(exc_type_node->nodeType() == kAnalyzerNodeTypeConstant) {
+        auto c_node = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(exc_type_node);
+        if(c_node->type == kAnalyzerConstantTypeSymbol) {
+            node->exception_type = boost::get<shared_ptr<string>>(c_node->value);
+        } else {
+            throw CompilerException("Throw: Expected symbol", listPtr->at(1)->sourcePosition);
+        }
+    } else {
+        throw CompilerException("Throw: Expected symbol", listPtr->at(1)->sourcePosition);
+    }
+
+    if(listPtr->size() > 2) {
+        node->metadata = analyzeForm(listPtr->at(2));
+    } else {
+        auto nil_node = make_shared<ConstantValueAnalyzerNode>();
+        nil_node->type = kAnalyzerConstantTypeNil;
+        nil_node->sourcePosition = listPtr->at(1)->sourcePosition;
+        node->metadata = nil_node;
+    }
+
+    node->sourcePosition = form->sourcePosition;
+    return node;
+}
+
 shared_ptr<AnalyzerNode> Analyzer::initialBindingWithName(const std::string& name) {
     auto result = global_env_.find(name);
 
