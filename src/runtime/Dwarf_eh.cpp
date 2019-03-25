@@ -43,19 +43,19 @@ constexpr _Unwind_Exception_Class make_exception_class(const char* c) {
 
 const _Unwind_Exception_Class el_exception_class = make_exception_class("ELECELEC");
 
-extern "C" void* _el_rt_allocate_exception(const char* exc_type, void* meta) {
+extern "C" void* el_rt_allocate_exception(const char* exc_type, void* meta) {
     auto exc = static_cast<ElectrumException*>(GC_MALLOC(sizeof(ElectrumException)));
     exc->header.gc_mark = 0;
     exc->header.tag = kETypeTagException;
 
-    exc->exception_type = std::make_shared<std::string>(exc_type);
+    exc->exception_type = exc_type;
     exc->metadata = meta;
 
     exc->unwind_exception.exception_class = el_exception_class;
     return static_cast<void*>(exc);
 }
 
-extern "C" void _el_rt_throw(void* thrown_exception, void (* dest)(void*)) {
+extern "C" void el_rt_throw(void* thrown_exception) {
     auto exc = static_cast<ElectrumException*>(thrown_exception);
     _Unwind_RaiseException(&exc->unwind_exception);
 
@@ -305,7 +305,7 @@ bool _el_rt_cs_matches(_Unwind_Context* context,
     intptr_t action_offset = 0;
     uint8_t* last_action_ptr = 0;
 
-    while(current_action < action_idx) {
+    while(current_action <= action_idx) {
         action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &type_info_offset);
         last_action_ptr = action_ptr;
         action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &action_offset);
@@ -322,7 +322,7 @@ bool _el_rt_cs_matches(_Unwind_Context* context,
             const char* type_info_ptr;
             _el_rt_eh_read_encoded_ptr(type_ptr, table->type_table_encoding, (uintptr_t*) &type_info_ptr);
 
-            if (strcmp(type_info_ptr, exception->exception_type->c_str())==0) {
+            if (strcmp(type_info_ptr, exception->exception_type)==0) {
                 return true;
             }
 
@@ -360,7 +360,7 @@ _Unwind_Reason_Code _el_rt_cs_perform_actions(_Unwind_Context* context,
     uint8_t* last_action_ptr = 0;
 
     // Search for the action to perform
-    while(current_action < action_idx) {
+    while(current_action <= action_idx) {
         action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &type_info_offset);
         last_action_ptr = action_ptr;
         action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &action_offset);
@@ -376,7 +376,7 @@ _Unwind_Reason_Code _el_rt_cs_perform_actions(_Unwind_Context* context,
         const char *type_info_ptr;
         _el_rt_eh_read_encoded_ptr(type_ptr, table->type_table_encoding, reinterpret_cast<uintptr_t*>(&type_info_ptr));
 
-        if(strcmp(type_info_ptr, exception->exception_type->c_str()) == 0) {
+        if(strcmp(type_info_ptr, exception->exception_type) == 0) {
             return _URC_INSTALL_CONTEXT;
         }
 
@@ -438,7 +438,7 @@ extern "C" _Unwind_Reason_Code el_rt_eh_personality(
             for (auto& cs: t.callsites) {
                 if(_el_rt_cs_perform_actions(context, &t, &cs, exc) == _URC_INSTALL_CONTEXT) {
                     _Unwind_SetGR(context, 0, (uintptr_t) exception_info);
-                    _Unwind_SetGR(context, 1, (uintptr_t) exc->exception_type->c_str());
+                    _Unwind_SetGR(context, 1, (uintptr_t) exc->exception_type);
 
                     _Unwind_SetIP(context, t.landingpad_base_ptr+cs.landingpad_offset);
 

@@ -35,7 +35,7 @@ extern "C" {
 struct ElectrumException {
   EObjectHeader header;
   _Unwind_Exception unwind_exception;
-  std::shared_ptr<std::string> exception_type;
+  const char* exception_type;
   void *metadata;
 };
 

@@ -454,3 +454,39 @@ TEST(Compiler, tryNoThrowReturnsResult) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, tryThrowReturnsCatchResult) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto r1 = c.compileAndEvalString("  (try"
+                                     "    (throw 'fooerror)"
+                                     "    1234"
+                                     "    (catch (fooerror e)"
+                                     "      5678))");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 5678);
+
+    rt_deinit_gc();
+}
+
+TEST(Compiler, tryThrowRunsCorrectCatchBlock) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto r1 = c.compileAndEvalString("  (try"
+                                     "    (throw 'b)"
+                                     "    1234"
+                                     "    (catch (a e)"
+                                     "      1)"
+                                     "    (catch (b e)"
+                                     "      2)"
+                                     "    (catch (c e)"
+                                     "      3))");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 2);
+
+    rt_deinit_gc();
+}

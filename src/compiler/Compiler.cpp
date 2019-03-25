@@ -308,6 +308,8 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
     }
     case kAnalyzerNodeTypeTry: compileTry(std::dynamic_pointer_cast<TryAnalyzerNode>(node));
         break;
+    case kAnalyzerNodeTypeThrow: compileThrow(std::dynamic_pointer_cast<ThrowAnalyzerNode>(node));
+        break;
 
     default:throw CompilerException("Unrecognized node type", node->sourcePosition);
     }
@@ -1019,13 +1021,21 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
         auto exc_type = currentBuilder()->CreateGlobalStringPtr(*exc_type_str);
         landing_pad->addClause(exc_type);
 
-        for (int j = 0; j<catch_node->body.size(); j++) {
-            compileNode(catch_node->body[i]);
-
-            if (j<catch_node->body.size()-1) {
+        for(const auto &body_node: catch_node->body) {
+            compileNode(body_node);
+            if(body_node != catch_node->body.back()) {
                 currentContext()->popValue();
             }
         }
+
+//        for (int j = 0; j<catch_node->body.size(); j++) {
+//            auto body_node = catch_node->body[i];
+//            compileNode(body_node);
+//
+//            if (j<catch_node->body.size()-1) {
+//                currentContext()->popValue();
+//            }
+//        }
 
         currentBuilder()->CreateStore(currentContext()->popValue(), rv);
         currentBuilder()->CreateBr(done_block);
@@ -1036,14 +1046,54 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
     currentContext()->pushValue(currentBuilder()->CreateLoad(rv));
 }
 
+void Compiler::compileThrow(const std::shared_ptr<electrum::ThrowAnalyzerNode> node) {
+    auto alloc_func = currentModule()->getOrInsertFunction(
+            "el_rt_allocate_exception",
+            llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
+            llvm::IntegerType::getInt8PtrTy(llvmContext(), 0),
+            llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
+
+    std::stringstream ss;
+    ss << "el_exc_" << *node->exception_type;
+
+    compileNode(node->metadata);
+    auto meta = currentContext()->popValue();
+
+    auto exc_type = currentBuilder()->CreateGlobalStringPtr(*node->exception_type,
+            ss.str());
+    auto exc = currentBuilder()->CreateCall(alloc_func,
+                                            {exc_type,
+                                             meta});
+
+    auto throw_func = currentModule()->getOrInsertFunction(
+            "el_rt_throw",
+            llvm::Type::getVoidTy(llvmContext()),
+            llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
+
+    auto unreachable_dest = llvm::BasicBlock::Create(llvmContext(), "throw_unreachable",
+            currentContext()->currentFunc());
+    auto eh_info = currentContext()->currentScope()->currentEHInfo();
+
+    if (eh_info!=nullptr) {
+        currentBuilder()->CreateInvoke(throw_func, unreachable_dest, eh_info->catch_dest, {exc});
+    } else {
+        currentBuilder()->CreateCall(throw_func, {exc});
+    }
+
+    currentBuilder()->SetInsertPoint(unreachable_dest);
+    currentContext()->pushValue(makeNil());
+}
+
+
+#pragma mark - Helpers
+
+
 std::string Compiler::mangleSymbolName(const std::string ns, const std::string& name) {
     // Ignore ns for now, as we don't support yet
     std::stringstream ss;
     ss << "__elec__" << name << "__";
     return ss.str();
 }
-
-#pragma mark - Helpers
 
 llvm::Value* Compiler::makeNil() {
     auto func = currentModule()->getOrInsertFunction("rt_make_nil",
