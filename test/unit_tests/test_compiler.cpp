@@ -444,11 +444,10 @@ TEST(Compiler, tryNoThrowReturnsResult) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto r1 = c.compileAndEvalString("((lambda () "
-                                     "  (try"
+    auto r1 = c.compileAndEvalString("  (try"
                                      "    ((lambda () 1234))"
                                      "    (catch (fakeerror e)"
-                                     "      5678))))");
+                                     "      5678))");
 
     EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(r1), 1234);

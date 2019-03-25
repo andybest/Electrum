@@ -54,6 +54,10 @@ namespace electrum {
 
 class ElectrumJit {
 
+    enum JitErrorCode {
+        kJitErrorCodeSymbolNotFound
+    };
+
 private:
     llvm::orc::ExecutionSession& es_;
     std::shared_ptr<llvm::orc::SymbolResolver> resolver_;

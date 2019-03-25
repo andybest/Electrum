@@ -75,14 +75,20 @@ ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession& es)
          resolver_(createLegacyLookupResolver(
                  es_,
                  [this](const std::string& Name) -> llvm::JITSymbol {
-                   if (auto Sym = optimize_layer_.findSymbol(Name, false))
+                   if (auto Sym = optimize_layer_.findSymbol(Name, false)) {
                        return Sym;
-                   else if (auto Err = Sym.takeError())
+                   }
+                   else if (auto Err = Sym.takeError()) {
+                       std::cerr << "JIT- Could not resolve symbol: " << Name << std::endl;
                        return std::move(Err);
+                   }
                    if (auto SymAddr =
-                           llvm::RTDyldMemoryManager::getSymbolAddressInProcess(Name))
+                           llvm::RTDyldMemoryManager::getSymbolAddressInProcess(Name)) {
                        return llvm::JITSymbol(SymAddr, llvm::JITSymbolFlags::Exported);
-                   return nullptr;
+                   }
+
+                   std::cerr << "JIT- Could not resolve symbol: " << Name << std::endl;
+                   throw std::exception();
                  },
                  [](llvm::Error Err) { cantFail(std::move(Err), "lookupFlags failed"); })),
          target_machine_(llvm::EngineBuilder().selectTarget()),

@@ -965,7 +965,7 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
                  llvm::IntegerType::getInt8PtrTy(llvmContext(), 0)},
                 false);
 
-        auto p_fn = currentModule()->getOrInsertFunction("_el_rt_eh_personality", personality_type);
+        auto p_fn = currentModule()->getOrInsertFunction("el_rt_eh_personality", personality_type);
         currentContext()->currentFunc()->setPersonalityFn(p_fn);
     }
 

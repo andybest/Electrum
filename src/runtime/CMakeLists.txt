@@ -16,9 +16,10 @@ set(SOURCE_FILES
         Runtime.cpp
         apply.cpp
         GarbageCollector.cpp
+        Dwarf_eh.cpp
         generate.c
         hash_table.c
-        ENamespace.cpp EHashTable.c EHashTable.h Dwarf_eh.cpp Dwarf_eh.h)
+        ENamespace.cpp EHashTable.c EHashTable.h)
 
 add_library(${CMAKE_PROJECT_NAME}_runtime SHARED
         ${HEADER_FILES}

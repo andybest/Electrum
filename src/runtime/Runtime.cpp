@@ -773,11 +773,6 @@ extern "C" void* rt_test_throw() {
     throw std::exception();
 }
 
-// Placeholder
-extern "C" int32_t _el_rt_eh_personality() {
-    return 0;
-}
-
 /**
  * Malloc a tagged object. It is assumed by the GC that this object will be
  * converted to a tagged pointer.

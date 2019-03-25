@@ -392,7 +392,7 @@ _Unwind_Reason_Code _el_rt_cs_perform_actions(_Unwind_Context* context,
     return _URC_CONTINUE_UNWIND;
 }
 
-_Unwind_Reason_Code _el_rt_eh_personality(
+extern "C" _Unwind_Reason_Code el_rt_eh_personality(
         int32_t version,
         _Unwind_Action actions,
         _Unwind_Exception_Class exception_class,
