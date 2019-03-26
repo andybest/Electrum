@@ -37,6 +37,7 @@ struct ElectrumException {
   _Unwind_Exception unwind_exception;
   const char* exception_type;
   void* metadata;
+  char message[];
 };
 
 }

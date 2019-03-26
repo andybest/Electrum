@@ -324,6 +324,11 @@ extern "C" void* rt_is_symbol(void* val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagSymbol));
 }
 
+extern "C" const char* rt_symbol_extract_string(void* val) {
+    auto sym = reinterpret_cast<ESymbol*>(TAG_TO_OBJECT(val));
+    return sym->name;
+}
+
 extern "C" void* rt_make_string(const char* str) {
     size_t len = strlen(str);
 

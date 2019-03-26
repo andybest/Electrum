@@ -43,24 +43,59 @@ constexpr _Unwind_Exception_Class make_exception_class(const char* c) {
 
 const _Unwind_Exception_Class el_exception_class = make_exception_class("ELECELEC");
 
-extern "C" void* el_rt_allocate_exception(const char* exc_type, void* meta) {
-    auto exc = static_cast<ElectrumException*>(GC_MALLOC(sizeof(ElectrumException)));
-    exc->header.gc_mark = 0;
-    exc->header.tag = kETypeTagException;
-
-    exc->exception_type = exc_type;
-    exc->metadata = meta;
-
-    exc->unwind_exception.exception_class = el_exception_class;
-    return static_cast<void*>(exc);
-}
-
 extern "C" void el_rt_throw(void* thrown_exception) {
     auto exc = static_cast<ElectrumException*>(thrown_exception);
     _Unwind_RaiseException(&exc->unwind_exception);
 
     // If the exception was caught, this point won't ever be reached
     exit(1);
+}
+
+extern "C" void* el_rt_allocate_exception(const char* exc_type, const char* message, void* meta) {
+    auto msg_len = 0;
+
+    if (message!=nullptr) {
+        msg_len = strlen(message);
+    }
+
+    auto exc = static_cast<ElectrumException*>(GC_MALLOC(sizeof(ElectrumException)+(sizeof(char)*(msg_len+1))));
+    exc->header.gc_mark = 0;
+    exc->header.tag = kETypeTagException;
+
+    exc->exception_type = exc_type;
+    exc->metadata = meta;
+    strcpy(exc->message, message);
+
+    exc->unwind_exception.exception_class = el_exception_class;
+    return static_cast<void*>(exc);
+}
+
+extern "C" void* el_rt_make_exception(void* exc_type, void* message, void* meta) {
+    if (rt_is_symbol(exc_type)!=TRUE_PTR) {
+        auto exc = el_rt_allocate_exception(
+                "electrum.invalid-type",
+                "Exception type must be a symbol",
+                NIL_PTR);
+        el_rt_throw(exc);
+    }
+
+    if (message!=NIL_PTR && rt_is_string(message)!=TRUE_PTR) {
+        auto exc = el_rt_allocate_exception(
+                "electrum.invalid-type",
+                "Exception message must be a string",
+                NIL_PTR);
+    }
+
+    const char* msg = nullptr;
+
+    if (message!=NIL_PTR) {
+        msg = rt_string_value(message);
+    }
+
+    return el_rt_allocate_exception(
+            rt_symbol_extract_string(exc_type),
+            msg,
+            meta);
 }
 
 size_t _el_rt_eh_decode_ULEB128(const uint8_t* data, uintptr_t* result) {
@@ -187,8 +222,8 @@ size_t _el_rt_eh_read_encoded_ptr(const uint8_t* data, DwarfEHEncoding encoding,
     }
 
     // If it is an indirect pointer, follow it
-    if((encoding & 0x80) == DW_EH_PE_indirect) {
-        *result = *((uintptr_t*)*result);
+    if ((encoding & 0x80)==DW_EH_PE_indirect) {
+        *result = *((uintptr_t*) *result);
     }
     return size;
 }
@@ -213,8 +248,8 @@ ElectrumException* get_exception_object_from_info(_Unwind_Exception const* excep
     );
 }
 
-extern "C" int el_rt_exception_matches(char *exception_type, char *match) {
-    return strcmp(exception_type, match) == 0;
+extern "C" int el_rt_exception_matches(char* exception_type, char* match) {
+    return strcmp(exception_type, match)==0;
 }
 
 bool _el_rt_load_lsda(_Unwind_Context* const context, DwarfLSDATable* t) {
@@ -228,7 +263,6 @@ bool _el_rt_load_lsda(_Unwind_Context* const context, DwarfLSDATable* t) {
 
     // Landing pad base
     auto lpbase_enc = (DwarfEHEncoding) *lsda_ptr++;
-
 
     uintptr_t landingpad_base;
 
@@ -289,12 +323,12 @@ bool _el_rt_cs_matches(_Unwind_Context* context,
         DwarfLSDATable* table,
         DwarfEHCallsite* callsite,
         ElectrumException* exception) {
-    if(callsite->action == 0) {
+    if (callsite->action==0) {
         return false;
     }
 
     // Initial offset into the action table
-    auto action_ptr = table->action_table_ptr + callsite->action - 1;
+    auto action_ptr = table->action_table_ptr+callsite->action-1;
 
     intptr_t type_info_offset = 0;
     intptr_t action_offset = 0;
@@ -304,11 +338,10 @@ bool _el_rt_cs_matches(_Unwind_Context* context,
     last_action_ptr = action_ptr;
     action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &action_offset);
 
-
     auto encoding_size = _el_rt_eh_encoding_size(table->type_table_encoding);
 
-    while(true) {
-        if(type_info_offset != 0) {
+    while (true) {
+        if (type_info_offset!=0) {
             auto type_ptr = (((uint8_t*) table->typetable_ptr)-type_info_offset*encoding_size);
             const char* type_info_ptr;
             _el_rt_eh_read_encoded_ptr(type_ptr, table->type_table_encoding, (uintptr_t*) &type_info_ptr);
@@ -317,7 +350,8 @@ bool _el_rt_cs_matches(_Unwind_Context* context,
                 return true;
             }
 
-        } else {
+        }
+        else {
             break;
         }
 
@@ -325,7 +359,7 @@ bool _el_rt_cs_matches(_Unwind_Context* context,
             break;
         }
 
-        action_ptr = last_action_ptr + action_offset;
+        action_ptr = last_action_ptr+action_offset;
         action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &type_info_offset);
         last_action_ptr = action_ptr;
     }
@@ -338,12 +372,12 @@ _Unwind_Reason_Code _el_rt_cs_perform_actions(_Unwind_Context* context,
         DwarfLSDATable* table,
         DwarfEHCallsite* callsite,
         ElectrumException* exception) {
-    if(callsite->action == 0) {
+    if (callsite->action==0) {
         return _URC_CONTINUE_UNWIND;
     }
 
     // Initial offset into the action table
-    auto action_ptr = table->action_table_ptr + callsite->action - 1;
+    auto action_ptr = table->action_table_ptr+callsite->action-1;
 
     intptr_t type_info_offset = 0;
     intptr_t action_offset = 0;
@@ -355,20 +389,20 @@ _Unwind_Reason_Code _el_rt_cs_perform_actions(_Unwind_Context* context,
 
     auto encoding_size = _el_rt_eh_encoding_size(table->type_table_encoding);
 
-    while(true) {
-        auto type_ptr = (((uint8_t*)table->typetable_ptr) - type_info_offset * encoding_size);
-        const char *type_info_ptr;
+    while (true) {
+        auto type_ptr = (((uint8_t*) table->typetable_ptr)-type_info_offset*encoding_size);
+        const char* type_info_ptr;
         _el_rt_eh_read_encoded_ptr(type_ptr, table->type_table_encoding, reinterpret_cast<uintptr_t*>(&type_info_ptr));
 
-        if(strcmp(type_info_ptr, exception->exception_type) == 0) {
+        if (strcmp(type_info_ptr, exception->exception_type)==0) {
             return _URC_INSTALL_CONTEXT;
         }
 
-        if(action_offset == 0) {
+        if (action_offset==0) {
             break;
         }
 
-        action_ptr = last_action_ptr + action_offset;
+        action_ptr = last_action_ptr+action_offset;
         action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &type_info_offset);
         last_action_ptr = action_ptr;
     }
@@ -387,7 +421,7 @@ extern "C" _Unwind_Reason_Code el_rt_eh_personality(
         return _URC_FATAL_PHASE1_ERROR;
     }
 
-    auto is_native_exception = exception_class == el_exception_class;
+    auto is_native_exception = exception_class==el_exception_class;
 
     if (actions & _UA_SEARCH_PHASE) {
         DwarfLSDATable t;
@@ -420,7 +454,7 @@ extern "C" _Unwind_Reason_Code el_rt_eh_personality(
             auto exc = get_exception_object_from_info(exception_info);
 
             for (auto& cs: t.callsites) {
-                if(_el_rt_cs_perform_actions(context, &t, &cs, exc) == _URC_INSTALL_CONTEXT) {
+                if (_el_rt_cs_perform_actions(context, &t, &cs, exc)==_URC_INSTALL_CONTEXT) {
                     //_Unwind_SetGR(context, 0, (uintptr_t) exception_info);
                     _Unwind_SetGR(context, 0, (uintptr_t) exc->exception_type);
 

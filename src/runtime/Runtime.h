@@ -182,6 +182,7 @@ extern "C" double rt_float_value(void* val);
 
 extern "C" void* rt_make_symbol(const char* name);
 extern "C" void* rt_is_symbol(void* val);
+extern "C" const char* rt_symbol_extract_string(void* val);
 
 extern "C" void* rt_make_string(const char* str);
 extern "C" void* rt_is_string(void* val);
@@ -207,6 +208,7 @@ void* rt_gc_malloc_tagged_object(size_t size);
 extern "C" void rt_gc_add_root(void* obj);
 
 extern "C" void el_rt_throw(void *exception);
+extern "C" void* el_rt_make_exception(void* exc_type, void* message, void* meta);
 
 extern "C" void* rt_apply_0(void*);
 extern "C" void* rt_apply_1(void*, void*);
