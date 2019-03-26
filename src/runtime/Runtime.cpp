@@ -30,6 +30,9 @@
 #include <sstream>
 #include <cassert>
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "hicpp-signed-bitwise"
+
 namespace electrum {
 
 bool is_object(void* val) {
@@ -234,10 +237,6 @@ extern "C" void rt_assert_tag(void* obj, ETypeTag tag) {
 }
 
 //extern "C" {
-
-void rt_init() {
-    electrum::init_global_namespaces();
-}
 
 void rt_init_gc(electrum::GCMode gc_mode) {
     electrum::main_collector = new electrum::GarbageCollector(gc_mode);
@@ -783,3 +782,4 @@ void* rt_gc_malloc_tagged_object(size_t size) {
 }
 
 //} /* extern "C" */
+#pragma clang diagnostic pop

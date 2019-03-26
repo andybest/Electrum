@@ -36,7 +36,7 @@ struct ElectrumException {
   EObjectHeader header;
   _Unwind_Exception unwind_exception;
   const char* exception_type;
-  void *metadata;
+  void* metadata;
 };
 
 }
@@ -63,16 +63,9 @@ enum DwarfEHEncoding : uint8_t {
 
 struct DwarfEHCallsite {
   uintptr_t offset;
-  void* callsite_ptr;
   uintptr_t instruction_length;
   uintptr_t landingpad_offset;
-  void* landingpad_ptr;
   uintptr_t action;
-};
-
-struct DwarfEHActionTableEntry {
-  uintptr_t typetable_idx;
-  uintptr_t action_offset;
 };
 
 struct DwarfLSDATable {
@@ -81,13 +74,11 @@ struct DwarfLSDATable {
   uint8_t* typetable_ptr;
   uint8_t* action_table_ptr;
   std::vector<DwarfEHCallsite> callsites;
-  std::vector<DwarfEHActionTableEntry> action_table_entries;
 };
 
 size_t _el_rt_eh_decode_ULEB128(const uint8_t* data, uintptr_t* result);
 size_t _el_rt_eh_decode_SLEB128(const uint8_t* data, intptr_t* result);
 size_t _el_rt_eh_read_encoded_ptr(const uint8_t* data, DwarfEHEncoding encoding, uintptr_t* result);
 size_t _el_rt_eh_encoding_size(DwarfEHEncoding enc);
-
 
 #endif //ELECTRUM_DWARF_EH_H

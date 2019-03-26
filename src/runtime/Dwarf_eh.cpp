@@ -269,15 +269,6 @@ bool _el_rt_load_lsda(_Unwind_Context* const context, DwarfLSDATable* t) {
         lsda_ptr += _el_rt_eh_read_encoded_ptr(lsda_ptr, cst_enc, &cs.landingpad_offset);
         lsda_ptr += _el_rt_eh_decode_ULEB128(lsda_ptr, &cs.action);
 
-        cs.callsite_ptr = reinterpret_cast<void*>(landingpad_base+cs.offset);
-
-        if (cs.landingpad_offset==0) {
-            cs.landingpad_ptr = nullptr;
-        }
-        else {
-            cs.landingpad_ptr = reinterpret_cast<void*>(landingpad_base+cs.landingpad_offset);
-        }
-
         callsites.push_back(cs);
 
         cs_remaining -= reinterpret_cast<uintptr_t>(lsda_ptr)-start;
