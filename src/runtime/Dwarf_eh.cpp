@@ -213,6 +213,10 @@ ElectrumException* get_exception_object_from_info(_Unwind_Exception const* excep
     );
 }
 
+extern "C" int el_rt_exception_matches(char *exception_type, char *match) {
+    return strcmp(exception_type, match) == 0;
+}
+
 bool _el_rt_load_lsda(_Unwind_Context* const context, DwarfLSDATable* t) {
     auto* const lsda = reinterpret_cast<uint8_t* const>(_Unwind_GetLanguageSpecificData(context));
 
@@ -289,6 +293,7 @@ bool _el_rt_load_lsda(_Unwind_Context* const context, DwarfLSDATable* t) {
 
     return true;
 }
+
 bool _el_rt_cs_matches(_Unwind_Context* context,
         DwarfLSDATable* table,
         DwarfEHCallsite* callsite,
@@ -297,22 +302,17 @@ bool _el_rt_cs_matches(_Unwind_Context* context,
         return false;
     }
 
-    auto action_idx = callsite->action - 1;
-    auto current_action = 0;
-    auto action_ptr = table->action_table_ptr;
+    // Initial offset into the action table
+    auto action_ptr = table->action_table_ptr + callsite->action - 1;
 
     intptr_t type_info_offset = 0;
     intptr_t action_offset = 0;
     uint8_t* last_action_ptr = 0;
 
-    while(current_action <= action_idx) {
-        action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &type_info_offset);
-        last_action_ptr = action_ptr;
-        action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &action_offset);
-        ++current_action;
-    }
+    action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &type_info_offset);
+    last_action_ptr = action_ptr;
+    action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &action_offset);
 
-    // Found the action, now follow it and check type info
 
     auto encoding_size = _el_rt_eh_encoding_size(table->type_table_encoding);
 
@@ -351,23 +351,16 @@ _Unwind_Reason_Code _el_rt_cs_perform_actions(_Unwind_Context* context,
         return _URC_CONTINUE_UNWIND;
     }
 
-    auto action_idx = callsite->action - 1;
-    auto current_action = 0;
-    auto action_ptr = table->action_table_ptr;
+    // Initial offset into the action table
+    auto action_ptr = table->action_table_ptr + callsite->action - 1;
 
     intptr_t type_info_offset = 0;
     intptr_t action_offset = 0;
     uint8_t* last_action_ptr = 0;
 
-    // Search for the action to perform
-    while(current_action <= action_idx) {
-        action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &type_info_offset);
-        last_action_ptr = action_ptr;
-        action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &action_offset);
-        ++current_action;
-    }
-
-    // Found the action, now follow it and check type info
+    action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &type_info_offset);
+    last_action_ptr = action_ptr;
+    action_ptr += _el_rt_eh_decode_SLEB128(action_ptr, &action_offset);
 
     auto encoding_size = _el_rt_eh_encoding_size(table->type_table_encoding);
 
@@ -437,11 +430,10 @@ extern "C" _Unwind_Reason_Code el_rt_eh_personality(
 
             for (auto& cs: t.callsites) {
                 if(_el_rt_cs_perform_actions(context, &t, &cs, exc) == _URC_INSTALL_CONTEXT) {
-                    _Unwind_SetGR(context, 0, (uintptr_t) exception_info);
-                    _Unwind_SetGR(context, 1, (uintptr_t) exc->exception_type);
+                    //_Unwind_SetGR(context, 0, (uintptr_t) exception_info);
+                    _Unwind_SetGR(context, 0, (uintptr_t) exc->exception_type);
 
                     _Unwind_SetIP(context, t.landingpad_base_ptr+cs.landingpad_offset);
-
                     return _URC_INSTALL_CONTEXT;
                 }
             }

@@ -476,6 +476,16 @@ TEST(Compiler, tryThrowRunsCorrectCatchBlock) {
 
     Compiler c;
     auto r1 = c.compileAndEvalString("  (try"
+                                     "    (throw 'a)"
+                                     "    1234"
+                                     "    (catch (a e)"
+                                     "      1)"
+                                     "    (catch (b e)"
+                                     "      2)"
+                                     "    (catch (c e)"
+                                     "      3))");
+
+    auto r2 = c.compileAndEvalString("  (try"
                                      "    (throw 'b)"
                                      "    1234"
                                      "    (catch (a e)"
@@ -485,8 +495,23 @@ TEST(Compiler, tryThrowRunsCorrectCatchBlock) {
                                      "    (catch (c e)"
                                      "      3))");
 
-    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
-    EXPECT_EQ(rt_integer_value(r1), 2);
+    auto r3 = c.compileAndEvalString("  (try"
+                                     "    (throw 'c)"
+                                     "    1234"
+                                     "    (catch (a e)"
+                                     "      1)"
+                                     "    (catch (b e)"
+                                     "      2)"
+                                     "    (catch (c e)"
+                                     "      3))");
 
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 1);
+
+    EXPECT_EQ(rt_is_integer(r2), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r2), 2);
+
+    EXPECT_EQ(rt_is_integer(r3), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r3), 3);
     rt_deinit_gc();
 }

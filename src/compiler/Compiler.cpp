@@ -1004,38 +1004,59 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
     // Compile catch blocks
     currentBuilder()->SetInsertPoint(catch_block);
 
+    auto lp_type = llvm::StructType::get(llvmContext(),
+            {llvm::IntegerType::getInt8PtrTy(llvmContext(), 0)},
+            false);
+    auto landing_pad = currentBuilder()->CreateLandingPad(lp_type, node->catch_nodes.size());
+    auto exception_type = currentBuilder()->CreateExtractValue(landing_pad, 0);
+
+    auto e_eq = currentModule()->getOrInsertFunction("el_rt_exception_matches",
+            llvm::IntegerType::getInt64Ty(llvmContext()),
+            llvm::IntegerType::getInt8PtrTy(llvmContext()),
+            llvm::IntegerType::getInt8PtrTy(llvmContext()));
+
+    // Create basic blocks for each catch node
+    vector<llvm::BasicBlock*> catch_blocks;
+    for (auto n: node->catch_nodes) {
+        auto bblock = llvm::BasicBlock::Create(llvmContext(),
+                "catch_handler",
+                currentContext()->currentFunc());
+
+        catch_blocks.push_back(bblock);
+        auto exc_type = currentBuilder()->CreateGlobalStringPtr(*n->exception_type);
+        landing_pad->addClause(exc_type);
+
+        // Check if the current catch block matches
+        auto cond = currentBuilder()->CreateICmpEQ(
+                currentBuilder()->CreateCall(e_eq,
+                        {exception_type,
+                        exc_type}),
+                llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvmContext()), 1));
+
+        auto nextblock = llvm::BasicBlock::Create(llvmContext(), "catch_cont", currentContext()->currentFunc());
+        currentBuilder()->CreateCondBr(cond, bblock, nextblock);
+
+        currentBuilder()->SetInsertPoint(nextblock);
+    }
+
+    currentBuilder()->CreateUnreachable();
+
     for (int i = 0; i<node->catch_nodes.size(); i++) {
+        currentBuilder()->SetInsertPoint(catch_blocks[i]);
+
         auto catch_node = node->catch_nodes[i];
 
         std::unordered_map<std::string, llvm::Value*> local_env;
 
-        auto lp_type = llvm::StructType::get(llvmContext(),
-                {llvm::IntegerType::getInt8PtrTy(llvmContext(), 0)},
-                false);
-        auto landing_pad = currentBuilder()->CreateLandingPad(lp_type, 1);
-
-        local_env[*catch_node->exception_binding] = landing_pad;
+//        local_env[*catch_node->exception_binding] = landing_pad;
         currentContext()->pushLocalEnvironment(local_env);
 
-        auto exc_type_str = catch_node->exception_type;
-        auto exc_type = currentBuilder()->CreateGlobalStringPtr(*exc_type_str);
-        landing_pad->addClause(exc_type);
-
-        for(const auto &body_node: catch_node->body) {
+        for (const auto& body_node: catch_node->body) {
             compileNode(body_node);
-            if(body_node != catch_node->body.back()) {
+            if (body_node!=catch_node->body.back()) {
                 currentContext()->popValue();
             }
         }
-
-//        for (int j = 0; j<catch_node->body.size(); j++) {
-//            auto body_node = catch_node->body[i];
-//            compileNode(body_node);
-//
-//            if (j<catch_node->body.size()-1) {
-//                currentContext()->popValue();
-//            }
-//        }
 
         currentBuilder()->CreateStore(currentContext()->popValue(), rv);
         currentBuilder()->CreateBr(done_block);
@@ -1062,8 +1083,8 @@ void Compiler::compileThrow(const std::shared_ptr<electrum::ThrowAnalyzerNode> n
     auto exc_type = currentBuilder()->CreateGlobalStringPtr(*node->exception_type,
             ss.str());
     auto exc = currentBuilder()->CreateCall(alloc_func,
-                                            {exc_type,
-                                             meta});
+            {exc_type,
+             meta});
 
     auto throw_func = currentModule()->getOrInsertFunction(
             "el_rt_throw",
@@ -1076,7 +1097,8 @@ void Compiler::compileThrow(const std::shared_ptr<electrum::ThrowAnalyzerNode> n
 
     if (eh_info!=nullptr) {
         currentBuilder()->CreateInvoke(throw_func, unreachable_dest, eh_info->catch_dest, {exc});
-    } else {
+    }
+    else {
         currentBuilder()->CreateCall(throw_func, {exc});
     }
 
@@ -1084,9 +1106,7 @@ void Compiler::compileThrow(const std::shared_ptr<electrum::ThrowAnalyzerNode> n
     currentContext()->pushValue(makeNil());
 }
 
-
 #pragma mark - Helpers
-
 
 std::string Compiler::mangleSymbolName(const std::string ns, const std::string& name) {
     // Ignore ns for now, as we don't support yet
