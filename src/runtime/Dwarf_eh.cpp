@@ -64,7 +64,11 @@ extern "C" void* el_rt_allocate_exception(const char* exc_type, const char* mess
 
     exc->exception_type = exc_type;
     exc->metadata = meta;
-    strcpy(exc->message, message);
+    if (msg_len>0) {
+        strcpy(exc->message, message);
+    } else {
+        exc->message[0] = '\0';
+    }
 
     exc->unwind_exception.exception_class = el_exception_class;
     return static_cast<void*>(exc);

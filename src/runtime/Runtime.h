@@ -208,6 +208,7 @@ void* rt_gc_malloc_tagged_object(size_t size);
 extern "C" void rt_gc_add_root(void* obj);
 
 extern "C" void el_rt_throw(void *exception);
+extern "C" void* el_rt_allocate_exception(const char* exc_type, const char* message, void* meta);
 extern "C" void* el_rt_make_exception(void* exc_type, void* message, void* meta);
 
 extern "C" void* rt_apply_0(void*);

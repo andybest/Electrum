@@ -291,7 +291,7 @@ shared_ptr<ASTNode> Parser::readLispValue(void* val, const shared_ptr<SourcePosi
     }
     else if (rt_is_symbol(val)==TRUE_PTR) {
         form->tag = kTypeTagSymbol;
-        form->stringValue = make_shared<string>(rt_string_value(val));
+        form->stringValue = make_shared<string>(rt_symbol_extract_string(val));
     }
     else if (rt_is_pair(val)==TRUE_PTR) {
         form->tag = kTypeTagList;

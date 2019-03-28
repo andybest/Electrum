@@ -230,9 +230,13 @@ void print_expr(void* expr) {
 }
 }
 
-extern "C" void rt_assert_tag(void* obj, ETypeTag tag) {
+extern "C" void rt_assert_tag(void* obj, ETypeTag tag, const char* msg) {
     if (!electrum::is_object_with_tag(obj, tag)) {
-        throw std::exception();
+        auto exc = el_rt_allocate_exception(
+                "electrum.type-error",
+                msg,
+                NIL_PTR);
+        el_rt_throw(exc);
     }
 }
 
@@ -269,7 +273,10 @@ extern "C" void* rt_is_boolean(void* val) {
 
 extern "C" uint8_t rt_is_true(void* val) {
     if (!rt_is_boolean(val)) {
-        // ERROR!
+        el_rt_throw(el_rt_allocate_exception(
+                "electrum.type-error",
+                "Expected boolean",
+                NIL_PTR));
     }
 
     return static_cast<uint8_t>(val==TRUE_PTR);
@@ -300,6 +307,7 @@ extern "C" void* rt_is_float(void* val) {
 }
 
 extern "C" double rt_float_value(void* val) {
+    rt_assert_tag(val, kETypeTagFloat, "Expected float");
     auto header = TAG_TO_OBJECT(val);
     auto f = static_cast<EFloat*>(static_cast<void*>(header));
     return f->floatValue;
@@ -325,6 +333,7 @@ extern "C" void* rt_is_symbol(void* val) {
 }
 
 extern "C" const char* rt_symbol_extract_string(void* val) {
+    rt_assert_tag(val, kETypeTagSymbol, "Expected symbol");
     auto sym = reinterpret_cast<ESymbol*>(TAG_TO_OBJECT(val));
     return sym->name;
 }
@@ -349,6 +358,7 @@ extern "C" void* rt_is_string(void* val) {
 }
 
 extern "C" const char* rt_string_value(void* val) {
+    rt_assert_tag(val, kETypeTagString, "Expected string");
     auto str = reinterpret_cast<EString*>(TAG_TO_OBJECT(val));
     return str->stringValue;
 }
@@ -373,7 +383,6 @@ void* rt_is_keyword(void* val) {
 }
 
 extern "C" void* rt_make_var(void* sym) {
-
     auto var = static_cast<EVar*>(GC_MALLOC(sizeof(EVar)));
     var->header.gc_mark = 0;
     var->header.tag = kETypeTagVar;
@@ -388,11 +397,13 @@ extern "C" void* rt_is_var(void* v) {
 }
 
 extern "C" void rt_set_var(void* v, void* val) {
+    rt_assert_tag(v, kETypeTagVar, "Expected var");
     auto var = reinterpret_cast<EVar*>(TAG_TO_OBJECT(v));
     var->val = val;
 }
 
 extern "C" void* rt_deref_var(void* v) {
+    rt_assert_tag(v, kETypeTagVar, "Expected var");
     auto var = reinterpret_cast<EVar*>(TAG_TO_OBJECT(v));
     return var->val;
 }
@@ -411,30 +422,30 @@ void* rt_make_pair(void* value, void* next) {
 }
 
 void* rt_car(void* pair) {
+    rt_assert_tag(pair, kETypeTagPair, "Expected pair");
     auto header = TAG_TO_OBJECT(pair);
-    assert(header->tag==kETypeTagPair);
     auto pairVal = static_cast<EPair*>(static_cast<void*>(header));
     return pairVal->value;
 }
 
 void* rt_cdr(void* pair) {
+    rt_assert_tag(pair, kETypeTagPair, "Expected pair");
     auto header = TAG_TO_OBJECT(pair);
-    assert(header->tag==kETypeTagPair);
     auto pairVal = static_cast<EPair*>(static_cast<void*>(header));
     return pairVal->next;
 }
 
 void* rt_set_car(void* pair, void* val) {
+    rt_assert_tag(pair, kETypeTagPair, "Expected pair");
     auto header = TAG_TO_OBJECT(pair);
-    assert(header->tag==kETypeTagPair);
     auto pairVal = static_cast<EPair*>(static_cast<void*>(header));
     pairVal->value = val;
     return pair;
 }
 
 void* rt_set_cdr(void* pair, void* next) {
+    rt_assert_tag(pair, kETypeTagPair, "Expected pair");
     auto header = TAG_TO_OBJECT(pair);
-    assert(header->tag==kETypeTagPair);
     auto pairVal = static_cast<EPair*>(static_cast<void*>(header));
     pairVal->next = next;
     return pair;
@@ -465,11 +476,8 @@ extern "C" void* rt_make_compiled_function(uint32_t arity, uint32_t has_rest_arg
 }
 
 extern "C" uint64_t rt_compiled_function_get_arity(void* func) {
+    rt_assert_tag(func, kETypeTagFunction, "Expected a func");
     auto header = TAG_TO_OBJECT(func);
-
-    if (header->tag!=kETypeTagFunction) {
-        // TODO: Exception
-    }
 
     auto f = static_cast<ECompiledFunction*>(static_cast<void*>(header));
     return f->arity;
@@ -477,11 +485,6 @@ extern "C" uint64_t rt_compiled_function_get_arity(void* func) {
 
 extern "C" void* rt_compiled_function_get_ptr(void* func) {
     auto header = TAG_TO_OBJECT(func);
-
-    if (header->tag!=kETypeTagFunction) {
-        // TODO: Exception
-    }
-
     auto f = static_cast<ECompiledFunction*>(static_cast<void*>(header));
     return f->f_ptr;
 }
@@ -498,8 +501,8 @@ extern "C" void* rt_compiled_function_get_env(void* func, uint64_t index) {
 }
 
 extern "C" void* rt_apply(void* func, void* args) {
-    rt_assert_tag(func, kETypeTagFunction);
-    //rt_assert_tag(args, kETypeTagPair);
+    rt_assert_tag(func, kETypeTagFunction, "Apply: Expected a func");
+
     auto funcVal = static_cast<ECompiledFunction*>(static_cast<void*>(TAG_TO_OBJECT(func)));
 
     uint32_t has_rest_args = funcVal->has_rest_args;
@@ -510,12 +513,16 @@ extern "C" void* rt_apply(void* func, void* args) {
     void* arg_head = args;
     for (int i = 0; i<arity; i++) {
         if (arg_head==NIL_PTR) {
-            // TODO: Change this
-            printf("Apply: Error- expected %i args\n", arity);
-            throw std::exception();
+            std::stringstream ss;
+            ss << "Apply: Expected " << arity << " arguments.";
+            // Not enough arguments
+            el_rt_throw(el_rt_allocate_exception(
+                    "argument-error",
+                    ss.str().c_str(),
+                    NIL_PTR));
         }
 
-        rt_assert_tag(arg_head, kETypeTagPair);
+        rt_assert_tag(arg_head, kETypeTagPair, "Apply: Expected a pair");
         a.push_back(rt_car(arg_head));
         arg_head = rt_cdr(arg_head);
     }
@@ -526,9 +533,14 @@ extern "C" void* rt_apply(void* func, void* args) {
     }
     else {
         if (arg_head!=NIL_PTR) {
-            // TODO: Change this
-            printf("Apply: Error- too many args\n");
-            throw std::exception();
+            // Too many arguments
+            std::stringstream ss;
+            ss << "Apply: Expected " << arity << " arguments";
+
+            el_rt_throw(el_rt_allocate_exception(
+                    "argument-error",
+                    ss.str().c_str(),
+                    NIL_PTR));
         }
     }
 
@@ -571,9 +583,10 @@ extern "C" void* rt_apply(void* func, void* args) {
         return rt_apply_20(func, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13],
                 a[14], a[15], a[16], a[17], a[18], a[19]);
     default: {
-        // TODO: Change this
-        printf("Apply: Error- too many args\n");
-        throw std::exception();
+        el_rt_throw(el_rt_allocate_exception(
+                "argument-error",
+                "Apply: More than maximum number of supported arguments",
+                NIL_PTR));
     }
     }
 }
@@ -618,12 +631,24 @@ void* rt_environment_get(void* env, void* binding) {
         currentEnv = envVal->parent;
     }
 
-    // Cannot find symbol in environment!
-    // TODO: This should actually throw a catchable error
+    el_rt_throw(el_rt_allocate_exception(
+            "undefined-var-error",
+            ("Cannot find variable '" + std::string(rt_symbol_extract_string(binding))).c_str(),
+            NIL_PTR));
+
     return NIL_PTR;
 }
 
 #pragma mark - Arithmetic
+__attribute__((noreturn))
+void* rt_throw_invalid_argument_exception(const char *msg) {
+    auto exc = el_rt_allocate_exception(
+            "invalid-argument-error",
+            msg,
+            NIL_PTR);
+
+    el_rt_throw(exc);
+}
 
 extern "C" void* rt_add(void* x, void* y) {
     bool ix = electrum::is_integer(x);
@@ -656,7 +681,7 @@ extern "C" void* rt_add(void* x, void* y) {
         return rt_make_float(dx+((double) iiy));
     }
 
-    throw std::exception();
+    rt_throw_invalid_argument_exception("add: expected float or int");
 }
 
 extern "C" void* rt_sub(void* x, void* y) {
@@ -690,7 +715,7 @@ extern "C" void* rt_sub(void* x, void* y) {
         return rt_make_float(dx-((double) iiy));
     }
 
-    throw std::exception();
+    rt_throw_invalid_argument_exception("sub: expected float or int");
 }
 
 extern "C" void* rt_mul(void* x, void* y) {
@@ -725,7 +750,7 @@ extern "C" void* rt_mul(void* x, void* y) {
         return rt_make_float(dx*((double) iiy));
     }
 
-    throw std::exception();
+    rt_throw_invalid_argument_exception("mul: expected float or int");
 }
 
 extern "C" void* rt_div(void* x, void* y) {
@@ -770,12 +795,9 @@ extern "C" void* rt_div(void* x, void* y) {
         return rt_make_float(dx/((double) iiy));
     }
 
-    throw std::exception();
+    rt_throw_invalid_argument_exception("div: expected float or int");
 }
 
-extern "C" void* rt_test_throw() {
-    throw std::exception();
-}
 
 /**
  * Malloc a tagged object. It is assumed by the GC that this object will be

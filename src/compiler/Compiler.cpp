@@ -1072,6 +1072,7 @@ void Compiler::compileThrow(const std::shared_ptr<electrum::ThrowAnalyzerNode> n
             "el_rt_allocate_exception",
             llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
             llvm::IntegerType::getInt8PtrTy(llvmContext(), 0),
+            llvm::IntegerType::getInt8PtrTy(llvmContext(), 0),
             llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
 
     std::stringstream ss;
@@ -1084,6 +1085,7 @@ void Compiler::compileThrow(const std::shared_ptr<electrum::ThrowAnalyzerNode> n
             ss.str());
     auto exc = currentBuilder()->CreateCall(alloc_func,
             {exc_type,
+             llvm::ConstantPointerNull::get(llvm::IntegerType::getInt8PtrTy(llvmContext(), 0)),
              meta});
 
     auto throw_func = currentModule()->getOrInsertFunction(
