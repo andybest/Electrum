@@ -308,8 +308,6 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
     }
     case kAnalyzerNodeTypeTry: compileTry(std::dynamic_pointer_cast<TryAnalyzerNode>(node));
         break;
-    case kAnalyzerNodeTypeThrow: compileThrow(std::dynamic_pointer_cast<ThrowAnalyzerNode>(node));
-        break;
 
     default:throw CompilerException("Unrecognized node type", node->sourcePosition);
     }
@@ -1065,47 +1063,6 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
 
     currentBuilder()->SetInsertPoint(done_block);
     currentContext()->pushValue(currentBuilder()->CreateLoad(rv));
-}
-
-void Compiler::compileThrow(const std::shared_ptr<electrum::ThrowAnalyzerNode> node) {
-    auto alloc_func = currentModule()->getOrInsertFunction(
-            "el_rt_allocate_exception",
-            llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
-            llvm::IntegerType::getInt8PtrTy(llvmContext(), 0),
-            llvm::IntegerType::getInt8PtrTy(llvmContext(), 0),
-            llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
-
-    std::stringstream ss;
-    ss << "el_exc_" << *node->exception_type;
-
-    compileNode(node->metadata);
-    auto meta = currentContext()->popValue();
-
-    auto exc_type = currentBuilder()->CreateGlobalStringPtr(*node->exception_type,
-            ss.str());
-    auto exc = currentBuilder()->CreateCall(alloc_func,
-            {exc_type,
-             llvm::ConstantPointerNull::get(llvm::IntegerType::getInt8PtrTy(llvmContext(), 0)),
-             meta});
-
-    auto throw_func = currentModule()->getOrInsertFunction(
-            "el_rt_throw",
-            llvm::Type::getVoidTy(llvmContext()),
-            llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
-
-    auto unreachable_dest = llvm::BasicBlock::Create(llvmContext(), "throw_unreachable",
-            currentContext()->currentFunc());
-    auto eh_info = currentContext()->currentScope()->currentEHInfo();
-
-    if (eh_info!=nullptr) {
-        currentBuilder()->CreateInvoke(throw_func, unreachable_dest, eh_info->catch_dest, {exc});
-    }
-    else {
-        currentBuilder()->CreateCall(throw_func, {exc});
-    }
-
-    currentBuilder()->SetInsertPoint(unreachable_dest);
-    currentContext()->pushValue(makeNil());
 }
 
 #pragma mark - Helpers

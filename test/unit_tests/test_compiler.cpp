@@ -459,8 +459,10 @@ TEST(Compiler, tryThrowReturnsCatchResult) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
+    c.compileAndEvalString("(def-ffi-fn* throw el_rt_throw :el (:el))");
+    c.compileAndEvalString("(def-ffi-fn* exception el_rt_make_exception :el (:el :el :el))");
     auto r1 = c.compileAndEvalString("  (try"
-                                     "    (throw 'fooerror)"
+                                     "    (throw (exception 'fooerror \"A foo error\" nil))"
                                      "    1234"
                                      "    (catch (fooerror e)"
                                      "      5678))");

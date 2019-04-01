@@ -584,20 +584,3 @@ TEST(Analyzer, analyzesTryCatch) {
     EXPECT_EQ(catch1->body.size(), 1);
     EXPECT_EQ(catch2->body.size(), 2);
 }
-
-TEST(Analyzer, analyzesThrow) {
-    PARSE_STRING("(throw 'foo '(123 456))");
-
-    Analyzer an;
-    auto node = an.analyze(val);
-
-    ASSERT_EQ(node->nodeType(), kAnalyzerNodeTypeThrow);
-
-    auto throwNode = std::dynamic_pointer_cast<ThrowAnalyzerNode>(node);
-    EXPECT_EQ(*throwNode->exception_type, "foo");
-
-    ASSERT_EQ(throwNode->metadata->nodeType(), kAnalyzerNodeTypeConstantList);
-    auto listNode = std::dynamic_pointer_cast<ConstantListAnalyzerNode>(throwNode->metadata);
-
-    EXPECT_EQ(listNode->values.size(), 2);
-}

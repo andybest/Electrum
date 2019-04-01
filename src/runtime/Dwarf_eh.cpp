@@ -34,14 +34,14 @@ typedef uint64_t _Unwind_Exception_Class;
 
 constexpr _Unwind_Exception_Class make_exception_class(const char* c) {
     _Unwind_Exception_Class ec = 0;
-    for (unsigned int i = 0; i<sizeof(_Unwind_Exception_Class); ++i) {
+    for (unsigned int i = 0; i<sizeof(_Unwind_Exception_Class) / 8; ++i) {
         ec += c[i] << (i*8L);
     }
 
     return ec;
 }
 
-const _Unwind_Exception_Class el_exception_class = make_exception_class("ELECELEC");
+constexpr auto el_exception_class = make_exception_class("ELECELEC");
 
 extern "C" void el_rt_throw(void* thrown_exception) {
     auto exc = static_cast<ElectrumException*>(thrown_exception);

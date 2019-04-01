@@ -358,21 +358,6 @@ public:
     }
 };
 
-class ThrowAnalyzerNode : public AnalyzerNode {
-public:
-    shared_ptr<string> exception_type;
-
-    shared_ptr<AnalyzerNode> metadata;
-
-    AnalyzerNodeType nodeType() override {
-        return kAnalyzerNodeTypeThrow;
-    }
-
-    vector<shared_ptr<AnalyzerNode>> children() override {
-        return { metadata };
-    }
-};
-
 class CatchAnalyzerNode : public AnalyzerNode {
 public:
     shared_ptr<string> exception_type;
@@ -462,7 +447,6 @@ private:
     shared_ptr<AnalyzerNode> analyzeEvalWhen(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeTry(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeCatch(const shared_ptr<ASTNode>& form);
-    shared_ptr<AnalyzerNode> analyzeThrow(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode>
     maybeAnalyzeSpecialForm(const shared_ptr<string>& symbol_name, const shared_ptr<ASTNode>& form);
 
@@ -492,8 +476,7 @@ private:
             {"unquote", &Analyzer::analyzeUnquote},
             {"eval-when", &Analyzer::analyzeEvalWhen},
             {"try", &Analyzer::analyzeTry},
-            {"catch", &Analyzer::analyzeCatch},
-            {"throw", &Analyzer::analyzeThrow}
+            {"catch", &Analyzer::analyzeCatch}
     };
 
     struct AnalyzerDefinition {
