@@ -19,7 +19,7 @@ add_executable(Unit_Tests_run
         test_analyzer.cpp
         test_interpreter.cpp
         test_compiler.cpp
-        test_gc.cpp)
+        test_gc.cpp test_NamespaceManager.cpp)
 
 
 target_link_libraries(Unit_Tests_run gtest gtest_main)

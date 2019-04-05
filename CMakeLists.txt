@@ -5,6 +5,7 @@ include(CTest)
 
 set(CMAKE_CXX_STANDARD 17)
 
+include_directories(src/lib)
 include_directories(src)
 include_directories(src/include)
 

@@ -28,6 +28,7 @@
 
 #include "types/Types.h"
 #include "EvaluationPhase.h"
+#include "Namespace.h"
 #include <memory>
 #include <boost/variant.hpp>
 #include <string>
@@ -463,6 +464,10 @@ private:
     EvaluationPhase popEvaluationPhase();
     EvaluationPhase currentEvaluationPhase();
 
+    /* Namespaces */
+    shared_ptr<Namespace> currentNamespace();
+    shared_ptr<Namespace> getOrCreateNamespace(string ns);
+
     /// Analysis functions for special forms
     const std::unordered_map<std::string, AnalyzerFunc> specialForms{
             {"if", &Analyzer::analyzeIf},
@@ -490,6 +495,12 @@ private:
     /// Holds already defined globals
     std::unordered_map<std::string, AnalyzerDefinition> global_env_;
     vector<unordered_map<string, shared_ptr<AnalyzerNode>>> local_envs_;
+
+    /// Holds namespaces and their definitions
+    std::unordered_map<string, shared_ptr<Namespace>> namespaces;
+
+    /// The namespace of the currently analyzed form
+    string current_ns_;
 
     /// Flag to specify whether the analyzer is inside a quoted form
     bool is_quoting_;

@@ -9,7 +9,7 @@ set(HEADER_FILES
         Analyzer.h
         ElectrumJit.h
         CompilerExceptions.h
-        JitMemoryManager.h)
+        JitMemoryManager.h Namespace.h)
 
 set(SOURCE_FILES
         main.cpp
@@ -18,7 +18,7 @@ set(SOURCE_FILES
         Parser.cpp
         Analyzer.cpp
         ElectrumJit.cpp
-        JitMemoryManager.cpp)
+        JitMemoryManager.cpp NamespaceManager.cpp NamespaceManager.h)
 
 add_library(${CMAKE_PROJECT_NAME}c_lib STATIC
         ${HEADER_FILES}
