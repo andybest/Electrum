@@ -480,7 +480,7 @@ TEST(Compiler, tryThrowRunsCorrectCatchBlock) {
     c.compileAndEvalString("(def-ffi-fn* throw el_rt_throw :el (:el))");
     c.compileAndEvalString("(def-ffi-fn* exception el_rt_make_exception :el (:el :el :el))");
     auto r1 = c.compileAndEvalString("  (try"
-                                     "    (throw 'a)"
+                                     "    (throw (exception 'a nil nil))"
                                      "    1234"
                                      "    (catch (a e)"
                                      "      1)"
@@ -490,7 +490,7 @@ TEST(Compiler, tryThrowRunsCorrectCatchBlock) {
                                      "      3))");
 
     auto r2 = c.compileAndEvalString("  (try"
-                                     "    (throw 'b)"
+                                     "    (throw (exception 'b nil nil))"
                                      "    1234"
                                      "    (catch (a e)"
                                      "      1)"
@@ -500,7 +500,7 @@ TEST(Compiler, tryThrowRunsCorrectCatchBlock) {
                                      "      3))");
 
     auto r3 = c.compileAndEvalString("  (try"
-                                     "    (throw 'c)"
+                                     "    (throw (exception 'c nil nil))"
                                      "    1234"
                                      "    (catch (a e)"
                                      "      1)"

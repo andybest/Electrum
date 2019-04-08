@@ -64,6 +64,7 @@ public:
     void* malloc(size_t size);
     void* malloc_tagged_object(size_t size);
     void free(void* ptr);
+    void set_current_exception(void* exception);
 
 private:
     std::vector<statepoint_table_t*> statepoint_tables_;
@@ -72,6 +73,7 @@ private:
     std::unordered_set<void*> object_roots_;
     std::vector<void*> heap_objects_;
     uint64_t sweep_heap();
+    void *current_exception;
 };
 
 static GarbageCollector* main_collector;

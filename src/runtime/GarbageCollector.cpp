@@ -28,11 +28,13 @@
 #include "stackmap/api.h"
 #include "Runtime.h"
 #include <cassert>
+#include "Dwarf_eh.h"
 
 namespace electrum {
 
 GarbageCollector::GarbageCollector(GCMode mode)
-        :collector_mode_(mode) {
+        :collector_mode_(mode),
+         current_exception(NIL_PTR) {
     switch (mode) {
     case kGCModeCompilerOwned:scan_stack_ = true;
         break;
@@ -79,14 +81,14 @@ void GarbageCollector::collect(void* stackPointer) {
     auto stackIndex = reinterpret_cast<uintptr_t>(stackPointer);
     stackIndex += sizeof(void*);
 
-    while (frame_info!=nullptr) {
-        for (uint16_t i = 0; i<frame_info->numSlots; i++) {
+    while (frame_info != nullptr) {
+        for (uint16_t i = 0; i < frame_info->numSlots; i++) {
             auto pointerSlot = frame_info->slots[i];
-            if (pointerSlot.kind>=0) {
+            if (pointerSlot.kind >= 0) {
                 continue;
             }
 
-            auto ptr = reinterpret_cast<void**>(stackIndex+pointerSlot.offset);
+            auto ptr = reinterpret_cast<void**>(stackIndex + pointerSlot.offset);
 
             // Mark if it is an object
             if (is_object(*ptr)) {
@@ -95,16 +97,20 @@ void GarbageCollector::collect(void* stackPointer) {
         }
 
         // Move to next frame
-        stackIndex = stackIndex+frame_info->frameSize;
+        stackIndex     = stackIndex + frame_info->frameSize;
         return_address = *reinterpret_cast<uint64_t*>(stackIndex);
         stackIndex += sizeof(void*);
-        frame_info = get_frame_info(return_address);
+        frame_info     = get_frame_info(return_address);
     };
     // Mark roots
     for (auto it: object_roots_) {
         if (is_object(it)) {
             traverse_object(it);
         }
+    }
+
+    if(is_object(current_exception)) {
+        traverse_object(current_exception);
     }
 
     sweep_heap();
@@ -169,7 +175,7 @@ void GarbageCollector::traverse_object(void* vobj) {
         case kETypeTagFunction: {
             auto fn = reinterpret_cast<ECompiledFunction*>(reinterpret_cast<void*>(obj));
 
-            for (uint64_t i = 0; i<fn->env_size; i++) {
+            for (uint64_t i = 0; i < fn->env_size; i++) {
                 auto e = fn->env[i];
                 if (is_object(e)) {
                     st.push_back(TAG_TO_OBJECT(e));
@@ -182,6 +188,14 @@ void GarbageCollector::traverse_object(void* vobj) {
         case kETypeTagInterpretedFunction: {
             auto fn = reinterpret_cast<EInterpretedFunction*>(reinterpret_cast<void*>(obj));
 
+            break;
+        }
+
+        case kETypeTagException: {
+            auto exc = reinterpret_cast<ElectrumException*>(reinterpret_cast<void*>(obj));
+            if(is_object(exc->metadata)) {
+                st.push_back(TAG_TO_OBJECT(exc->metadata));
+            }
             break;
         }
 
@@ -229,7 +243,7 @@ void GarbageCollector::add_object_root(void* root) {
         return;
     }
 
-    assert(object_roots_.count(root)==0);
+    assert(object_roots_.count(root) == 0);
     object_roots_.emplace(root);
 }
 
@@ -242,7 +256,7 @@ uint64_t GarbageCollector::sweep_heap() {
     uint64_t numCollected = 0;
 
     auto it = heap_objects_.begin();
-    while (it!=heap_objects_.end()) {
+    while (it != heap_objects_.end()) {
         auto header = TAG_TO_OBJECT(*it);
 
         if (!header->gc_mark) {
@@ -260,6 +274,10 @@ uint64_t GarbageCollector::sweep_heap() {
 
     return numCollected;
 }
+
+void GarbageCollector::set_current_exception(void *exception) {
+    current_exception = exception;
+}
 }
 
 /**
@@ -272,7 +290,7 @@ extern "C" void rt_init_gc(void* stackmap) {
 }
 
 extern "C" void rt_gc_init_stackmap(void* stackmap) {
-    if(stackmap != nullptr) {
+    if (stackmap != nullptr) {
         auto collector = rt_get_gc();
         collector->init_stackmap(stackmap);
     }

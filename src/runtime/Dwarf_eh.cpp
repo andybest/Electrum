@@ -44,7 +44,9 @@ constexpr _Unwind_Exception_Class make_exception_class(const char* c) {
 constexpr auto el_exception_class = make_exception_class("ELECELEC");
 
 extern "C" void el_rt_throw(void* thrown_exception) {
-    auto exc = static_cast<ElectrumException*>(thrown_exception);
+    rt_get_gc()->set_current_exception(thrown_exception);
+
+    auto exc = reinterpret_cast<ElectrumException*>(TAG_TO_OBJECT(thrown_exception));
     _Unwind_RaiseException(&exc->unwind_exception);
 
     // If the exception was caught, this point won't ever be reached
@@ -62,7 +64,9 @@ extern "C" void* el_rt_allocate_exception(const char* exc_type, const char* mess
     exc->header.gc_mark = 0;
     exc->header.tag = kETypeTagException;
 
-    exc->exception_type = exc_type;
+    exc->exception_type = static_cast<char*>(malloc(strlen(exc_type)));
+    strcpy(exc->exception_type, exc_type);
+
     exc->metadata = meta;
     if (msg_len>0) {
         strcpy(exc->message, message);
@@ -71,7 +75,7 @@ extern "C" void* el_rt_allocate_exception(const char* exc_type, const char* mess
     }
 
     exc->unwind_exception.exception_class = el_exception_class;
-    return static_cast<void*>(exc);
+    return OBJECT_TO_TAG(exc);
 }
 
 extern "C" void* el_rt_make_exception(void* exc_type, void* message, void* meta) {
@@ -250,7 +254,7 @@ ElectrumException* get_exception_object_from_info(_Unwind_Exception const* excep
     auto offset = offsetof(ElectrumException, unwind_exception);
     auto ptr = reinterpret_cast<uintptr_t const>( exception_info )-offset;
     return reinterpret_cast<ElectrumException*>(
-            ptr
+            TAG_TO_OBJECT(ptr)
     );
 }
 
@@ -461,6 +465,8 @@ extern "C" _Unwind_Reason_Code el_rt_eh_personality(
 
             for (auto& cs: t.callsites) {
                 if (_el_rt_cs_perform_actions(context, &t, &cs, exc)==_URC_INSTALL_CONTEXT) {
+                    rt_get_gc()->set_current_exception(NIL_PTR);
+
                     //_Unwind_SetGR(context, 0, (uintptr_t) exception_info);
                     _Unwind_SetGR(context, 0, (uintptr_t) exc->exception_type);
 
