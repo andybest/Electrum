@@ -101,3 +101,43 @@ TEST(NamespaceManager, findsSymbolInImportedNamespaceWithAlias) {
     auto def2 = m.lookupSymbolInNS(ns_foo, "bar", "baz");
     EXPECT_FALSE(def2.has_value());
 }
+
+TEST(NamespaceManager, findsImportedSymbol) {
+    NamespaceManager m;
+    auto ns_foo = m.getOrCreateNamespace("foo");
+    auto ns_bar = m.getOrCreateNamespace("bar");
+
+    EXPECT_TRUE(m.addGlobalDefinition(ns_bar,
+            "baz",
+            kDefinitionTypeVariable,
+            kEvaluationPhaseCompileTime));
+
+    auto rv = m.importSymbol(ns_foo, ns_bar, "baz", std::nullopt);
+    ASSERT_EQ(rv, NamespaceManager::ReturnCode::NoErr);
+
+    auto sym_result = m.lookupSymbolInNS(ns_foo, std::nullopt, "baz");
+    ASSERT_TRUE(sym_result.has_value());
+
+    EXPECT_EQ(sym_result->name, "baz");
+    EXPECT_EQ(sym_result->ns, "bar");
+}
+
+TEST(NamespaceManager, findsImportedSymbolWithAlias) {
+    NamespaceManager m;
+    auto ns_foo = m.getOrCreateNamespace("foo");
+    auto ns_bar = m.getOrCreateNamespace("bar");
+
+    EXPECT_TRUE(m.addGlobalDefinition(ns_bar,
+            "baz",
+            kDefinitionTypeVariable,
+            kEvaluationPhaseCompileTime));
+
+    auto rv = m.importSymbol(ns_foo, ns_bar, "baz", "bazalias");
+    ASSERT_EQ(rv, NamespaceManager::ReturnCode::NoErr);
+
+    auto sym_result = m.lookupSymbolInNS(ns_foo, std::nullopt, "bazalias");
+    ASSERT_TRUE(sym_result.has_value());
+
+    EXPECT_EQ(sym_result->name, "baz");
+    EXPECT_EQ(sym_result->ns, "bar");
+}

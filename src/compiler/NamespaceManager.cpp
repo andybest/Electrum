@@ -82,7 +82,7 @@ std::optional<Definition> NamespaceManager::lookupSymbolInNS(
     if (result != ns->symbol_imports.end()) {
         auto import    = result->second;
         auto import_ns = getOrCreateNamespace(import.ns);
-        return lookupGlobalSymbolInNS(ns, import.sym);
+        return lookupGlobalSymbolInNS(import_ns, import.sym);
     }
 
     // Can't find symbol
@@ -132,6 +132,37 @@ bool NamespaceManager::importNS(
     source_ns->ns_imports.push_back(i);
 
     return true;
+}
+
+NamespaceManager::ReturnCode NamespaceManager::importSymbol(
+        const std::shared_ptr<Namespace>& dest_ns,
+        const std::shared_ptr<Namespace>& source_ns,
+        const std::string& symbol_name,
+        const std::optional<std::string>& alias) {
+
+    if(!lookupGlobalSymbolInNS(source_ns, symbol_name).has_value()) {
+        return ReturnCode::SymbolNotFound;
+    }
+
+    SymbolImport s;
+    s.ns = source_ns->name;
+    s.sym = symbol_name;
+    s.alias = alias;
+
+    std::string import_sym;
+    if(alias.has_value()) {
+        import_sym = *alias;
+    } else {
+        import_sym = symbol_name;
+    }
+
+    if(dest_ns->symbol_imports.find(import_sym) != dest_ns->symbol_imports.end()) {
+        return ReturnCode::SymbolAlreadyExists;
+    }
+
+    dest_ns->symbol_imports[import_sym] = s;
+
+    return ReturnCode::NoErr;
 }
 
 }

@@ -35,6 +35,12 @@ namespace electrum {
 class NamespaceManager {
 
 public:
+    enum class ReturnCode {
+        NoErr,
+        SymbolNotFound,
+        SymbolAlreadyExists
+    };
+
     /// Holds namespaces and their definitions
     std::unordered_map<std::string, std::shared_ptr<Namespace>> namespaces;
 
@@ -51,7 +57,10 @@ public:
             DefinitionType type,
             EvaluationPhase phase);
     bool
-    importNS(const std::shared_ptr<Namespace>& source_ns, std::shared_ptr<Namespace> import_ns, std::optional<std::string> alias);
+    importNS(const std::shared_ptr<Namespace>& source_ns, std::shared_ptr<Namespace> import_ns,
+            std::optional<std::string> alias);
+    ReturnCode importSymbol(const std::shared_ptr<Namespace>& dest_ns, const std::shared_ptr<Namespace>& source_ns, const std::string& symbol_name,
+            const std::optional<std::string>& alias);
 };
 }
 
