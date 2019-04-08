@@ -33,7 +33,7 @@ TEST(Compiler, compilesConstantInteger) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("1234");
+    auto     result = c.compileAndEvalString("1234");
 
     EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result), 1234);
@@ -45,7 +45,7 @@ TEST(Compiler, compilesConstantFloat) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("1234.5678");
+    auto     result = c.compileAndEvalString("1234.5678");
 
     EXPECT_EQ(rt_is_float(result), TRUE_PTR);
     EXPECT_FLOAT_EQ(rt_float_value(result), 1234.5678);
@@ -57,7 +57,7 @@ TEST(Compiler, compilesConstantBoolean) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("#t");
+    auto     result = c.compileAndEvalString("#t");
 
     EXPECT_EQ(rt_is_boolean(result), TRUE_PTR);
     EXPECT_EQ(result, TRUE_PTR);
@@ -73,7 +73,7 @@ TEST(Compiler, compilesConstantString) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("\"foo\"");
+    auto     result = c.compileAndEvalString("\"foo\"");
 
     EXPECT_EQ(rt_is_string(result), TRUE_PTR);
     EXPECT_STREQ(rt_string_value(result), "foo");
@@ -85,7 +85,7 @@ TEST(Compiler, compilesConstantNil) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("nil");
+    auto     result = c.compileAndEvalString("nil");
 
     EXPECT_EQ(result, NIL_PTR);
 
@@ -96,7 +96,7 @@ TEST(Compiler, compilesIf) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("(if #t 1234 5678)");
+    auto     result = c.compileAndEvalString("(if #t 1234 5678)");
 
     EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result), 1234);
@@ -112,7 +112,7 @@ TEST(Compiler, compilesDo) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("(do 123 456 789)");
+    auto     result = c.compileAndEvalString("(do 123 456 789)");
 
     EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result), 789);
@@ -124,7 +124,7 @@ TEST(Compiler, compilesDef) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("(do (def a 1234) a)");
+    auto     result = c.compileAndEvalString("(do (def a 1234) a)");
 
     EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result), 1234);
@@ -151,9 +151,9 @@ TEST(Compiler, compilesBasicLambda) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto def = c.compileAndEvalString("(def l (lambda (x) x))");
-    auto result1 = c.compileAndEvalString("(l 1234)");
-    auto result2 = c.compileAndEvalString("(l 5.678)");
+    auto     def     = c.compileAndEvalString("(def l (lambda (x) x))");
+    auto     result1 = c.compileAndEvalString("(l 1234)");
+    auto     result2 = c.compileAndEvalString("(l 5.678)");
 
     EXPECT_EQ(rt_is_integer(result1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result1), 1234);
@@ -167,9 +167,9 @@ TEST(Compiler, compilesLambdaWithBranch) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto def = c.compileAndEvalString("(def b (lambda (x) (if x 1234 5.678)))");
-    auto result1 = c.compileAndEvalString("(b #t)");
-    auto result2 = c.compileAndEvalString("(b #f)");
+    auto     def     = c.compileAndEvalString("(def b (lambda (x) (if x 1234 5.678)))");
+    auto     result1 = c.compileAndEvalString("(b #t)");
+    auto     result2 = c.compileAndEvalString("(b #f)");
 
     EXPECT_EQ(rt_is_integer(result1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result1), 1234);
@@ -183,7 +183,7 @@ TEST(Compiler, compilesLambdaWithCapturedEnvironment) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("(((lambda (x) (lambda () x)) 1234))");
+    auto     result = c.compileAndEvalString("(((lambda (x) (lambda () x)) 1234))");
     EXPECT_EQ(rt_is_integer(result), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(result), 1234);
 
@@ -217,7 +217,7 @@ TEST(Compiler, compilesQuotedSymbol) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("'foo");
+    auto     result = c.compileAndEvalString("'foo");
 
     EXPECT_EQ(rt_is_symbol(result), TRUE_PTR);
     EXPECT_TRUE(symbol_equal(result, rt_make_symbol("foo")));
@@ -229,7 +229,7 @@ TEST(Compiler, compilesQuotedList) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("'(1 2 a)");
+    auto     result = c.compileAndEvalString("'(1 2 a)");
     EXPECT_EQ(rt_is_pair(result), TRUE_PTR);
 
     auto i1 = rt_car(result);
@@ -252,7 +252,7 @@ TEST(Compiler, compilesQuotedEmptyList) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("'()");
+    auto     result = c.compileAndEvalString("'()");
     EXPECT_EQ(result, NIL_PTR);
 
     rt_deinit_gc();
@@ -262,7 +262,7 @@ TEST(Compiler, compilesQuotedQuote) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("'('a)");
+    auto     result = c.compileAndEvalString("'('a)");
     EXPECT_EQ(rt_is_pair(result), TRUE_PTR);
 
     auto car = rt_car(result);
@@ -279,7 +279,7 @@ TEST(Compiler, compilesQuoteInLambda) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("((lambda (a b c) `(,a ,b ,c)) 1 2 3)");
+    auto     result = c.compileAndEvalString("((lambda (a b c) `(,a ,b ,c)) 1 2 3)");
 
     // Expected result: '(1 2 3)
     EXPECT_EQ(rt_is_pair(result), TRUE_PTR);
@@ -303,10 +303,10 @@ TEST(Compiler, compilesSimpleMacro) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto result = c.compileAndEvalString("(do "
-                                            "  (def-ffi-fn* cons rt_make_pair :el (:el :el))"
-                                            "  (defmacro make-list (x y z) `(cons ,x (cons ,y (cons ,z nil))))"
-                                            "  (make-list 1 2 3))");
+    auto     result = c.compileAndEvalString("(do "
+                                             "  (def-ffi-fn* cons rt_make_pair :el (:el :el))"
+                                             "  (defmacro make-list (x y z) `(cons ,x (cons ,y (cons ,z nil))))"
+                                             "  (make-list 1 2 3))");
 
     // Should result in (1 2 3)
 
@@ -333,8 +333,8 @@ TEST(Compiler, compilesLambdaWithRestArgs) {
 
     Compiler c;
     c.compileAndEvalString("(do "
-                              "  (def-ffi-fn* car rt_car :el (:el))"
-                              "  (def-ffi-fn* cdr rt_cdr :el (:el)))");
+                           "  (def-ffi-fn* car rt_car :el (:el))"
+                           "  (def-ffi-fn* cdr rt_cdr :el (:el)))");
 
     auto r1 = c.compileAndEvalString("((lambda (x & rest) x) 1 2 3)");
     auto r2 = c.compileAndEvalString("((lambda (x & rest) (car rest)) 1 2 3)");
@@ -444,10 +444,10 @@ TEST(Compiler, tryNoThrowReturnsResult) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto r1 = c.compileAndEvalString("  (try"
-                                     "    ((lambda () 1234))"
-                                     "    (catch (fakeerror e)"
-                                     "      5678))");
+    auto     r1 = c.compileAndEvalString("  (try"
+                                         "    ((lambda () 1234))"
+                                         "    (catch (fakeerror e)"
+                                         "      5678))");
 
     EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(r1), 1234);
@@ -477,6 +477,8 @@ TEST(Compiler, tryThrowRunsCorrectCatchBlock) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
+    c.compileAndEvalString("(def-ffi-fn* throw el_rt_throw :el (:el))");
+    c.compileAndEvalString("(def-ffi-fn* exception el_rt_make_exception :el (:el :el :el))");
     auto r1 = c.compileAndEvalString("  (try"
                                      "    (throw 'a)"
                                      "    1234"

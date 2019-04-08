@@ -247,11 +247,16 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(const shared_ptr<ASTNode>& form
         return node;
     }
 
-    auto globalResult = global_env_.find(*sym_name);
-    if (globalResult != global_env_.end()) {
-        auto def = globalResult->second;
+    // TODO: get ns from symbol
+    std::optional<string> ns = std::nullopt;
 
-        if (in_macro_ && !(def.phase & kEvaluationPhaseCompileTime)) {
+    auto globalResult = ns_manager.lookupSymbolInNS(
+            currentNamespace(),
+            ns,
+            *sym_name);
+
+    if (globalResult.has_value()) {
+        if (in_macro_ && !(globalResult->phase & kEvaluationPhaseCompileTime)) {
             throw CompilerException("The symbol " + *sym_name + " is not visible to the compiler",
                     form->sourcePosition);
         }
@@ -260,6 +265,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(const shared_ptr<ASTNode>& form
         node->sourcePosition = form->sourcePosition;
         node->name           = form->stringValue;
         node->is_global      = true;
+
         return node;
     }
 
@@ -722,7 +728,10 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDef(const shared_ptr<ASTNode>& form) {
     d.phase = currentEvaluationPhase();
     d.node  = valueNode;
 
-    global_env_[*name] = d;
+    ns_manager.addGlobalDefinition(currentNamespace(),
+            *name,
+            kDefinitionTypeVariable,
+            currentEvaluationPhase());
 
     auto node = std::make_shared<DefAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
@@ -810,11 +819,10 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDefFFIFn(const shared_ptr<ASTNode>& fo
     node->return_type    = ret_type;
     node->arg_types      = args;
 
-    AnalyzerDefinition d;
-    d.phase = currentEvaluationPhase();
-    d.node  = node;
-
-    global_env_[*binding] = d;
+    ns_manager.addGlobalDefinition(currentNamespace(),
+            *binding,
+            kDefinitionTypeFunction,
+            currentEvaluationPhase());
 
     return node;
 }
@@ -1042,16 +1050,6 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeCatch(const shared_ptr<ASTNode>& form)
     return node;
 }
 
-shared_ptr<AnalyzerNode> Analyzer::initialBindingWithName(const std::string& name) {
-    auto result = global_env_.find(name);
-
-    if (result != global_env_.end()) {
-        return result->second.node;
-    }
-
-    return nullptr;
-}
-
 void Analyzer::pushLocalEnv() {
     local_envs_.emplace_back();
 }
@@ -1094,7 +1092,7 @@ EvaluationPhase Analyzer::currentEvaluationPhase() {
 }
 
 std::shared_ptr<Namespace> Analyzer::currentNamespace() {
-    return nullptr;//return getOrCreateNamespace(current_ns_);
+    return ns_manager.getOrCreateNamespace(current_ns_);
 }
 
 }

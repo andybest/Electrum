@@ -88,6 +88,7 @@ extern "C" void* el_rt_make_exception(void* exc_type, void* message, void* meta)
                 "electrum.invalid-type",
                 "Exception message must be a string",
                 NIL_PTR);
+        el_rt_throw(exc);
     }
 
     const char* msg = nullptr;
@@ -247,8 +248,9 @@ size_t _el_rt_eh_encoding_size(DwarfEHEncoding enc) {
 
 ElectrumException* get_exception_object_from_info(_Unwind_Exception const* exception_info) {
     auto offset = offsetof(ElectrumException, unwind_exception);
+    auto ptr = reinterpret_cast<uintptr_t const>( exception_info )-offset;
     return reinterpret_cast<ElectrumException*>(
-            reinterpret_cast<uintptr_t const>( exception_info )-offset
+            ptr
     );
 }
 

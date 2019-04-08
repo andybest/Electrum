@@ -29,6 +29,7 @@
 #include "types/Types.h"
 #include "EvaluationPhase.h"
 #include "Namespace.h"
+#include "NamespaceManager.h"
 #include <memory>
 #include <boost/variant.hpp>
 #include <string>
@@ -402,7 +403,6 @@ public:
 
     shared_ptr<AnalyzerNode> analyze(const shared_ptr<ASTNode>& form, uint64_t depth = 0,
             EvaluationPhase phase = kEvaluationPhaseLoadTime);
-    shared_ptr<AnalyzerNode> initialBindingWithName(const std::string& name);
 
     /// Collapses the given node into a vector of top level forms
     vector<shared_ptr<AnalyzerNode>> collapseTopLevelForms(const shared_ptr<AnalyzerNode>& node);
@@ -466,7 +466,6 @@ private:
 
     /* Namespaces */
     shared_ptr<Namespace> currentNamespace();
-    shared_ptr<Namespace> getOrCreateNamespace(string ns);
 
     /// Analysis functions for special forms
     const std::unordered_map<std::string, AnalyzerFunc> specialForms{
@@ -489,15 +488,13 @@ private:
       shared_ptr<AnalyzerNode> node;
     };
 
+
     /// Holds global macros
     std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_macros_;
 
-    /// Holds already defined globals
-    std::unordered_map<std::string, AnalyzerDefinition> global_env_;
     vector<unordered_map<string, shared_ptr<AnalyzerNode>>> local_envs_;
 
-    /// Holds namespaces and their definitions
-    std::unordered_map<string, shared_ptr<Namespace>> namespaces;
+    NamespaceManager ns_manager;
 
     /// The namespace of the currently analyzed form
     string current_ns_;
