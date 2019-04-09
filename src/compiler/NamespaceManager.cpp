@@ -69,6 +69,13 @@ std::optional<Definition> NamespaceManager::lookupSymbolInNS(
             return lookupGlobalSymbolInNS(t_ns, sym_name);
         }
 
+        // Fully qualified ns lookup
+        auto result = namespaces.find(*target_ns);
+        if(result != namespaces.end()) {
+            auto t_ns = getOrCreateNamespace(*target_ns);
+            return lookupGlobalSymbolInNS(t_ns, sym_name);
+        }
+
         return std::nullopt;
     }
 

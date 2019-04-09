@@ -575,3 +575,14 @@ TEST(Analyzer, analyzesInNS) {
 
     EXPECT_EQ(an.currentNamespace()->name, "foo");
 }
+
+TEST(Analyzer, definitionFromOtherNSVisible) {
+    PARSE_STRING("(do (in-ns 'foo)"
+                 "    (def baz 1)"
+                 "    (in-ns 'bar)"
+                 "    foo/baz)");
+
+    Analyzer an;
+
+    EXPECT_NO_THROW(an.analyze(val));
+}

@@ -78,6 +78,9 @@ public:
     /// The phases in which the node will be evaluated
     EvaluationPhase evaluation_phase = kEvaluationPhaseNone;
 
+    /// The namespace that the node is evaluated in
+    string ns;
+
     /// The node's children
     virtual vector<shared_ptr<AnalyzerNode>> children() { return {}; };
 
@@ -240,6 +243,10 @@ public:
 
 class VarLookupNode : public AnalyzerNode {
 public:
+
+    /// The binding namespace
+    shared_ptr<std::string> target_ns;
+
     /// The binding name
     shared_ptr<std::string> name;
 

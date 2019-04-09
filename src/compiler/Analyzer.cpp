@@ -35,7 +35,7 @@ namespace electrum {
 Analyzer::Analyzer()
         :is_quoting_(false),
          in_macro_(false),
-         current_ns_("el.user"){
+         current_ns_("el.user") {
 }
 
 shared_ptr<AnalyzerNode> Analyzer::analyze(const shared_ptr<ASTNode>& form, uint64_t depth, EvaluationPhase phase) {
@@ -248,13 +248,18 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(const shared_ptr<ASTNode>& form
         return node;
     }
 
-    // TODO: get ns from symbol
+    string binding = *sym_name;
     std::optional<string> ns = std::nullopt;
+    if(auto pos = sym_name->find_first_of('/')) {
+        ns = sym_name->substr(0, pos);
+        auto b_pos = pos + 1;
+        binding = sym_name->substr(b_pos, sym_name->size() - b_pos);
+    }
 
     auto globalResult = ns_manager.lookupSymbolInNS(
             currentNamespace(),
             ns,
-            *sym_name);
+            binding);
 
     if (globalResult.has_value()) {
         if (in_macro_ && !(globalResult->phase & kEvaluationPhaseCompileTime)) {
@@ -279,6 +284,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeInteger(const shared_ptr<ASTNode>& for
     node->type           = kAnalyzerConstantTypeInteger;
     node->value          = form->integerValue;
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     return node;
 }
 
@@ -287,6 +293,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeFloat(const shared_ptr<ASTNode>& form)
     node->type           = kAnalyzerConstantTypeFloat;
     node->value          = form->floatValue;
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     return node;
 }
 
@@ -295,6 +302,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeBoolean(const shared_ptr<ASTNode>& for
     node->type           = kAnalyzerConstantTypeBoolean;
     node->value          = form->booleanValue;
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     return node;
 }
 
@@ -303,6 +311,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeString(const shared_ptr<ASTNode>& form
     node->type           = kAnalyzerConstantTypeString;
     node->value          = form->stringValue;
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     return node;
 }
 
@@ -311,6 +320,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeNil(const shared_ptr<ASTNode>& form) {
     node->type           = kAnalyzerConstantTypeNil;
     node->value          = form->stringValue;
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     return node;
 }
 
@@ -319,6 +329,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeKeyword(const shared_ptr<ASTNode>& for
     node->type           = kAnalyzerConstantTypeKeyword;
     node->value          = form->stringValue;
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     return node;
 }
 
@@ -334,6 +345,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeList(const shared_ptr<ASTNode>& form) 
 
         auto node = make_shared<ConstantListAnalyzerNode>();
         node->sourcePosition = form->sourcePosition;
+        node->ns             = current_ns_;
 
         for (const auto& item: *listPtr) {
             node->values.push_back(analyzeForm(item));
@@ -391,6 +403,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMaybeInvoke(const shared_ptr<ASTNode>&
 
     auto node = std::make_shared<MaybeInvokeAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     node->args.reserve(listPtr->size() - 1);
 
     bool first = true;
@@ -423,6 +436,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeIf(const shared_ptr<ASTNode>& form) {
 
     auto node = make_shared<IfAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     node->condition      = analyzeForm(conditionForm);
     node->consequent     = analyzeForm(consequentForm);
 
@@ -452,6 +466,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDo(const shared_ptr<ASTNode>& form) {
 
     auto node = make_shared<DoAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
 
     // Add all but the last statements to 'statements'
     for (auto it = listPtr->begin() + 1; it < listPtr->end() - 1; ++it) {
@@ -513,6 +528,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode>& form
 
         auto sym = std::make_shared<ConstantValueAnalyzerNode>();
         sym->sourcePosition = arg->sourcePosition;
+        sym->ns             = current_ns_;
         sym->value          = arg->stringValue;
         sym->type           = kAnalyzerConstantTypeSymbol;
         arg_name_nodes.push_back(sym);
@@ -550,6 +566,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode>& form
     auto node = std::make_shared<LambdaAnalyzerNode>();
 
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     node->arg_names      = arg_names;
     node->arg_name_nodes = arg_name_nodes;
     node->body           = body;
@@ -607,6 +624,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
 
         auto sym = std::make_shared<ConstantValueAnalyzerNode>();
         sym->sourcePosition = arg->sourcePosition;
+        sym->ns             = current_ns_;
         sym->value          = arg->stringValue;
         sym->type           = kAnalyzerConstantTypeSymbol;
         arg_name_nodes.push_back(sym);
@@ -644,6 +662,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
     auto node = std::make_shared<DefMacroAnalyzerNode>();
 
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     node->name           = binding;
     node->arg_names      = arg_names;
     node->arg_name_nodes = arg_name_nodes;
@@ -676,6 +695,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacroExpand(const shared_ptr<ASTNode>&
 
     auto node = make_shared<MacroExpandAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     node->macro          = macro;
     node->args.reserve(listPtr->size() - 1);
     node->do_evaluate = true;
@@ -736,6 +756,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDef(const shared_ptr<ASTNode>& form) {
 
     auto node = std::make_shared<DefAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     node->name           = name;
     node->value          = valueNode;
 
@@ -815,6 +836,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDefFFIFn(const shared_ptr<ASTNode>& fo
 
     auto node = make_shared<DefFFIFunctionNode>();
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     node->binding        = binding;
     node->func_name      = fn_name;
     node->return_type    = ret_type;
@@ -944,6 +966,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeEvalWhen(const shared_ptr<ASTNode>& fo
 
     auto node = make_shared<EvalWhenAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     node->phases         = phases;
 
     pushEvaluationPhase(phases);
@@ -994,6 +1017,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeTry(const shared_ptr<ASTNode>& form) {
 
     auto node = make_shared<TryAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
+    node->ns             = current_ns_;
     node->body           = body_nodes;
     node->catch_nodes    = catch_nodes;
 
@@ -1044,6 +1068,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeCatch(const shared_ptr<ASTNode>& form)
 
     auto node = make_shared<CatchAnalyzerNode>();
     node->sourcePosition    = form->sourcePosition;
+    node->ns                = current_ns_;
     node->exception_type    = exception_type;
     node->exception_binding = exception_binding;
     node->body              = body;
@@ -1056,19 +1081,19 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeInNS(const std::shared_ptr<electrum::A
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
 
-    if(listPtr->size() > 2) {
+    if (listPtr->size() > 2) {
         throw CompilerException("in-ns: Unexpected argument(s)", listPtr->at(2)->sourcePosition);
     }
 
     auto ns_node = analyzeForm(listPtr->at(1));
 
-    if(ns_node->nodeType() != kAnalyzerNodeTypeConstant) {
+    if (ns_node->nodeType() != kAnalyzerNodeTypeConstant) {
         throw CompilerException("in-ns: Namespace should be a symbol", listPtr->at(1)->sourcePosition);
     }
 
     auto c_node = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(ns_node);
 
-    if(c_node->type != kAnalyzerConstantTypeSymbol) {
+    if (c_node->type != kAnalyzerConstantTypeSymbol) {
         throw CompilerException("in-ns: Namespace should be a symbol", listPtr->at(1)->sourcePosition);
     }
 
@@ -1076,8 +1101,9 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeInNS(const std::shared_ptr<electrum::A
     current_ns_ = *ns_val;
 
     auto nil_node = make_shared<ConstantValueAnalyzerNode>();
-    nil_node->type = kAnalyzerConstantTypeNil;
+    nil_node->type           = kAnalyzerConstantTypeNil;
     nil_node->sourcePosition = form->sourcePosition;
+    nil_node->ns             = current_ns_;
     return nil_node;
 }
 
