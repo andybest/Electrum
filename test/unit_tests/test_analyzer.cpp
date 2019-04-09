@@ -563,3 +563,15 @@ TEST(Analyzer, analyzesTryCatch) {
     EXPECT_EQ(catch1->body.size(), 1);
     EXPECT_EQ(catch2->body.size(), 2);
 }
+
+TEST(Analyzer, analyzesInNS) {
+    PARSE_STRING("(in-ns 'foo)");
+
+    Analyzer an;
+
+    EXPECT_EQ(an.currentNamespace()->name, "el.user");
+
+    an.analyze(val);
+
+    EXPECT_EQ(an.currentNamespace()->name, "foo");
+}

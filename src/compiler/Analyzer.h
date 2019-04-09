@@ -56,8 +56,7 @@ enum AnalyzerNodeType {
   kAnalyzerNodeTypeConstantList,
   kAnalyzerNodeTypeEvalWhen,
   kAnalyzerNodeTypeTry,
-  kAnalyzerNodeTypeCatch,
-  kAnalyzerNodeTypeThrow
+  kAnalyzerNodeTypeCatch
 };
 
 class AnalyzerNode {
@@ -406,6 +405,8 @@ public:
 
     /// Collapses the given node into a vector of top level forms
     vector<shared_ptr<AnalyzerNode>> collapseTopLevelForms(const shared_ptr<AnalyzerNode>& node);
+
+    shared_ptr<Namespace> currentNamespace();
 private:
 
     /* Passes */
@@ -448,6 +449,7 @@ private:
     shared_ptr<AnalyzerNode> analyzeEvalWhen(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeTry(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeCatch(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeInNS(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode>
     maybeAnalyzeSpecialForm(const shared_ptr<string>& symbol_name, const shared_ptr<ASTNode>& form);
 
@@ -464,8 +466,6 @@ private:
     EvaluationPhase popEvaluationPhase();
     EvaluationPhase currentEvaluationPhase();
 
-    /* Namespaces */
-    shared_ptr<Namespace> currentNamespace();
 
     /// Analysis functions for special forms
     const std::unordered_map<std::string, AnalyzerFunc> specialForms{
@@ -480,7 +480,8 @@ private:
             {"unquote", &Analyzer::analyzeUnquote},
             {"eval-when", &Analyzer::analyzeEvalWhen},
             {"try", &Analyzer::analyzeTry},
-            {"catch", &Analyzer::analyzeCatch}
+            {"catch", &Analyzer::analyzeCatch},
+            {"in-ns", &Analyzer::analyzeInNS}
     };
 
     struct AnalyzerDefinition {

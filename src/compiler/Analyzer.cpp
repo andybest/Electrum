@@ -34,7 +34,8 @@ namespace electrum {
 
 Analyzer::Analyzer()
         :is_quoting_(false),
-         in_macro_(false) {
+         in_macro_(false),
+         current_ns_("el.user"){
 }
 
 shared_ptr<AnalyzerNode> Analyzer::analyze(const shared_ptr<ASTNode>& form, uint64_t depth, EvaluationPhase phase) {
@@ -1048,6 +1049,36 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeCatch(const shared_ptr<ASTNode>& form)
     node->body              = body;
 
     return node;
+}
+
+shared_ptr<AnalyzerNode> Analyzer::analyzeInNS(const std::shared_ptr<electrum::ASTNode>& form) {
+    assert(form->tag == kTypeTagList);
+    auto listPtr = form->listValue;
+    assert(!listPtr->empty());
+
+    if(listPtr->size() > 2) {
+        throw CompilerException("in-ns: Unexpected argument(s)", listPtr->at(2)->sourcePosition);
+    }
+
+    auto ns_node = analyzeForm(listPtr->at(1));
+
+    if(ns_node->nodeType() != kAnalyzerNodeTypeConstant) {
+        throw CompilerException("in-ns: Namespace should be a symbol", listPtr->at(1)->sourcePosition);
+    }
+
+    auto c_node = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(ns_node);
+
+    if(c_node->type != kAnalyzerConstantTypeSymbol) {
+        throw CompilerException("in-ns: Namespace should be a symbol", listPtr->at(1)->sourcePosition);
+    }
+
+    auto ns_val = boost::get<shared_ptr<string>>(c_node->value);
+    current_ns_ = *ns_val;
+
+    auto nil_node = make_shared<ConstantValueAnalyzerNode>();
+    nil_node->type = kAnalyzerConstantTypeNil;
+    nil_node->sourcePosition = form->sourcePosition;
+    return nil_node;
 }
 
 void Analyzer::pushLocalEnv() {
