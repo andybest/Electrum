@@ -519,3 +519,19 @@ TEST(Compiler, tryThrowRunsCorrectCatchBlock) {
     EXPECT_EQ(rt_integer_value(r3), 3);
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesReferenceToOtherNS) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto     r = c.compileAndEvalString("(do"
+                                        "  (in-ns 'foo)"
+                                        "  (def baz 1)"
+                                        "  (in-ns 'bar)"
+                                        "  foo/baz)");
+
+    ASSERT_TRUE(rt_is_integer(r));
+    EXPECT_EQ(rt_integer_value(r), 1);
+
+    rt_deinit_gc();
+}

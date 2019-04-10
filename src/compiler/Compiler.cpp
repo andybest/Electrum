@@ -59,8 +59,8 @@ Compiler::Compiler() {
 }
 
 void* Compiler::compileAndEvalString(const std::string& str) {
-    static int cnt = 0;
-    auto temp_path = boost::filesystem::temp_directory_path();
+    static int        cnt       = 0;
+    auto              temp_path = boost::filesystem::temp_directory_path();
     std::stringstream ss;
     ss << "repl_" << cnt << ".el";
     temp_path /= ss.str();
@@ -77,13 +77,13 @@ void* Compiler::compileAndEvalString(const std::string& str) {
     temp_path.remove_filename();
 
     Parser p;
-    auto ast = p.readString(str, temp_path.string());
+    auto   ast = p.readString(str, temp_path.string());
 
-    currentContext()->pushNewState("jit_module", temp_path.string()+"/", fname.string());
+    currentContext()->pushNewState("jit_module", temp_path.string() + "/", fname.string());
     createGCEntry();
 
     // Analyze as a top level form
-    auto node = analyzer_.analyze(ast, 0);
+    auto node           = analyzer_.analyze(ast, 0);
     auto toplevel_forms = analyzer_.collapseTopLevelForms(node);
     void* rv = NIL_PTR;
 
@@ -99,16 +99,16 @@ void* Compiler::compileAndEvalString(const std::string& str) {
 }
 
 TopLevelInitializerDef Compiler::compileTopLevelNode(std::shared_ptr<AnalyzerNode> node) {
-    static int cnt = 0;
+    static int        cnt = 0;
     std::stringstream ss;
     ss << "toplevel_" << cnt;
     auto mangled_name = ss.str();
     ++cnt;
 
     TopLevelInitializerDef initializer;
-    initializer.mangled_name = mangled_name;
+    initializer.mangled_name      = mangled_name;
     initializer.evaluation_phases = node->evaluation_phase;
-    initializer.evaluated_in = kEvaluationPhaseNone;
+    initializer.evaluated_in      = kEvaluationPhaseNone;
 
     auto mainfunc = llvm::Function::Create(
             llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace), false),
@@ -160,11 +160,11 @@ TopLevelInitializerDef Compiler::compileTopLevelNode(std::shared_ptr<AnalyzerNod
 void* Compiler::runInitializerWithJit(TopLevelInitializerDef& tl_def) {
     static int cnt = 0;
 
-    if (currentModule()->getFunction(tl_def.mangled_name)!=nullptr) {
+    if (currentModule()->getFunction(tl_def.mangled_name) != nullptr) {
         jit_->addModule(currentContext()->popState());
 
         auto stackmap_ptr = jit_->getStackMapPointer();
-        if (stackmap_ptr!=nullptr) {
+        if (stackmap_ptr != nullptr) {
             rt_gc_init_stackmap(stackmap_ptr);
         }
 
@@ -252,12 +252,12 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
 
 void Compiler::createGCEntry() {
     auto gc_type = llvm::FunctionType::get(llvm::Type::getVoidTy(currentContext()->llvmContext()), false);
-    auto gcfunc = llvm::dyn_cast<llvm::Function>(
+    auto gcfunc  = llvm::dyn_cast<llvm::Function>(
             currentContext()->currentModule()->getOrInsertFunction("gc.safepoint_poll", gc_type));
 
     gcfunc->addFnAttr(llvm::Attribute::NoUnwind);
 
-    auto gc_entry = llvm::BasicBlock::Create(currentContext()->llvmContext(), "entry", gcfunc);
+    auto              gc_entry = llvm::BasicBlock::Create(currentContext()->llvmContext(), "entry", gcfunc);
     llvm::IRBuilder<> b(currentContext()->llvmContext());
     b.SetInsertPoint(gc_entry);
 
@@ -298,10 +298,10 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
             compileMacroExpand(macro_expand_node);
         }
         else {
-            auto expansion = compileAndEvalExpander(macro_expand_node);
+            auto   expansion     = compileAndEvalExpander(macro_expand_node);
             Parser p;
-            auto form = p.readLispValue(expansion, node->sourcePosition);
-            auto expanded_node = analyzer_.analyze(form, node->node_depth, node->evaluation_phase);
+            auto   form          = p.readLispValue(expansion, node->sourcePosition);
+            auto   expanded_node = analyzer_.analyze(form, node->node_depth, node->evaluation_phase);
             compileNode(expanded_node);
         }
         break;
@@ -344,7 +344,7 @@ void Compiler::compileConstantList(const std::shared_ptr<ConstantListAnalyzerNod
 
     llvm::Value* head = makeNil();
 
-    for (auto it = node->values.rbegin(); it!=node->values.rend(); ++it) {
+    for (auto it = node->values.rbegin(); it != node->values.rend(); ++it) {
         compileNode(*it);
         head = makePair(currentContext()->popValue(), head);
     }
@@ -376,9 +376,9 @@ void Compiler::compileIf(const std::shared_ptr<IfAnalyzerNode>& node) {
             llvm::ConstantInt::get(llvm::IntegerType::getInt8Ty(llvmContext()),
                     0));
 
-    auto iftrueblock = llvm::BasicBlock::Create(llvmContext(), "if_true", currentContext()->currentFunc());
+    auto iftrueblock  = llvm::BasicBlock::Create(llvmContext(), "if_true", currentContext()->currentFunc());
     auto iffalseblock = llvm::BasicBlock::Create(llvmContext(), "if_false", currentContext()->currentFunc());
-    auto endifblock = llvm::BasicBlock::Create(llvmContext(), "endif", currentContext()->currentFunc());
+    auto endifblock   = llvm::BasicBlock::Create(llvmContext(), "endif", currentContext()->currentFunc());
 
     currentBuilder()->CreateCondBr(cond, iffalseblock, iftrueblock);
 
@@ -402,9 +402,15 @@ void Compiler::compileIf(const std::shared_ptr<IfAnalyzerNode>& node) {
 
 void Compiler::compileVarLookup(const std::shared_ptr<VarLookupNode>& node) {
     if (node->is_global) {
-        auto result = currentContext()->global_bindings.find(*node->name);
+        auto ns_result = currentContext()->namespaces.find(*node->target_ns);
 
-        if (result==currentContext()->global_bindings.end()) {
+        if (ns_result == currentContext()->namespaces.end()) {
+            throw CompilerException("Fatal compiler error: ns not found", node->sourcePosition);
+        }
+
+        auto result = ns_result->second.find(*node->name);
+
+        if (result == ns_result->second.end()) {
             throw CompilerException("Fatal compiler error: no var",
                     node->sourcePosition);
         }
@@ -414,7 +420,7 @@ void Compiler::compileVarLookup(const std::shared_ptr<VarLookupNode>& node) {
         auto var = currentModule()->getOrInsertGlobal(def->mangled_name,
                 llvm::IntegerType::getInt8PtrTy(llvmContext(),
                         kGCAddressSpace));
-        auto v = currentBuilder()->CreateLoad(var);
+        auto v   = currentBuilder()->CreateLoad(var);
 
         auto val = buildDerefVar(v);
         currentContext()->pushValue(val);
@@ -422,7 +428,7 @@ void Compiler::compileVarLookup(const std::shared_ptr<VarLookupNode>& node) {
     }
 
     auto result = currentContext()->lookupInLocalEnvironment(*node->name);
-    if (result!=nullptr) {
+    if (result != nullptr) {
         currentContext()->pushValue(result);
         return;
     }
@@ -442,8 +448,8 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
 
     std::vector<llvm::Type*> arg_types;
 
-    arg_types.reserve(node->arg_names.size()+1);
-    for (int i = 0; i<node->arg_names.size(); ++i) {
+    arg_types.reserve(node->arg_names.size() + 1);
+    for (int i = 0; i < node->arg_names.size(); ++i) {
         arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
     }
 
@@ -487,14 +493,14 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
 //    currentContext()->currentDebugInfo()->lexical_blocks.push_back(subprogram);
 //    currentContext()->emitLocation(node->sourcePosition);
 
-    auto entry_block = llvm::BasicBlock::Create(llvmContext(), "entry", lambda);
+    auto entry_block                                      = llvm::BasicBlock::Create(llvmContext(), "entry", lambda);
     currentBuilder()->SetInsertPoint(entry_block);
 
     currentContext()->pushScope();
 
     std::unordered_map<std::string, llvm::Value*> local_env;
-    int arg_num = 0;
-    auto arg_it = lambda->args().begin();
+    int                                           arg_num = 0;
+    auto                                          arg_it  = lambda->args().begin();
     for (auto& arg_name : node->arg_names) {
         auto& arg = *arg_it;
         arg.setName(*arg_name);
@@ -538,7 +544,7 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
     auto& fn_arg = *arg_it;
     fn_arg.setName("env");
 
-    for (uint64_t i = 0; i<node->closed_overs.size(); i++) {
+    for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
         local_env[node->closed_overs[i]] = buildLambdaGetEnv(&fn_arg, i);
     }
 
@@ -571,7 +577,7 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
             lambda,
             node->closed_overs.size());
 
-    for (uint64_t i = 0; i<node->closed_overs.size(); i++) {
+    for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
         buildLambdaSetEnv(closure, i, currentContext()->lookupInLocalEnvironment(node->closed_overs[i]));
     }
 
@@ -594,7 +600,7 @@ void Compiler::compileDef(const std::shared_ptr<DefAnalyzerNode>& node) {
             llvm::ConstantPointerNull::get(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace)));
 
     auto name_sym = makeSymbol(node->name);
-    auto v = makeVar(name_sym);
+    auto v        = makeVar(name_sym);
 
     buildGcAddRoot(v);
 
@@ -610,10 +616,10 @@ void Compiler::compileDef(const std::shared_ptr<DefAnalyzerNode>& node) {
     currentContext()->pushValue(makeNil());
 
     auto d = std::make_shared<GlobalDef>();
-    d->name = *node->name;
+    d->name         = *node->name;
     d->mangled_name = mangled_name;
 
-    currentContext()->global_bindings[*node->name] = d;
+    currentContext()->namespaces[node->ns][*node->name] = d;
 }
 
 void Compiler::compileMaybeInvoke(const std::shared_ptr<MaybeInvokeAnalyzerNode>& node) {
@@ -621,9 +627,9 @@ void Compiler::compileMaybeInvoke(const std::shared_ptr<MaybeInvokeAnalyzerNode>
     auto fn = currentContext()->popValue();
 
     auto list_node = std::make_shared<ConstantListAnalyzerNode>();
-    list_node->sourcePosition = node->sourcePosition;
+    list_node->sourcePosition   = node->sourcePosition;
     list_node->evaluation_phase = node->evaluation_phase;
-    list_node->values = node->args;
+    list_node->values           = node->args;
     compileNode(list_node);
     auto args = currentContext()->popValue();
 
@@ -631,7 +637,7 @@ void Compiler::compileMaybeInvoke(const std::shared_ptr<MaybeInvokeAnalyzerNode>
     buildGcAddRoot(args);
 
     auto eh_info = currentContext()->currentScope()->currentEHInfo();
-    if (eh_info!=nullptr) {
+    if (eh_info != nullptr) {
         currentContext()->pushValue(buildApplyInvoke(fn, args, eh_info));
     }
     else {
@@ -679,7 +685,7 @@ void Compiler::compileDefFFIFn(const std::shared_ptr<electrum::DefFFIFunctionNod
 
     // Add arguments for each argument we are passing the the FFI function
     arg_types.reserve(node->arg_types.size());
-    for (int i = 0; i<node->arg_types.size(); i++) {
+    for (int i = 0; i < node->arg_types.size(); i++) {
         arg_types.push_back(llvm::PointerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
     }
 
@@ -691,7 +697,7 @@ void Compiler::compileDefFFIFn(const std::shared_ptr<electrum::DefFFIFunctionNod
             false);
 
     auto mangled_name = mangleSymbolName("", *node->binding);
-    auto wrapper_name = mangled_name+"_impl";
+    auto wrapper_name = mangled_name + "_impl";
 
     auto ffi_wrapper = llvm::Function::Create(
             ffi_wrapper_type,
@@ -709,11 +715,11 @@ void Compiler::compileDefFFIFn(const std::shared_ptr<electrum::DefFFIFunctionNod
     auto c_func_type = llvm::FunctionType::get(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
             arg_types,
             false);
-    auto c_func = currentModule()->getOrInsertFunction(*node->func_name, c_func_type);
+    auto c_func      = currentModule()->getOrInsertFunction(*node->func_name, c_func_type);
 
     std::vector<llvm::Value*> c_args;
 
-    for (auto it = ffi_wrapper->arg_begin(); it!=(ffi_wrapper->arg_end()-1); ++it) {
+    for (auto it = ffi_wrapper->arg_begin(); it != (ffi_wrapper->arg_end() - 1); ++it) {
         auto& arg = *it;
         c_args.push_back(dynamic_cast<llvm::Value*>(&arg));
     }
@@ -738,7 +744,7 @@ void Compiler::compileDefFFIFn(const std::shared_ptr<electrum::DefFFIFunctionNod
             kGCAddressSpace)));
 
     auto name_sym = makeSymbol(node->binding);
-    auto v = makeVar(name_sym);
+    auto v        = makeVar(name_sym);
 
     buildGcAddRoot(v);
 
@@ -751,10 +757,10 @@ void Compiler::compileDefFFIFn(const std::shared_ptr<electrum::DefFFIFunctionNod
     currentContext()->pushValue(makeNil());
 
     auto d = std::make_shared<GlobalDef>();
-    d->name = *node->binding;
+    d->name         = *node->binding;
     d->mangled_name = mangled_name;
 
-    currentContext()->global_bindings[*node->binding] = d;
+    currentContext()->namespaces[node->ns][*node->binding] = d;
 }
 
 void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerNode>& node) {
@@ -766,8 +772,8 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 
     std::vector<llvm::Type*> arg_types;
 
-    arg_types.reserve(node->arg_names.size()+1);
-    for (int i = 0; i<node->arg_names.size(); ++i) {
+    arg_types.reserve(node->arg_names.size() + 1);
+    for (int i = 0; i < node->arg_names.size(); ++i) {
         arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
     }
 
@@ -805,12 +811,12 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 */
     currentContext()->pushScope();
 
-    auto entry_block = llvm::BasicBlock::Create(llvmContext(), "entry", expander);
+    auto entry_block                                      = llvm::BasicBlock::Create(llvmContext(), "entry", expander);
     currentBuilder()->SetInsertPoint(entry_block);
 
     std::unordered_map<std::string, llvm::Value*> local_env;
-    int arg_num = 0;
-    auto arg_it = expander->args().begin();
+    int                                           arg_num = 0;
+    auto                                          arg_it  = expander->args().begin();
     for (auto& arg_name : node->arg_names) {
         auto& arg = *arg_it;
         arg.setName(*arg_name);
@@ -842,7 +848,7 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
         ++arg_it;
     }
 
-    for (uint64_t i = 0; i<node->closed_overs.size(); i++) {
+    for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
         auto& arg = *arg_it;
         arg.setName("environment");
 
@@ -875,15 +881,15 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
             expander,
             node->closed_overs.size());
 
-    for (uint64_t i = 0; i<node->closed_overs.size(); i++) {
+    for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
         buildLambdaSetEnv(closure, i, currentContext()->lookupInLocalEnvironment(node->closed_overs[i]));
     }
 
 
     /* DEF */
 
-    auto mangled_name = mangleSymbolName("", "MXC_"+*node->name);
-    auto glob = new llvm::GlobalVariable(*currentModule(),
+    auto mangled_name = mangleSymbolName("", "MXC_" + *node->name);
+    auto glob         = new llvm::GlobalVariable(*currentModule(),
             llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
             false,
             llvm::GlobalValue::LinkageTypes::ExternalLinkage,
@@ -901,7 +907,7 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
     currentContext()->pushValue(makeNil());
 
     auto d = std::make_shared<GlobalDef>();
-    d->name = *node->name;
+    d->name         = *node->name;
     d->mangled_name = mangled_name;
 
     currentContext()->global_macros[*node->name] = d;
@@ -909,23 +915,23 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 }
 
 void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAnalyzerNode>& node) {
-    assert(node->macro->nodeType()==kAnalyzerNodeTypeDefMacro);
+    assert(node->macro->nodeType() == kAnalyzerNodeTypeDefMacro);
 
     auto macroNode = std::dynamic_pointer_cast<DefMacroAnalyzerNode>(node->macro);
 
     auto result = currentContext()->global_macros.find(*macroNode->name);
-    if (result==currentContext()->global_macros.end()) {
+    if (result == currentContext()->global_macros.end()) {
         throw CompilerException("Unable to find macro expander!", node->sourcePosition);
     }
 
-    auto expanderDef = result->second;
-    auto expanderRef = currentModule()->getOrInsertGlobal(expanderDef->mangled_name,
+    auto expanderDef           = result->second;
+    auto expanderRef           = currentModule()->getOrInsertGlobal(expanderDef->mangled_name,
             llvm::IntegerType::getInt8PtrTy(llvmContext(),
                     kGCAddressSpace));
-    auto expanderClosure = currentBuilder()->CreateLoad(expanderRef);
+    auto expanderClosure       = currentBuilder()->CreateLoad(expanderRef);
 
     std::vector<llvm::Value*> args;
-    args.reserve(node->args.size()+1);
+    args.reserve(node->args.size() + 1);
 
     for (const auto& a: node->args) {
         compileNode(a);
@@ -935,7 +941,7 @@ void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAna
     args.push_back(expanderClosure);
 
     std::vector<llvm::Type*> arg_types;
-    for (uint64_t i = 0; i<node->args.size(); ++i) {
+    for (uint64_t            i = 0; i < node->args.size(); ++i) {
         arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
     }
 
@@ -987,10 +993,10 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
 
     // Compile try block
 
-    for (int i = 0; i<node->body.size(); i++) {
+    for (int i = 0; i < node->body.size(); i++) {
         compileNode(node->body[i]);
 
-        if (i<node->body.size()-1) {
+        if (i < node->body.size() - 1) {
             currentContext()->popValue();
         }
     }
@@ -1002,10 +1008,10 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
     // Compile catch blocks
     currentBuilder()->SetInsertPoint(catch_block);
 
-    auto lp_type = llvm::StructType::get(llvmContext(),
+    auto lp_type        = llvm::StructType::get(llvmContext(),
             {llvm::IntegerType::getInt8PtrTy(llvmContext(), 0)},
             false);
-    auto landing_pad = currentBuilder()->CreateLandingPad(lp_type, node->catch_nodes.size());
+    auto landing_pad    = currentBuilder()->CreateLandingPad(lp_type, node->catch_nodes.size());
     auto exception_type = currentBuilder()->CreateExtractValue(landing_pad, 0);
 
     auto e_eq = currentModule()->getOrInsertFunction("el_rt_exception_matches",
@@ -1015,7 +1021,7 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
 
     // Create basic blocks for each catch node
     vector<llvm::BasicBlock*> catch_blocks;
-    for (auto n: node->catch_nodes) {
+    for (auto                 n: node->catch_nodes) {
         auto bblock = llvm::BasicBlock::Create(llvmContext(),
                 "catch_handler",
                 currentContext()->currentFunc());
@@ -1028,7 +1034,7 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
         auto cond = currentBuilder()->CreateICmpEQ(
                 currentBuilder()->CreateCall(e_eq,
                         {exception_type,
-                        exc_type}),
+                         exc_type}),
                 llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(llvmContext()), 1));
 
         auto nextblock = llvm::BasicBlock::Create(llvmContext(), "catch_cont", currentContext()->currentFunc());
@@ -1039,7 +1045,7 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
 
     currentBuilder()->CreateUnreachable();
 
-    for (int i = 0; i<node->catch_nodes.size(); i++) {
+    for (int i = 0; i < node->catch_nodes.size(); i++) {
         currentBuilder()->SetInsertPoint(catch_blocks[i]);
 
         auto catch_node = node->catch_nodes[i];
@@ -1051,7 +1057,7 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
 
         for (const auto& body_node: catch_node->body) {
             compileNode(body_node);
-            if (body_node!=catch_node->body.back()) {
+            if (body_node != catch_node->body.back()) {
                 currentContext()->popValue();
             }
         }
@@ -1292,7 +1298,7 @@ llvm::Value* Compiler::buildApplyInvoke(llvm::Value* f, llvm::Value* args, share
             llvm::Type::getInt8PtrTy(llvmContext(), kGCAddressSpace));
 
     auto cont_block = llvm::BasicBlock::Create(llvmContext(), "cont", currentContext()->currentFunc());
-    auto inv = currentBuilder()->CreateInvoke(func, cont_block, eh_info->catch_dest, {f, args});
+    auto inv        = currentBuilder()->CreateInvoke(func, cont_block, eh_info->catch_dest, {f, args});
     currentBuilder()->SetInsertPoint(cont_block);
     return inv;
 }
@@ -1305,7 +1311,7 @@ llvm::DISubroutineType* Compiler::createFunctionDebugType(int num_args) {
     // Add the result type.
     element_types.push_back(arg_type);
 
-    for (unsigned i = 0, e = num_args; i!=e; ++i)
+    for (unsigned i = 0, e = num_args; i != e; ++i)
         element_types.push_back(arg_type);
 
     return currentContext()->currentDIBuilder()->createSubroutineType(

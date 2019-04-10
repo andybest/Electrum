@@ -110,7 +110,7 @@ public:
     std::unordered_map<std::string, std::shared_ptr<GlobalDef>> global_macros;
 
     /// The global var bindings
-    std::unordered_map<std::string, std::shared_ptr<GlobalDef>> global_bindings;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<GlobalDef>>> namespaces;
 
     /// The local bindings for the current level in the AST
     std::vector<std::unordered_map<std::string, llvm::Value*>> local_bindings;

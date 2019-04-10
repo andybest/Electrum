@@ -245,12 +245,14 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(const shared_ptr<ASTNode>& form
         node->sourcePosition = form->sourcePosition;
         node->name           = form->stringValue;
         node->is_global      = false;
+        node->target_ns      = make_shared<string>(current_ns_);
         return node;
     }
 
-    string binding = *sym_name;
-    std::optional<string> ns = std::nullopt;
-    if(auto pos = sym_name->find_first_of('/')) {
+    string   binding = *sym_name;
+    string   ns      = current_ns_;
+    auto pos = sym_name->find_first_of('/');
+    if (pos != std::string::npos && pos != 0) {
         ns = sym_name->substr(0, pos);
         auto b_pos = pos + 1;
         binding = sym_name->substr(b_pos, sym_name->size() - b_pos);
@@ -269,8 +271,9 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(const shared_ptr<ASTNode>& form
 
         auto node = make_shared<VarLookupNode>();
         node->sourcePosition = form->sourcePosition;
-        node->name           = form->stringValue;
+        node->name           = make_shared<string>(binding);
         node->is_global      = true;
+        node->target_ns      = make_shared<string>(ns);
 
         return node;
     }
