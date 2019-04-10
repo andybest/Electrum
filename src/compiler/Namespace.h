@@ -25,7 +25,6 @@
 #ifndef ELECTRUM_NAMESPACE_H
 #define ELECTRUM_NAMESPACE_H
 
-#include <immer/map.hpp>
 #include <optional>
 #include <utility>
 #include <vector>

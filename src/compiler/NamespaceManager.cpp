@@ -23,6 +23,8 @@
  SOFTWARE.
 */
 
+#include <cassert>
+#include <algorithm>
 #include <utility>
 #include "NamespaceManager.h"
 
