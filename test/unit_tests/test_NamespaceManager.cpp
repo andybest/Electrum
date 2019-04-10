@@ -97,9 +97,6 @@ TEST(NamespaceManager, findsSymbolInImportedNamespaceWithAlias) {
     m.importNS(ns_foo, ns_bar, "bar-alias");
     auto def = m.lookupSymbolInNS(ns_foo, "bar-alias", "baz");
     EXPECT_TRUE(def.has_value());
-
-    auto def2 = m.lookupSymbolInNS(ns_foo, "bar", "baz");
-    EXPECT_FALSE(def2.has_value());
 }
 
 TEST(NamespaceManager, findsImportedSymbol) {
