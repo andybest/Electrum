@@ -830,7 +830,7 @@ extern "C" void* rt_eq(void* x, void* y) {
 }
 
 extern "C" void* rt_and(void* x, void* y) {
-    if((electrum::is_boolean(x) && electrum::is_boolean(y))) {
+    if(!(electrum::is_boolean(x) && electrum::is_boolean(y))) {
         rt_throw_invalid_argument_exception("and: expected boolean");
     }
 
@@ -838,7 +838,7 @@ extern "C" void* rt_and(void* x, void* y) {
 }
 
 extern "C" void* rt_or(void* x, void* y) {
-    if((electrum::is_boolean(x) && electrum::is_boolean(y))) {
+    if(!(electrum::is_boolean(x) && electrum::is_boolean(y))) {
         rt_throw_invalid_argument_exception("or: expected boolean");
     }
 
@@ -846,7 +846,7 @@ extern "C" void* rt_or(void* x, void* y) {
 }
 
 extern "C" void* rt_not(void *x) {
-    if((electrum::is_boolean(x))) {
+    if(!(electrum::is_boolean(x))) {
         rt_throw_invalid_argument_exception("or: expected boolean");
     }
 
