@@ -800,7 +800,8 @@ extern "C" void* rt_div(void* x, void* y) {
 
 extern "C" void* rt_eq(void* x, void* y) {
     if (electrum::is_integer(x) && electrum::is_integer(y)) {
-        return TO_TAGGED_BOOLEAN(rt_integer_value(x) == rt_integer_value(y));
+        // Don't need to remove the tag bit to compare
+        return TO_TAGGED_BOOLEAN(x == y);
     } else if(electrum::is_boolean(x) && electrum::is_boolean(y)) {
         return TO_TAGGED_BOOLEAN(x == y);
     } else if(x == NIL_PTR && y == NIL_PTR) {
@@ -826,6 +827,34 @@ extern "C" void* rt_eq(void* x, void* y) {
     default: // TODO: Others
         return FALSE_PTR;
     }
+}
+
+extern "C" void* rt_and(void* x, void* y) {
+    if((electrum::is_boolean(x) && electrum::is_boolean(y))) {
+        rt_throw_invalid_argument_exception("and: expected boolean");
+    }
+
+    return TO_TAGGED_BOOLEAN(x == TRUE_PTR && y == TRUE_PTR);
+}
+
+extern "C" void* rt_or(void* x, void* y) {
+    if((electrum::is_boolean(x) && electrum::is_boolean(y))) {
+        rt_throw_invalid_argument_exception("or: expected boolean");
+    }
+
+    return TO_TAGGED_BOOLEAN(x == TRUE_PTR || y == TRUE_PTR);
+}
+
+extern "C" void* rt_not(void *x) {
+    if((electrum::is_boolean(x))) {
+        rt_throw_invalid_argument_exception("or: expected boolean");
+    }
+
+    if(x == TRUE_PTR) {
+        return FALSE_PTR;
+    }
+
+    return TRUE_PTR;
 }
 
 /**
