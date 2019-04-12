@@ -47,15 +47,15 @@ class Parser {
       kQuoteTypeUnquoteSplice
     };
 
-    pair<shared_ptr<ASTNode>, vector<Token>::iterator> readTokens(vector<Token> tokens,
+    pair<shared_ptr<ASTNode>, vector<Token>::iterator> readTokens(vector<Token, std::allocator<Token>>* tokens,
             vector<Token>::iterator it) const;
 
     shared_ptr<ASTNode> parseInteger(const electrum::Token& t) const;
     shared_ptr<ASTNode> parseFloat(const Token& t) const;
     shared_ptr<ASTNode> parseSymbol(const Token& t) const;
-    std::pair<shared_ptr<ASTNode>, vector<Token>::iterator> parseList(vector<Token> tokens,
+    std::pair<shared_ptr<ASTNode>, vector<Token>::iterator> parseList(vector<Token>* tokens,
             vector<Token>::iterator it) const;
-    pair<shared_ptr<ASTNode>, vector<Token>::iterator> parseQuote(const vector<Token> tokens,
+    pair<shared_ptr<ASTNode>, vector<Token>::iterator> parseQuote(vector<Token>* const tokens,
             vector<Token>::iterator it,
             QuoteType quote_type) const;
 

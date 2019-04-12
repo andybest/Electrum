@@ -160,3 +160,8 @@ TEST(Parser, parsesUnquoteSplice) {
     EXPECT_EQ(val->listValue->at(1)->tag, kTypeTagSymbol);
     EXPECT_EQ(*val->listValue->at(1)->stringValue, "a");
 }
+
+TEST(Parser, handlesUnterminatedList) {
+    Parser p;
+    EXPECT_ANY_THROW(p.readString("(", ""));
+}

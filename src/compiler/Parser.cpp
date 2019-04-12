@@ -33,12 +33,12 @@ shared_ptr<ASTNode> Parser::readString(const string& input, const string& filena
     lexer.filename = std::make_shared<string>(filename);
     auto tokens = lexer.getTokens();
 
-    return readTokens(tokens, tokens.begin()).first;
+    return readTokens(&tokens, tokens.begin()).first;
 }
 
-pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::readTokens(vector<Token> tokens,
+pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::readTokens(vector<Token>* tokens,
         vector<Token>::iterator it) const {
-    while (it!=tokens.end()) {
+    while (it!=tokens->end()) {
         auto t = *it;
 
         switch (t.type) {
@@ -164,11 +164,11 @@ shared_ptr<ASTNode> Parser::parseString(const Token& t) const {
     return val;
 }
 
-pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseList(const vector<Token> tokens,
+pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseList(vector<Token>* tokens,
         vector<Token>::iterator it) const {
     auto list = make_shared<vector<shared_ptr<ASTNode>>>();
 
-    while (it!=tokens.end()) {
+    while (it != tokens->end()) {
         auto t = *it;
 
         switch (t.type) {
@@ -204,7 +204,7 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseList(const vecto
     throw std::exception();
 }
 
-pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(const vector<Token> tokens,
+pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(vector<Token>* const tokens,
         vector<Token>::iterator it,
         QuoteType quote_type) const {
     auto list = make_shared<vector<shared_ptr<ASTNode>>>();
