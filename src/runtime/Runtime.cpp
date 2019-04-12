@@ -36,22 +36,22 @@
 namespace electrum {
 
 bool is_object(void* val) {
-    return (reinterpret_cast<uintptr_t>(val) & TAG_MASK)==OBJECT_TAG;
+    return (reinterpret_cast<uintptr_t>(val) & TAG_MASK) == OBJECT_TAG;
 }
 
 bool is_integer(void* val) {
-    auto i = (reinterpret_cast<uintptr_t>(val) & 0x1)==INTEGER_TAG;
+    auto i = (reinterpret_cast<uintptr_t>(val) & 0x1) == INTEGER_TAG;
     return i;
 }
 
 bool is_boolean(void* val) {
-    return (reinterpret_cast<uintptr_t>(val) & TAG_MASK)==BOOLEAN_TAG;
+    return (reinterpret_cast<uintptr_t>(val) & TAG_MASK) == BOOLEAN_TAG;
 }
 
 bool is_object_with_tag(void* val, uint64_t tag) {
     if (is_object(val)) {
         auto header = TAG_TO_OBJECT(val);
-        return header->tag==tag;
+        return header->tag == tag;
     }
 
     return false;
@@ -64,19 +64,19 @@ bool symbol_equal(void* s1, void* s2) {
     auto s1Val = static_cast<ESymbol*>(static_cast<void*>(TAG_TO_OBJECT(s1)));
     auto s2Val = static_cast<ESymbol*>(static_cast<void*>(TAG_TO_OBJECT(s2)));
 
-    return (std::string(s1Val->name)==std::string(s2Val->name));
+    return (std::string(s1Val->name) == std::string(s2Val->name));
 }
 
 void print_pair(void* expr) {
     printf("(");
 
-    bool first = true;
+    bool first       = true;
     auto currentPair = expr;
-    while (currentPair!=NIL_PTR) {
+    while (currentPair != NIL_PTR) {
         if (!first) printf(" ");
         print_expr(rt_car(currentPair));
         currentPair = rt_cdr(currentPair);
-        first = false;
+        first       = false;
     }
 
     printf(")");
@@ -86,7 +86,7 @@ std::string kind_for_obj(void* obj) {
     if (is_integer(obj)) {
         return "INTEGER";
     }
-    else if (obj==NIL_PTR) {
+    else if (obj == NIL_PTR) {
         return "NIL";
     }
     else if (is_boolean(obj)) {
@@ -160,11 +160,11 @@ std::string description_for_obj(void* obj) {
         default:break;
         }
     }
-    else if (obj==NIL_PTR) {
+    else if (obj == NIL_PTR) {
         ss << "NIL";
     }
     else if (is_boolean(obj)) {
-        ss << ((obj==TRUE_PTR) ? "TRUE" : "FALSE");
+        ss << ((obj == TRUE_PTR) ? "TRUE" : "FALSE");
     }
 
     return ss.str();
@@ -219,11 +219,11 @@ void print_expr(void* expr) {
         default:break;
         }
     }
-    else if (expr==NIL_PTR) {
+    else if (expr == NIL_PTR) {
         printf("NIL PTR");
     }
     else if (is_boolean(expr)) {
-        printf((expr==TRUE_PTR) ? "Boolean: true" : "Boolean: false");
+        printf((expr == TRUE_PTR) ? "Boolean: true" : "Boolean: false");
     }
 
     printf("\n");
@@ -279,7 +279,7 @@ extern "C" uint8_t rt_is_true(void* val) {
                 NIL_PTR));
     }
 
-    return static_cast<uint8_t>(val==TRUE_PTR);
+    return static_cast<uint8_t>(val == TRUE_PTR);
 }
 
 extern "C" void* rt_make_integer(int64_t value) {
@@ -296,9 +296,9 @@ extern "C" int64_t rt_integer_value(void* val) {
 
 extern "C" void* rt_make_float(double value) {
     auto floatVal = static_cast<EFloat*>(GC_MALLOC(sizeof(EFloat)));
-    floatVal->header.tag = kETypeTagFloat;
+    floatVal->header.tag     = kETypeTagFloat;
     floatVal->header.gc_mark = 0;
-    floatVal->floatValue = value;
+    floatVal->floatValue     = value;
     return OBJECT_TO_TAG(floatVal);
 }
 
@@ -309,7 +309,7 @@ extern "C" void* rt_is_float(void* val) {
 extern "C" double rt_float_value(void* val) {
     rt_assert_tag(val, kETypeTagFloat, "Expected float");
     auto header = TAG_TO_OBJECT(val);
-    auto f = static_cast<EFloat*>(static_cast<void*>(header));
+    auto f      = static_cast<EFloat*>(static_cast<void*>(header));
     return f->floatValue;
 }
 
@@ -317,8 +317,8 @@ extern "C" void* rt_make_symbol(const char* name) {
     size_t len = strlen(name);
 
     // Allocate enough space for the string
-    auto* symbolVal = static_cast<ESymbol*>(GC_MALLOC(sizeof(ESymbol)+(sizeof(char)*len)+1));
-    symbolVal->header.tag = kETypeTagSymbol;
+    auto* symbolVal = static_cast<ESymbol*>(GC_MALLOC(sizeof(ESymbol) + (sizeof(char) * len) + 1));
+    symbolVal->header.tag     = kETypeTagSymbol;
     symbolVal->header.gc_mark = 0;
     strcpy(symbolVal->name, name);
     symbolVal->length = (uint64_t) len;
@@ -342,8 +342,8 @@ extern "C" void* rt_make_string(const char* str) {
     size_t len = strlen(str);
 
     // Allocate enough space for the string
-    auto* strVal = static_cast<EString*>(GC_MALLOC(sizeof(EString)+(sizeof(char)*len)+1));
-    strVal->header.tag = kETypeTagString;
+    auto* strVal = static_cast<EString*>(GC_MALLOC(sizeof(EString) + (sizeof(char) * len) + 1));
+    strVal->header.tag     = kETypeTagString;
     strVal->header.gc_mark = 0;
     strcpy(strVal->stringValue, str);
     strVal->length = (uint64_t) len;
@@ -367,8 +367,8 @@ void* rt_make_keyword(const char* str) {
     size_t len = strlen(str);
 
     // Allocate enough space for the string
-    auto* keywordVal = static_cast<EKeyword*>(GC_MALLOC(sizeof(EKeyword)+(sizeof(char)*len)+1));
-    keywordVal->header.tag = kETypeTagKeyword;
+    auto* keywordVal = static_cast<EKeyword*>(GC_MALLOC(sizeof(EKeyword) + (sizeof(char) * len) + 1));
+    keywordVal->header.tag     = kETypeTagKeyword;
     keywordVal->header.gc_mark = 0;
     strcpy(keywordVal->name, str);
     keywordVal->length = (uint64_t) len;
@@ -385,9 +385,9 @@ void* rt_is_keyword(void* val) {
 extern "C" void* rt_make_var(void* sym) {
     auto var = static_cast<EVar*>(GC_MALLOC(sizeof(EVar)));
     var->header.gc_mark = 0;
-    var->header.tag = kETypeTagVar;
-    var->sym = sym;
-    var->val = NIL_PTR;
+    var->header.tag     = kETypeTagVar;
+    var->sym            = sym;
+    var->val            = NIL_PTR;
 
     return OBJECT_TO_TAG(var);
 }
@@ -415,29 +415,29 @@ void* rt_is_pair(void* val) {
 void* rt_make_pair(void* value, void* next) {
     auto* pairVal = static_cast<EPair*>(GC_MALLOC(sizeof(EPair)));
     pairVal->header.gc_mark = 0;
-    pairVal->header.tag = kETypeTagPair;
-    pairVal->value = value;
-    pairVal->next = next;
+    pairVal->header.tag     = kETypeTagPair;
+    pairVal->value          = value;
+    pairVal->next           = next;
     return OBJECT_TO_TAG(pairVal);
 }
 
 void* rt_car(void* pair) {
     rt_assert_tag(pair, kETypeTagPair, "Expected pair");
-    auto header = TAG_TO_OBJECT(pair);
+    auto header  = TAG_TO_OBJECT(pair);
     auto pairVal = static_cast<EPair*>(static_cast<void*>(header));
     return pairVal->value;
 }
 
 void* rt_cdr(void* pair) {
     rt_assert_tag(pair, kETypeTagPair, "Expected pair");
-    auto header = TAG_TO_OBJECT(pair);
+    auto header  = TAG_TO_OBJECT(pair);
     auto pairVal = static_cast<EPair*>(static_cast<void*>(header));
     return pairVal->next;
 }
 
 void* rt_set_car(void* pair, void* val) {
     rt_assert_tag(pair, kETypeTagPair, "Expected pair");
-    auto header = TAG_TO_OBJECT(pair);
+    auto header  = TAG_TO_OBJECT(pair);
     auto pairVal = static_cast<EPair*>(static_cast<void*>(header));
     pairVal->value = val;
     return pair;
@@ -445,7 +445,7 @@ void* rt_set_car(void* pair, void* val) {
 
 void* rt_set_cdr(void* pair, void* next) {
     rt_assert_tag(pair, kETypeTagPair, "Expected pair");
-    auto header = TAG_TO_OBJECT(pair);
+    auto header  = TAG_TO_OBJECT(pair);
     auto pairVal = static_cast<EPair*>(static_cast<void*>(header));
     pairVal->next = next;
     return pair;
@@ -455,23 +455,23 @@ void* rt_set_cdr(void* pair, void* next) {
 
 void* rt_make_interpreted_function(void* argnames, uint64_t arity, void* body, void* env) {
     auto funcVal = static_cast<EInterpretedFunction*>(GC_MALLOC(sizeof(EInterpretedFunction)));
-    funcVal->header.tag = kETypeTagInterpretedFunction;
+    funcVal->header.tag     = kETypeTagInterpretedFunction;
     funcVal->header.gc_mark = 0;
-    funcVal->argnames = argnames;
-    funcVal->arity = arity;
-    funcVal->body = body;
-    funcVal->env = env;
+    funcVal->argnames       = argnames;
+    funcVal->arity          = arity;
+    funcVal->body           = body;
+    funcVal->env            = env;
     return OBJECT_TO_TAG(funcVal);
 }
 
 extern "C" void* rt_make_compiled_function(uint32_t arity, uint32_t has_rest_args, void* fp, uint64_t env_size) {
-    auto funcVal = static_cast<ECompiledFunction*>(GC_MALLOC(sizeof(ECompiledFunction)+(sizeof(void*)*env_size)));
-    funcVal->header.tag = kETypeTagFunction;
+    auto funcVal = static_cast<ECompiledFunction*>(GC_MALLOC(sizeof(ECompiledFunction) + (sizeof(void*) * env_size)));
+    funcVal->header.tag     = kETypeTagFunction;
     funcVal->header.gc_mark = 0;
-    funcVal->arity = arity;
-    funcVal->has_rest_args = has_rest_args;
-    funcVal->f_ptr = fp;
-    funcVal->env_size = env_size;
+    funcVal->arity          = arity;
+    funcVal->has_rest_args  = has_rest_args;
+    funcVal->f_ptr          = fp;
+    funcVal->env_size       = env_size;
     return OBJECT_TO_TAG(funcVal);
 }
 
@@ -485,7 +485,7 @@ extern "C" uint64_t rt_compiled_function_get_arity(void* func) {
 
 extern "C" void* rt_compiled_function_get_ptr(void* func) {
     auto header = TAG_TO_OBJECT(func);
-    auto f = static_cast<ECompiledFunction*>(static_cast<void*>(header));
+    auto f      = static_cast<ECompiledFunction*>(static_cast<void*>(header));
     return f->f_ptr;
 }
 
@@ -506,13 +506,13 @@ extern "C" void* rt_apply(void* func, void* args) {
     auto funcVal = static_cast<ECompiledFunction*>(static_cast<void*>(TAG_TO_OBJECT(func)));
 
     uint32_t has_rest_args = funcVal->has_rest_args;
-    uint32_t arity = funcVal->arity;
+    uint32_t arity         = funcVal->arity;
 
     std::vector<void*> a;
 
     void* arg_head = args;
-    for (int i = 0; i<arity; i++) {
-        if (arg_head==NIL_PTR) {
+    for (int i = 0; i < arity; i++) {
+        if (arg_head == NIL_PTR) {
             std::stringstream ss;
             ss << "Apply: Expected " << arity << " arguments.";
             // Not enough arguments
@@ -532,7 +532,7 @@ extern "C" void* rt_apply(void* func, void* args) {
         a.push_back(arg_head);
     }
     else {
-        if (arg_head!=NIL_PTR) {
+        if (arg_head != NIL_PTR) {
             // Too many arguments
             std::stringstream ss;
             ss << "Apply: Expected " << arity << " arguments";
@@ -544,7 +544,7 @@ extern "C" void* rt_apply(void* func, void* args) {
         }
     }
 
-    uint32_t total_arg_count = arity+(has_rest_args ? 1 : 0);
+    uint32_t total_arg_count = arity + (has_rest_args ? 1 : 0);
 
     switch (total_arg_count) {
     case 0: return rt_apply_0(func);
@@ -595,15 +595,15 @@ extern "C" void* rt_apply(void* func, void* args) {
 
 void* rt_make_environment(void* parent) {
     auto envVal = static_cast<EEnvironment*>(GC_MALLOC(sizeof(EEnvironment)));
-    envVal->header.tag = kETypeTagEnvironment;
+    envVal->header.tag     = kETypeTagEnvironment;
     envVal->header.gc_mark = 0;
-    envVal->parent = parent;
-    envVal->values = NIL_PTR;
+    envVal->parent         = parent;
+    envVal->values         = NIL_PTR;
     return OBJECT_TO_TAG(envVal);
 }
 
 void* rt_environment_add(void* env, void* binding, void* value) {
-    auto envVal = static_cast<EEnvironment*>(static_cast<void*>(TAG_TO_OBJECT(env)));
+    auto envVal        = static_cast<EEnvironment*>(static_cast<void*>(TAG_TO_OBJECT(env)));
     auto currentValues = envVal->values;
     envVal->values = rt_make_pair(binding, rt_make_pair(value, currentValues));
     return env;
@@ -612,14 +612,14 @@ void* rt_environment_add(void* env, void* binding, void* value) {
 void* rt_environment_get(void* env, void* binding) {
     auto currentEnv = env;
 
-    while (currentEnv!=NIL_PTR) {
-        auto envVal = static_cast<EEnvironment*>(static_cast<void*>(TAG_TO_OBJECT(currentEnv)));
+    while (currentEnv != NIL_PTR) {
+        auto envVal       = static_cast<EEnvironment*>(static_cast<void*>(TAG_TO_OBJECT(currentEnv)));
         auto currentValue = envVal->values;
 
-        while (currentValue!=NIL_PTR) {
-            auto b = rt_car(currentValue);
+        while (currentValue != NIL_PTR) {
+            auto b      = rt_car(currentValue);
             auto v_pair = rt_cdr(currentValue);
-            auto v = rt_car(v_pair);
+            auto v      = rt_car(v_pair);
 
             if (electrum::symbol_equal(binding, b)) {
                 return v;
@@ -641,7 +641,7 @@ void* rt_environment_get(void* env, void* binding) {
 
 #pragma mark - Arithmetic
 __attribute__((noreturn))
-void* rt_throw_invalid_argument_exception(const char *msg) {
+void* rt_throw_invalid_argument_exception(const char* msg) {
     auto exc = el_rt_allocate_exception(
             "invalid-argument-error",
             msg,
@@ -656,7 +656,7 @@ extern "C" void* rt_add(void* x, void* y) {
 
     if (ix && iy) {
         // Since the tag is 0, we can simply add them together and return
-        return reinterpret_cast<void*>(reinterpret_cast<intptr_t>(x)+reinterpret_cast<intptr_t>(y));
+        return reinterpret_cast<void*>(reinterpret_cast<intptr_t>(x) + reinterpret_cast<intptr_t>(y));
     }
 
     bool fx = electrum::is_object_with_tag(x, kETypeTagFloat);
@@ -666,19 +666,19 @@ extern "C" void* rt_add(void* x, void* y) {
         // float + float
         double dx = rt_float_value(x);
         double dy = rt_float_value(y);
-        return rt_make_float(dx+dy);
+        return rt_make_float(dx + dy);
     }
     else if (ix && fy) {
         // integer + float
         intptr_t iix = TAG_TO_INTEGER(x);
-        double dy = rt_float_value(y);
-        return rt_make_float(((double) iix)+dy);
+        double   dy  = rt_float_value(y);
+        return rt_make_float(((double) iix) + dy);
     }
     else if (fx && iy) {
         // float + integer
-        double dx = rt_float_value(x);
+        double   dx  = rt_float_value(x);
         intptr_t iiy = TAG_TO_INTEGER(y);
-        return rt_make_float(dx+((double) iiy));
+        return rt_make_float(dx + ((double) iiy));
     }
 
     rt_throw_invalid_argument_exception("add: expected float or int");
@@ -690,7 +690,7 @@ extern "C" void* rt_sub(void* x, void* y) {
 
     if (ix && iy) {
         // Tag is 0, so no shifts needed
-        return reinterpret_cast<void*>(reinterpret_cast<intptr_t>(x)-reinterpret_cast<intptr_t>(y));
+        return reinterpret_cast<void*>(reinterpret_cast<intptr_t>(x) - reinterpret_cast<intptr_t>(y));
     }
 
     bool fx = electrum::is_object_with_tag(x, kETypeTagFloat);
@@ -700,19 +700,19 @@ extern "C" void* rt_sub(void* x, void* y) {
         // float - float
         double dx = rt_float_value(x);
         double dy = rt_float_value(y);
-        return rt_make_float(dx+dy);
+        return rt_make_float(dx + dy);
     }
     else if (ix && fy) {
         // integer - float
         intptr_t iix = TAG_TO_INTEGER(x);
-        double dy = rt_float_value(y);
-        return rt_make_float(((double) iix)-dy);
+        double   dy  = rt_float_value(y);
+        return rt_make_float(((double) iix) - dy);
     }
     else if (fx && iy) {
         // float - integer
-        double dx = rt_float_value(x);
+        double   dx  = rt_float_value(x);
         intptr_t iiy = TAG_TO_INTEGER(y);
-        return rt_make_float(dx-((double) iiy));
+        return rt_make_float(dx - ((double) iiy));
     }
 
     rt_throw_invalid_argument_exception("sub: expected float or int");
@@ -725,7 +725,7 @@ extern "C" void* rt_mul(void* x, void* y) {
     if (ix && iy) {
         uintptr_t iix = TAG_TO_INTEGER(x);
         uintptr_t iiy = TAG_TO_INTEGER(y);
-        return INTEGER_TO_TAG(iix*iiy);
+        return INTEGER_TO_TAG(iix * iiy);
     }
 
     bool fx = electrum::is_object_with_tag(x, kETypeTagFloat);
@@ -735,19 +735,19 @@ extern "C" void* rt_mul(void* x, void* y) {
         // float * float
         double dx = rt_float_value(x);
         double dy = rt_float_value(y);
-        return rt_make_float(dx*dy);
+        return rt_make_float(dx * dy);
     }
     else if (ix && fy) {
         // integer * float
         intptr_t iix = TAG_TO_INTEGER(x);
-        double dy = rt_float_value(y);
-        return rt_make_float(((double) iix)*dy);
+        double   dy  = rt_float_value(y);
+        return rt_make_float(((double) iix) * dy);
     }
     else if (fx && iy) {
         // float * integer
-        double dx = rt_float_value(x);
+        double   dx  = rt_float_value(x);
         intptr_t iiy = TAG_TO_INTEGER(y);
-        return rt_make_float(dx*((double) iiy));
+        return rt_make_float(dx * ((double) iiy));
     }
 
     rt_throw_invalid_argument_exception("mul: expected float or int");
@@ -757,7 +757,7 @@ extern "C" void* rt_div(void* x, void* y) {
     bool ix = electrum::is_integer(x);
     bool iy = electrum::is_integer(y);
 
-    if (iy && TAG_TO_INTEGER(y)==0) {
+    if (iy && TAG_TO_INTEGER(y) == 0) {
         // Div by zero
         throw std::exception();
     }
@@ -765,13 +765,13 @@ extern "C" void* rt_div(void* x, void* y) {
     if (ix && iy) {
         uintptr_t iix = TAG_TO_INTEGER(x);
         uintptr_t iiy = TAG_TO_INTEGER(y);
-        return INTEGER_TO_TAG(iix/iiy);
+        return INTEGER_TO_TAG(iix / iiy);
     }
 
     bool fx = electrum::is_object_with_tag(x, kETypeTagFloat);
     bool fy = electrum::is_object_with_tag(y, kETypeTagFloat);
 
-    if (fy && rt_float_value(y)==0) {
+    if (fy && rt_float_value(y) == 0) {
         // Div by zero
         throw std::exception();
     }
@@ -780,24 +780,53 @@ extern "C" void* rt_div(void* x, void* y) {
         // float / float
         double dx = rt_float_value(x);
         double dy = rt_float_value(y);
-        return rt_make_float(dx/dy);
+        return rt_make_float(dx / dy);
     }
     else if (ix && fy) {
         // integer / float
         intptr_t iix = TAG_TO_INTEGER(x);
-        double dy = rt_float_value(y);
-        return rt_make_float(((double) iix)/dy);
+        double   dy  = rt_float_value(y);
+        return rt_make_float(((double) iix) / dy);
     }
     else if (fx && iy) {
         // float / integer
-        double dx = rt_float_value(x);
+        double   dx  = rt_float_value(x);
         intptr_t iiy = TAG_TO_INTEGER(y);
-        return rt_make_float(dx/((double) iiy));
+        return rt_make_float(dx / ((double) iiy));
     }
 
     rt_throw_invalid_argument_exception("div: expected float or int");
 }
 
+extern "C" void* rt_eq(void* x, void* y) {
+    if (electrum::is_integer(x) && electrum::is_integer(y)) {
+        return TO_TAGGED_BOOLEAN(rt_integer_value(x) == rt_integer_value(y));
+    } else if(electrum::is_boolean(x) && electrum::is_boolean(y)) {
+        return TO_TAGGED_BOOLEAN(x == y);
+    } else if(x == NIL_PTR && y == NIL_PTR) {
+        return TRUE_PTR;
+    }
+
+    if(!(electrum::is_object(x) && electrum::is_object(y))) {
+        return FALSE_PTR;
+    }
+
+    auto tagx = TAG_TO_OBJECT(x)->tag;
+    auto tagy = TAG_TO_OBJECT(y)->tag;
+
+    if (tagx != tagy) {
+        return FALSE_PTR;
+    }
+
+    switch (tagx) {
+    case kETypeTagFloat:return TO_TAGGED_BOOLEAN(rt_float_value(x) == rt_float_value(y));
+    case kETypeTagString:return TO_TAGGED_BOOLEAN(strcmp(rt_string_value(x), rt_string_value(y)) == 0);
+    case kETypeTagSymbol:
+        return TO_TAGGED_BOOLEAN(strcmp(rt_symbol_extract_string(x), rt_symbol_extract_string(y)) == 0);
+    default: // TODO: Others
+        return FALSE_PTR;
+    }
+}
 
 /**
  * Malloc a tagged object. It is assumed by the GC that this object will be
