@@ -535,3 +535,38 @@ TEST(Compiler, compilesReferenceToOtherNS) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesNestedMacros) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compileAndEvalString("(def-ffi-fn* cons rt_make_pair :el (:el :el))");
+    c.compileAndEvalString("(defmacro m1 (a) `(cons 1 ,a))");
+    c.compileAndEvalString("(defmacro m2 (b) `(cons 2 ,b))");
+    c.compileAndEvalString("(m1 '(m2 3))");
+    auto r = c.compileAndEvalString("(m1 (m2 (cons 3 nil)))");
+
+    // Expected result: '(1 2 3)
+
+    ASSERT_EQ(rt_is_pair(r), TRUE_PTR);
+
+    auto e1 = rt_car(r);
+    ASSERT_TRUE(is_integer(e1));
+    EXPECT_EQ(rt_integer_value(e1), 1);
+
+    auto cdr1 = rt_cdr(r);
+    ASSERT_TRUE(is_object_with_tag(cdr1, kETypeTagPair));
+
+    auto e2 = rt_car(cdr1);
+    ASSERT_TRUE(is_integer(e2));
+    EXPECT_EQ(rt_integer_value(e2), 2);
+
+    auto cdr2 = rt_cdr(cdr1);
+    ASSERT_TRUE(is_object_with_tag(cdr2, kETypeTagPair));
+
+    auto e3 = rt_car(cdr2);
+    ASSERT_TRUE(is_integer(e3));
+    EXPECT_EQ(rt_integer_value(e3), 3);
+
+    rt_deinit_gc();
+}

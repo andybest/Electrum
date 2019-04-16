@@ -30,10 +30,12 @@
 #include "EvaluationPhase.h"
 #include "Namespace.h"
 #include "NamespaceManager.h"
+#include <iostream>
 #include <memory>
 #include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
+#include <yaml-cpp/yaml.h>
 
 namespace electrum {
 
@@ -86,6 +88,17 @@ public:
 
     /// The type of the node
     virtual AnalyzerNodeType nodeType() = 0;
+
+    /// Serialize to YAML
+    virtual YAML::Node serialize() = 0;
+
+    /// Print the node to stdout
+    void printNode() {
+        YAML::Emitter e;
+        e << serialize();
+        std::cout << e.c_str() << std::endl;
+    }
+
 };
 
 /**
@@ -105,6 +118,15 @@ public:
 
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeIf;
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"]        = "if";
+        node["condition"]   = condition->serialize();
+        node["consequent"]  = consequent->serialize();
+        node["alternative"] = alternative->serialize();
+        return node;
     }
 };
 
@@ -138,6 +160,44 @@ public:
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeConstant;
     }
+
+    string typeString() {
+        switch (type) {
+        case kAnalyzerConstantTypeSymbol: return "symbol";
+        case kAnalyzerConstantTypeNil: return "nil";
+        case kAnalyzerConstantTypeBoolean: return "boolean";
+        case kAnalyzerConstantTypeFloat: return "float";
+        case kAnalyzerConstantTypeInteger: return "integer";
+        case kAnalyzerConstantTypeKeyword: return "keyword";
+        case kAnalyzerConstantTypeString: return "string";
+        }
+
+        return "";
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"]       = "constant";
+        node["const-type"] = typeString();
+
+        switch (type) {
+        case kAnalyzerConstantTypeSymbol: node["value"] = *boost::get<shared_ptr<string>>(value);
+            break;
+        case kAnalyzerConstantTypeNil: node["value"] = "nil";
+            break;
+        case kAnalyzerConstantTypeBoolean: node["value"] = boost::get<bool>(value);
+            break;
+        case kAnalyzerConstantTypeFloat: node["value"] = boost::get<double>(value);
+            break;
+        case kAnalyzerConstantTypeInteger: node["value"] = boost::get<int64_t>(value);
+            break;
+        case kAnalyzerConstantTypeKeyword: node["value"] = *boost::get<shared_ptr<string>>(value);
+            break;
+        case kAnalyzerConstantTypeString: node["value"] = *boost::get<shared_ptr<string>>(value);
+            break;
+        }
+        return node;
+    }
 };
 
 /*
@@ -155,6 +215,20 @@ public:
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeConstantList;
     }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"] = "constant-list";
+
+        vector<YAML::Node> vals;
+        for(const auto& n: values) {
+            vals.push_back(n->serialize());
+        }
+
+        node["values"] = vals;
+
+        return node;
+    }
 };
 
 /*
@@ -165,7 +239,7 @@ public:
     /// A vector of all statements in the do form, except the return value
     vector<shared_ptr<AnalyzerNode>> statements;
     /// The last value in the do form
-    shared_ptr<AnalyzerNode> returnValue;
+    shared_ptr<AnalyzerNode>         returnValue;
 
     vector<shared_ptr<AnalyzerNode>> children() override {
         auto rv = vector<shared_ptr<AnalyzerNode>>(statements);
@@ -175,6 +249,12 @@ public:
 
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeDo;
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"] = "do";
+        return node;
     }
 };
 
@@ -201,6 +281,13 @@ public:
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeLambda;
     }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+
+        node["type"] = "lambda";
+        return node;
+    }
 };
 
 class DefMacroAnalyzerNode : public AnalyzerNode {
@@ -210,7 +297,7 @@ public:
 
     /// A vector of the argument names
     vector<shared_ptr<AnalyzerNode>> arg_name_nodes;
-    vector<shared_ptr<std::string>> arg_names;
+    vector<shared_ptr<std::string>>  arg_names;
 
     /// A do node representing the body
     shared_ptr<AnalyzerNode> body;
@@ -221,6 +308,13 @@ public:
 
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeDefMacro;
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+
+        node["type"] = "defmacro";
+        return node;
     }
 };
 
@@ -239,6 +333,13 @@ public:
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeDef;
     }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+
+        node["type"] = "def";
+        return node;
+    }
 };
 
 class VarLookupNode : public AnalyzerNode {
@@ -255,6 +356,13 @@ public:
 
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeVarLookup;
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+
+        node["type"] = "var-lookup";
+        return node;
     }
 };
 
@@ -282,6 +390,21 @@ public:
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeMacroExpand;
     }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"] = "macroexpand";
+
+        vector<YAML::Node> a;
+
+        for(auto n: args) {
+            a.push_back(n->serialize());
+        }
+
+        node["args"] = a;
+
+        return node;
+    }
 };
 
 class MaybeInvokeAnalyzerNode : public AnalyzerNode {
@@ -305,6 +428,13 @@ public:
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeMaybeInvoke;
     }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+
+        node["type"] = "maybe-invoke";
+        return node;
+    }
 };
 
 enum FFIType : int64_t {
@@ -313,7 +443,7 @@ enum FFIType : int64_t {
 };
 
 static FFIType ffi_type_from_keyword(string input) {
-    if (input=="el") {
+    if (input == "el") {
         return kFFITypeElectrumValue;
     }
 
@@ -335,6 +465,13 @@ public:
 
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeDefFFIFunction;
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"] = "def-ffi-fn";
+
+        return node;
     }
 };
 
@@ -364,6 +501,13 @@ public:
 
         return c;
     }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+
+        node["type"] = "eval-when";
+        return node;
+    }
 };
 
 class CatchAnalyzerNode : public AnalyzerNode {
@@ -380,6 +524,13 @@ public:
 
     vector<shared_ptr<AnalyzerNode>> children() override {
         return body;
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+
+        node["type"] = "catch";
+        return node;
     }
 };
 
@@ -400,6 +551,13 @@ public:
         c.insert(c.end(), catch_nodes.begin(), catch_nodes.end());
 
         return c;
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"] = "try";
+
+        return node;
     }
 };
 
@@ -473,7 +631,6 @@ private:
     EvaluationPhase popEvaluationPhase();
     EvaluationPhase currentEvaluationPhase();
 
-
     /// Analysis functions for special forms
     const std::unordered_map<std::string, AnalyzerFunc> specialForms{
             {"if", &Analyzer::analyzeIf},
@@ -492,10 +649,9 @@ private:
     };
 
     struct AnalyzerDefinition {
-      EvaluationPhase phase;
+      EvaluationPhase          phase;
       shared_ptr<AnalyzerNode> node;
     };
-
 
     /// Holds global macros
     std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_macros_;

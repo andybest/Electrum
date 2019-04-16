@@ -34,7 +34,7 @@ namespace electrum {
 static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Module> module) {
     auto fpm = std::make_unique<llvm::legacy::FunctionPassManager>(module.get());
 
-    fpm->add(llvm::createPlaceSafepointsPass());
+//    fpm->add(llvm::createPlaceSafepointsPass());
     fpm->doInitialization();
 
     for (auto& f: *module) {

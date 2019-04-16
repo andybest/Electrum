@@ -316,6 +316,11 @@ shared_ptr<ASTNode> Parser::readLispValue(void* val, const shared_ptr<SourcePosi
         form->tag = kTypeTagNil;
     }
     else {
+        if(is_object(val)) {
+            auto obj = TAG_TO_OBJECT(val);
+            std::cout << "Object: " << obj->tag << std::endl;
+        }
+        print_expr(val);
         throw std::exception();
     }
 

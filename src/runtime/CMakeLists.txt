@@ -19,7 +19,7 @@ set(SOURCE_FILES
         Dwarf_eh.cpp
         generate.c
         hash_table.c
-        ENamespace.cpp EHashTable.c EHashTable.h)
+        ENamespace.cpp EHashTable.c EHashTable.h ExprPrinter.cpp ExprPrinter.h)
 
 add_library(${CMAKE_PROJECT_NAME}_runtime SHARED
         ${HEADER_FILES}

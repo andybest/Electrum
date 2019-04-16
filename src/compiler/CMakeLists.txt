@@ -61,5 +61,8 @@ include_directories(${Boost_INCLUDE_DIR})
 
 target_link_libraries(${CMAKE_PROJECT_NAME}c_lib ${Boost_LIBRARIES})
 
+include_directories(../lib/yaml-cpp/include)
+target_link_libraries(${CMAKE_PROJECT_NAME}c_lib yaml-cpp)
+
 target_link_libraries(${CMAKE_PROJECT_NAME}c_lib ${CMAKE_PROJECT_NAME}_lexer)
 target_link_libraries(${CMAKE_PROJECT_NAME}c_lib ${CMAKE_PROJECT_NAME}_runtime)
