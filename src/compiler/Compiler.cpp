@@ -298,16 +298,10 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
             compileMacroExpand(macro_expand_node);
         }
         else {
-            std::cout << "Compiling expansion" << std::endl;
-            macro_expand_node->printNode();
-
             auto   expansion     = compileAndEvalExpander(macro_expand_node);
             Parser p;
             auto   form          = p.readLispValue(expansion, node->sourcePosition);
             auto   expanded_node = analyzer_.analyze(form, node->node_depth, node->evaluation_phase);
-
-            std::cout << "Expanded node" << std::endl;
-            expanded_node->printNode();
 
             compileNode(expanded_node);
         }

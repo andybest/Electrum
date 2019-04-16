@@ -221,7 +221,7 @@ public:
         node["type"] = "constant-list";
 
         vector<YAML::Node> vals;
-        for(const auto& n: values) {
+        for (const auto& n: values) {
             vals.push_back(n->serialize());
         }
 
@@ -253,7 +253,13 @@ public:
 
     YAML::Node serialize() override {
         YAML::Node node;
-        node["type"] = "do";
+        node["type"]         = "do";
+        node["return-value"] = returnValue->serialize();
+
+        vector<YAML::Node> s;
+        for (auto          n: statements) { s.push_back(n->serialize()); }
+        node["statements"] = s;
+
         return node;
     }
 };
@@ -285,7 +291,16 @@ public:
     YAML::Node serialize() override {
         YAML::Node node;
 
-        node["type"] = "lambda";
+        node["type"]         = "lambda";
+        node["has-rest-arg"] = has_rest_arg;
+        if (rest_arg_name) { node["rest-arg-name"] = *rest_arg_name; }
+
+        node["body"] = body->serialize();
+
+        vector<string> an;
+        for (auto      n: arg_names) { an.push_back(*n); }
+        node["arg-names"] = an;
+
         return node;
     }
 };
@@ -312,8 +327,14 @@ public:
 
     YAML::Node serialize() override {
         YAML::Node node;
-
         node["type"] = "defmacro";
+        node["name"] = *name;
+        node["body"] = body->serialize();
+
+        vector<string> an;
+        for (auto      n: arg_names) { an.push_back(*n); }
+        node["arg-names"] = an;
+
         return node;
     }
 };
@@ -336,8 +357,9 @@ public:
 
     YAML::Node serialize() override {
         YAML::Node node;
-
-        node["type"] = "def";
+        node["type"]  = "def";
+        node["name"]  = "name";
+        node["value"] = value->serialize();
         return node;
     }
 };
@@ -360,8 +382,11 @@ public:
 
     YAML::Node serialize() override {
         YAML::Node node;
+        node["type"]      = "var-lookup";
+        if (target_ns) { node["target-ns"] = *target_ns; }
+        node["name"]      = *name;
+        node["is_global"] = is_global;
 
-        node["type"] = "var-lookup";
         return node;
     }
 };
@@ -397,7 +422,7 @@ public:
 
         vector<YAML::Node> a;
 
-        for(auto n: args) {
+        for (auto n: args) {
             a.push_back(n->serialize());
         }
 
@@ -431,8 +456,13 @@ public:
 
     YAML::Node serialize() override {
         YAML::Node node;
-
         node["type"] = "maybe-invoke";
+        node["fn"]   = fn->serialize();
+
+        vector<YAML::Node> a;
+        for (auto          n: args) { a.push_back(n->serialize()); }
+        node["args"] = a;
+
         return node;
     }
 };
@@ -448,6 +478,13 @@ static FFIType ffi_type_from_keyword(string input) {
     }
 
     return kFFITypeUnknown;
+}
+
+static string string_from_ffi_type(FFIType t) {
+    switch (t) {
+    case kFFITypeElectrumValue: return "el";
+    default: return "unknown";
+    }
 }
 
 class DefFFIFunctionNode : public AnalyzerNode {
@@ -469,7 +506,14 @@ public:
 
     YAML::Node serialize() override {
         YAML::Node node;
-        node["type"] = "def-ffi-fn";
+        node["type"]        = "def-ffi-fn";
+        node["binding"]     = "binding";
+        node["func-name"]   = *func_name;
+        node["return-type"] = string_from_ffi_type(return_type);
+
+        vector<string> at;
+        for (auto      a: arg_types) { at.push_back(string_from_ffi_type(a)); }
+        node["arg_types"] = at;
 
         return node;
     }
@@ -504,8 +548,27 @@ public:
 
     YAML::Node serialize() override {
         YAML::Node node;
-
         node["type"] = "eval-when";
+
+        vector<string> p;
+
+        if (phases & kEvaluationPhaseCompileTime) {
+            p.emplace_back("compile");
+        }
+
+        if (phases & kEvaluationPhaseLoadTime) {
+            p.emplace_back("load");
+        }
+
+        node["phases"] = p;
+        node["last"]   = last->serialize();
+
+        vector<YAML::Node> b;
+        for (const auto& n: body) {
+            b.push_back(n->serialize());
+        }
+        node["body"] = b;
+
         return node;
     }
 };
