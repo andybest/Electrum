@@ -313,6 +313,12 @@ public:
     vector<shared_ptr<AnalyzerNode>> arg_name_nodes;
     vector<shared_ptr<std::string>>  arg_names;
 
+    /// Whether the func has a rest arg
+    bool has_rest_arg;
+
+    /// The name of the rest arg
+    shared_ptr<std::string> rest_arg_name;
+
     /// A do node representing the body
     shared_ptr<AnalyzerNode> body;
 
@@ -403,9 +409,7 @@ public:
 
     vector<shared_ptr<AnalyzerNode>> children() override {
         vector<shared_ptr<AnalyzerNode>> c = {macro};
-
         for (const auto& a: args) { c.push_back(a); }
-
         return c;
     }
 
@@ -418,9 +422,7 @@ public:
         node["type"] = "macroexpand";
 
         vector<YAML::Node> a;
-
         for (const auto& n: args) { a.push_back(n->serialize()); }
-
         node["args"] = a;
 
         return node;
@@ -437,9 +439,7 @@ public:
 
     vector<shared_ptr<AnalyzerNode>> children() override {
         vector<shared_ptr<AnalyzerNode>> c = {fn};
-
         for (const auto& a: args) { c.push_back(a); }
-
         return c;
     }
 

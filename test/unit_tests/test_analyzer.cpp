@@ -586,3 +586,23 @@ TEST(Analyzer, definitionFromOtherNSVisible) {
 
     EXPECT_NO_THROW(an.analyze(val));
 }
+
+TEST(Analyzer, analyzesMacroWithRestArgs) {
+    PARSE_STRING("(defmacro foo (x & y) y)");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeDefMacro);
+    auto macroNode = std::dynamic_pointer_cast<DefMacroAnalyzerNode>(node);
+
+    EXPECT_EQ(macroNode->arg_names.size(), 1);
+    EXPECT_EQ(macroNode->arg_name_nodes.at(0)->nodeType(), kAnalyzerNodeTypeConstant);
+
+    auto arg1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(macroNode->arg_name_nodes.at(0));
+    EXPECT_EQ(arg1->type, kAnalyzerConstantTypeSymbol);
+    EXPECT_EQ(*boost::get<std::shared_ptr<std::string>>(arg1->value), "x");
+
+    EXPECT_EQ(macroNode->has_rest_arg, true);
+    EXPECT_EQ(*macroNode->rest_arg_name, "y");
+}

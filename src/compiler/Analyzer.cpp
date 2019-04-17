@@ -619,12 +619,30 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
     std::vector<shared_ptr<AnalyzerNode>> arg_name_nodes;
     std::vector<shared_ptr<std::string>>  arg_names;
 
+    bool               has_rest_arg = false;
+    shared_ptr<string> rest_arg_name;
+    int                rest_count   = 0;
+    
     for (const auto& arg: *arg_list) {
         if (arg->tag != kTypeTagSymbol) {
             throw CompilerException("Defmacro arguments must be symbols",
                     arg->sourcePosition);
         }
 
+        if (has_rest_arg) {
+            if (rest_count > 1) {
+                throw CompilerException("Unexpected argument after rest arg", arg->sourcePosition);
+            }
+
+            rest_arg_name = arg->stringValue;
+            ++rest_count;
+            continue;
+        }
+        else if (*arg->stringValue == "&") {
+            has_rest_arg = true;
+            continue;
+        }
+        
         auto sym = std::make_shared<ConstantValueAnalyzerNode>();
         sym->sourcePosition = arg->sourcePosition;
         sym->ns             = current_ns_;
@@ -641,6 +659,10 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
         storeInLocalEnv(*arg_name, std::make_shared<ConstantValueAnalyzerNode>());
     }
 
+    if (has_rest_arg) {
+        storeInLocalEnv(*rest_arg_name, std::make_shared<ConstantValueAnalyzerNode>());
+    }
+    
     if (listPtr->size() < 4) {
         throw CompilerException("Defmacro forms must have at least one body expression",
                 form->sourcePosition);
@@ -671,6 +693,11 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
     node->arg_name_nodes = arg_name_nodes;
     node->body           = body;
 
+    if (has_rest_arg) {
+        node->has_rest_arg  = true;
+        node->rest_arg_name = rest_arg_name;
+    }
+    
     global_macros_[*binding] = node;
 
     popLocalEnv();
