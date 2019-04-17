@@ -570,3 +570,26 @@ TEST(Compiler, compilesNestedMacros) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesMacroWithRestArgs) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compileAndEvalString("(do "
+                           "  (def-ffi-fn* car rt_car :el (:el))"
+                           "  (def-ffi-fn* cdr rt_cdr :el (:el)))");
+
+    c.compileAndEvalString("(defmacro m1 (x & rest) x)");
+    c.compileAndEvalString("(defmacro m2 (x & rest) `(car (quote ,rest)))");
+
+    auto r1 = c.compileAndEvalString("(m1 1 2 3)");
+    auto r2 = c.compileAndEvalString("(m2 1 2 3)");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 1);
+
+    EXPECT_EQ(rt_is_integer(r2), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r2), 2);
+
+    rt_deinit_gc();
+}

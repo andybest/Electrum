@@ -93,11 +93,7 @@ public:
     virtual YAML::Node serialize() = 0;
 
     /// Print the node to stdout
-    void printNode() {
-        YAML::Emitter e;
-        e << serialize();
-        std::cout << e.c_str() << std::endl;
-    }
+    void printNode();
 };
 
 /**

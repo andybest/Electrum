@@ -147,7 +147,7 @@ vector<string> Analyzer::analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node
                                   return true;
                               }
                           }
-                          return false;
+                          return defMacroNode->has_rest_arg && *defMacroNode->rest_arg_name == c;
                         }),
                 closed_overs.end());
         break;
@@ -1182,4 +1182,9 @@ std::shared_ptr<Namespace> Analyzer::currentNamespace() {
     return ns_manager.getOrCreateNamespace(current_ns_);
 }
 
+void AnalyzerNode::printNode() {
+    YAML::Emitter e;
+    e << serialize();
+    std::cout << e.c_str() << std::endl;
+}
 }

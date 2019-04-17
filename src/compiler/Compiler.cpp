@@ -939,24 +939,47 @@ void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAna
         throw CompilerException("Unable to find macro expander!", node->sourcePosition);
     }
 
-    auto expanderDef           = result->second;
-    auto expanderRef           = currentModule()->getOrInsertGlobal(expanderDef->mangled_name,
+    auto expanderDef                         = result->second;
+    auto expanderRef                         = currentModule()->getOrInsertGlobal(expanderDef->mangled_name,
             llvm::IntegerType::getInt8PtrTy(llvmContext(),
                     kGCAddressSpace));
-    auto expanderClosure       = currentBuilder()->CreateLoad(expanderRef);
+    auto expanderClosure                     = currentBuilder()->CreateLoad(expanderRef);
 
     std::vector<llvm::Value*> args;
     args.reserve(node->args.size() + 1);
 
+    vector<shared_ptr<AnalyzerNode>> rest_args;
+    auto                             arg_idx = 0;
     for (const auto& a: node->args) {
-        compileNode(a);
+        if (macroNode->has_rest_arg && arg_idx >= macroNode->arg_names.size()) {
+            rest_args.push_back(a);
+        }
+        else {
+            compileNode(a);
+            args.push_back(currentContext()->popValue());
+        }
+        ++arg_idx;
+    }
+
+    if (macroNode->has_rest_arg) {
+        auto list_node = make_shared<ConstantListAnalyzerNode>();
+        list_node->ns             = node->ns;
+        list_node->sourcePosition = node->sourcePosition;
+        list_node->values         = rest_args;
+
+        compileNode(list_node);
         args.push_back(currentContext()->popValue());
     }
 
     args.push_back(expanderClosure);
 
     std::vector<llvm::Type*> arg_types;
-    for (uint64_t            i = 0; i < node->args.size(); ++i) {
+
+    for (uint64_t i = 0; i < macroNode->arg_names.size(); ++i) {
+        arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
+    }
+
+    if (macroNode->has_rest_arg) {
         arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
     }
 
