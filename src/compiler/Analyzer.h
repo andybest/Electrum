@@ -98,7 +98,6 @@ public:
         e << serialize();
         std::cout << e.c_str() << std::endl;
     }
-
 };
 
 /**
@@ -257,7 +256,7 @@ public:
         node["return-value"] = returnValue->serialize();
 
         vector<YAML::Node> s;
-        for (auto          n: statements) { s.push_back(n->serialize()); }
+        for (const auto& n: statements) { s.push_back(n->serialize()); }
         node["statements"] = s;
 
         return node;
@@ -298,7 +297,7 @@ public:
         node["body"] = body->serialize();
 
         vector<string> an;
-        for (auto      n: arg_names) { an.push_back(*n); }
+        for (const auto& n: arg_names) { an.push_back(*n); }
         node["arg-names"] = an;
 
         return node;
@@ -332,7 +331,7 @@ public:
         node["body"] = body->serialize();
 
         vector<string> an;
-        for (auto      n: arg_names) { an.push_back(*n); }
+        for (const auto& n: arg_names) { an.push_back(*n); }
         node["arg-names"] = an;
 
         return node;
@@ -405,9 +404,7 @@ public:
     vector<shared_ptr<AnalyzerNode>> children() override {
         vector<shared_ptr<AnalyzerNode>> c = {macro};
 
-        for (auto a: args) {
-            c.push_back(a);
-        }
+        for (const auto& a: args) { c.push_back(a); }
 
         return c;
     }
@@ -422,9 +419,7 @@ public:
 
         vector<YAML::Node> a;
 
-        for (auto n: args) {
-            a.push_back(n->serialize());
-        }
+        for (const auto& n: args) { a.push_back(n->serialize()); }
 
         node["args"] = a;
 
@@ -443,9 +438,7 @@ public:
     vector<shared_ptr<AnalyzerNode>> children() override {
         vector<shared_ptr<AnalyzerNode>> c = {fn};
 
-        for (auto a: args) {
-            c.push_back(a);
-        }
+        for (const auto& a: args) { c.push_back(a); }
 
         return c;
     }
@@ -460,7 +453,7 @@ public:
         node["fn"]   = fn->serialize();
 
         vector<YAML::Node> a;
-        for (auto          n: args) { a.push_back(n->serialize()); }
+        for (const auto& n: args) { a.push_back(n->serialize()); }
         node["args"] = a;
 
         return node;
@@ -472,7 +465,7 @@ enum FFIType : int64_t {
   kFFITypeElectrumValue
 };
 
-static FFIType ffi_type_from_keyword(string input) {
+static FFIType ffi_type_from_keyword(const string& input) {
     if (input == "el") {
         return kFFITypeElectrumValue;
     }
@@ -591,12 +584,12 @@ public:
 
     YAML::Node serialize() override {
         YAML::Node node;
-        node["type"] = "catch";
-        node["exception-type"] = *exception_type;
+        node["type"]              = "catch";
+        node["exception-type"]    = *exception_type;
         node["exception_binding"] = *exception_binding;
 
         vector<YAML::Node> b;
-        for(auto n: body) {
+        for (const auto& n: body) {
             b.push_back(n->serialize());
         }
         node["body"] = b;
@@ -629,13 +622,13 @@ public:
         node["type"] = "try";
 
         vector<YAML::Node> b;
-        for(auto n: body) {
+        for (const auto& n: body) {
             b.push_back(n->serialize());
         }
         node["body"] = b;
 
         vector<YAML::Node> c;
-        for(auto n: catch_nodes) {
+        for (const auto& n: catch_nodes) {
             c.push_back(n->serialize());
         }
         node["catch-nodes"] = c;
