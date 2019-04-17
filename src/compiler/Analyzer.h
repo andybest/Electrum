@@ -591,8 +591,16 @@ public:
 
     YAML::Node serialize() override {
         YAML::Node node;
-
         node["type"] = "catch";
+        node["exception-type"] = *exception_type;
+        node["exception_binding"] = *exception_binding;
+
+        vector<YAML::Node> b;
+        for(auto n: body) {
+            b.push_back(n->serialize());
+        }
+        node["body"] = b;
+
         return node;
     }
 };
@@ -619,6 +627,18 @@ public:
     YAML::Node serialize() override {
         YAML::Node node;
         node["type"] = "try";
+
+        vector<YAML::Node> b;
+        for(auto n: body) {
+            b.push_back(n->serialize());
+        }
+        node["body"] = b;
+
+        vector<YAML::Node> c;
+        for(auto n: catch_nodes) {
+            c.push_back(n->serialize());
+        }
+        node["catch-nodes"] = c;
 
         return node;
     }
