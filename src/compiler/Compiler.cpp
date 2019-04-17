@@ -778,6 +778,11 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
         arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
     }
 
+    if (node->has_rest_arg) {
+        // Add argument for rest args
+        arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
+    }
+
     // Add extra arg for closure, in order to ger environment values
     arg_types.push_back(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
 
@@ -849,6 +854,15 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
         ++arg_it;
     }
 
+    // Add rest arg to env if it exists
+    if (node->has_rest_arg) {
+        auto& arg = *arg_it;
+        arg.setName(*node->rest_arg_name);
+        local_env[*node->rest_arg_name] = &arg;
+
+        ++arg_it;
+    }
+
     for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
         auto& arg = *arg_it;
         arg.setName("environment");
@@ -878,7 +892,7 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 //    currentContext()->emitLocation(node->sourcePosition);
 
     auto closure = makeClosure(node->arg_names.size(),
-            false,
+            node->has_rest_arg,
             expander,
             node->closed_overs.size());
 
@@ -1318,5 +1332,4 @@ llvm::DISubroutineType* Compiler::createFunctionDebugType(int num_args) {
     return currentContext()->currentDIBuilder()->createSubroutineType(
             currentContext()->currentDIBuilder()->getOrCreateTypeArray(element_types));
 }
-
-} // namespace electrum
+}
