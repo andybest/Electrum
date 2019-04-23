@@ -58,7 +58,9 @@ enum AnalyzerNodeType {
   kAnalyzerNodeTypeConstantList,
   kAnalyzerNodeTypeEvalWhen,
   kAnalyzerNodeTypeTry,
-  kAnalyzerNodeTypeCatch
+  kAnalyzerNodeTypeCatch,
+  kAnalyzerNodeTypeLet,
+  kAnalyzerNodeTypeWhile
 };
 
 class AnalyzerNode {
@@ -633,6 +635,54 @@ public:
     }
 };
 
+class LetAnalyzerNode: public AnalyzerNode {
+public:
+    vector<shared_ptr<AnalyzerNode>> body;
+    unordered_map<string, shared_ptr<AnalyzerNode>> bindings;
+
+    /// Is let* rather than a plain let?
+    bool is_parallel;
+
+    AnalyzerNodeType nodeType() override {
+        return kAnalyzerNodeTypeLet;
+    }
+
+    vector<shared_ptr<AnalyzerNode>> children() override {
+        vector<shared_ptr<AnalyzerNode>> c;
+
+        for(const auto& b: bindings) {
+            c.push_back(b.second);
+        }
+
+        for(const auto& b: body) {
+            c.push_back(b);
+        }
+
+        return c;
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"] = "let";
+
+        vector<YAML::Node> b;
+        for (const auto& n: body) {
+            b.push_back(n->serialize());
+        }
+        node["body"] = b;
+
+        YAML::Node bind;
+        for (const auto& n: bindings) {
+            bind[n.first] = n.second->serialize();
+        }
+
+        node["bindings"] = bind;
+        node["is-parallel"] = is_parallel;
+
+        return node;
+    }
+};
+
 class Analyzer {
 public:
     Analyzer();
@@ -688,6 +738,7 @@ private:
     shared_ptr<AnalyzerNode> analyzeCatch(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeMakeList(const std::shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeInNS(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeLet(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode>
     maybeAnalyzeSpecialForm(const shared_ptr<string>& symbol_name, const shared_ptr<ASTNode>& form);
 
@@ -719,7 +770,9 @@ private:
             {"eval-when", &Analyzer::analyzeEvalWhen},
             {"try", &Analyzer::analyzeTry},
             {"catch", &Analyzer::analyzeCatch},
-            {"in-ns", &Analyzer::analyzeInNS}
+            {"in-ns", &Analyzer::analyzeInNS},
+            {"let", &Analyzer::analyzeLet},
+            {"let*", &Analyzer::analyzeLet}
     };
 
     struct AnalyzerDefinition {

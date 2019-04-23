@@ -1154,6 +1154,74 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeInNS(const std::shared_ptr<electrum::A
     return nil_node;
 }
 
+shared_ptr<AnalyzerNode> Analyzer::analyzeLet(const std::shared_ptr<electrum::ASTNode>& form) {
+    assert(form->tag == kTypeTagList);
+    auto listPtr = form->listValue;
+    assert(!listPtr->empty());
+    assert(listPtr->at(0)->tag == kTypeTagSymbol);
+    auto sym = *listPtr->at(0)->stringValue;
+
+    auto is_parallel = sym == "let*";
+
+    auto letNode = make_shared<LetAnalyzerNode>();
+    letNode->sourcePosition = form->sourcePosition;
+    letNode->ns = current_ns_;
+    letNode->is_parallel = is_parallel;
+
+    pushLocalEnv();
+
+    if(listPtr->size() < 2) {
+        throw CompilerException("let forms require a list of bindings", form->sourcePosition);
+    }
+
+    if(listPtr->at(1)->tag != kTypeTagList) {
+        throw CompilerException("let: expected a list of bindings", listPtr->at(1)->sourcePosition);
+    }
+
+    for(auto b: *listPtr->at(1)->listValue) {
+        if(b->tag != kTypeTagList) {
+            throw CompilerException("let: expected binding form to be a list", b->sourcePosition);
+        }
+
+        auto b_list = b->listValue;
+
+        if(b_list->size() != 2) {
+            throw CompilerException("let: expected binding form to have 2 values", b->sourcePosition);
+        }
+
+        if(b_list->at(0)->tag != kTypeTagSymbol) {
+            throw CompilerException("let: expected binding to be a symbol", b_list->at(0)->sourcePosition);
+        }
+
+        auto binding = b_list->at(0)->stringValue;
+        auto val = analyzeForm(b_list->at(1));
+        letNode->bindings[*binding] = val;
+
+        if(is_parallel) {
+            storeInLocalEnv(*binding, val);
+        }
+    }
+
+    if(!is_parallel) {
+        for(const auto& b: letNode->bindings) {
+            storeInLocalEnv(b.first, b.second);
+        }
+    }
+
+    if(listPtr->size() < 3) {
+        throw CompilerException("let: expected at least one body form", form->sourcePosition);
+    }
+
+    for(auto it = listPtr->begin() + 2; it != listPtr->end(); ++it) {
+        letNode->body.push_back(analyzeForm(*it));
+    }
+
+    popLocalEnv();
+
+
+    return letNode;
+}
+
 void Analyzer::pushLocalEnv() {
     local_envs_.emplace_back();
 }

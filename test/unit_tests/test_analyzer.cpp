@@ -632,3 +632,81 @@ TEST(Analyzer, analyzesMakeList) {
     EXPECT_EQ(v3->type, kAnalyzerConstantTypeInteger);
     EXPECT_EQ(boost::get<int64_t>(v3->value), 3);
 }
+
+TEST(Analyzer, analyzesLet) {
+    PARSE_STRING("(let ((a 1)"
+                 "      (b 2))"
+                 "  a)");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    ASSERT_EQ(node->nodeType(), kAnalyzerNodeTypeLet);
+    auto letNode = std::dynamic_pointer_cast<LetAnalyzerNode>(node);
+
+    EXPECT_FALSE(letNode->is_parallel);
+
+    EXPECT_EQ(letNode->bindings.size(), 2);
+    ASSERT_EQ(letNode->bindings.count("a"), 1);
+    ASSERT_EQ(letNode->bindings.count("b"), 1);
+
+    ASSERT_EQ(letNode->bindings["a"]->nodeType(), kAnalyzerNodeTypeConstant);
+    ASSERT_EQ(letNode->bindings["b"]->nodeType(), kAnalyzerNodeTypeConstant);
+
+    auto aNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(letNode->bindings["a"]);
+    auto bNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(letNode->bindings["b"]);
+
+    ASSERT_EQ(aNode->type, kAnalyzerConstantTypeInteger);
+    ASSERT_EQ(bNode->type, kAnalyzerConstantTypeInteger);
+
+    EXPECT_EQ(boost::get<int64_t>(aNode->value), 1);
+    EXPECT_EQ(boost::get<int64_t>(bNode->value), 2);
+}
+
+TEST(Analyzer, analyzesLetAmp) {
+    PARSE_STRING("(let* ((a 1)"
+                 "       (b 2))"
+                 "  a)");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    ASSERT_EQ(node->nodeType(), kAnalyzerNodeTypeLet);
+    auto letNode = std::dynamic_pointer_cast<LetAnalyzerNode>(node);
+
+    EXPECT_TRUE(letNode->is_parallel);
+
+    EXPECT_EQ(letNode->bindings.size(), 2);
+    ASSERT_EQ(letNode->bindings.count("a"), 1);
+    ASSERT_EQ(letNode->bindings.count("b"), 1);
+
+    ASSERT_EQ(letNode->bindings["a"]->nodeType(), kAnalyzerNodeTypeConstant);
+    ASSERT_EQ(letNode->bindings["b"]->nodeType(), kAnalyzerNodeTypeConstant);
+
+    auto aNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(letNode->bindings["a"]);
+    auto bNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(letNode->bindings["b"]);
+
+    ASSERT_EQ(aNode->type, kAnalyzerConstantTypeInteger);
+    ASSERT_EQ(bNode->type, kAnalyzerConstantTypeInteger);
+
+    EXPECT_EQ(boost::get<int64_t>(aNode->value), 1);
+    EXPECT_EQ(boost::get<int64_t>(bNode->value), 2);
+}
+
+TEST(Analyzer, letCannotAccessOtherBinding) {
+    PARSE_STRING("(let ((a 1)"
+                 "      (b a))"
+                 "  a)");
+
+    Analyzer an;
+    EXPECT_ANY_THROW(an.analyze(val));
+}
+
+TEST(Analyzer, letAmpCanAccessOtherBinding) {
+    PARSE_STRING("(let* ((a 1)"
+                 "      (b a))"
+                 "  a)");
+
+    Analyzer an;
+    EXPECT_NO_THROW(an.analyze(val));
+}
