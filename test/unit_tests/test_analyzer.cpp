@@ -606,3 +606,29 @@ TEST(Analyzer, analyzesMacroWithRestArgs) {
     EXPECT_EQ(macroNode->has_rest_arg, true);
     EXPECT_EQ(*macroNode->rest_arg_name, "y");
 }
+
+TEST(Analyzer, analyzesMakeList) {
+    PARSE_STRING("(list 1 2 3)");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    EXPECT_EQ(node->nodeType(), kAnalyzerNodeTypeConstantList);
+    auto listNode = std::dynamic_pointer_cast<ConstantListAnalyzerNode>(node);
+    EXPECT_EQ(listNode->values.size(), 3);
+
+    EXPECT_EQ(listNode->values[0]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto v1 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(listNode->values[0]);
+    EXPECT_EQ(v1->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(v1->value), 1);
+
+    EXPECT_EQ(listNode->values[1]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto v2 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(listNode->values[1]);
+    EXPECT_EQ(v2->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(v2->value), 2);
+
+    EXPECT_EQ(listNode->values[2]->nodeType(), kAnalyzerNodeTypeConstant);
+    auto v3 = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(listNode->values[2]);
+    EXPECT_EQ(v3->type, kAnalyzerConstantTypeInteger);
+    EXPECT_EQ(boost::get<int64_t>(v3->value), 3);
+}
