@@ -3,6 +3,7 @@
 //
 
 #include <linenoise.h>
+#include <csignal>
 #include <iostream>
 #include "compiler/CompilerExceptions.h"
 #include "runtime/GarbageCollector.h"
@@ -11,12 +12,28 @@
 
 auto done = false;
 
-int main(int argc, char* argv[]) {
+void sigHandler(int signum) {
+    std::cout << "Got signal " << signum << std::endl;
+    switch (signum) {
+        case SIGINT:
+            std::cout << "Handled SIGINT" << std::endl;
+            exit(signum);
+        default:
+            std::cout << "Unhandled signal" << std::endl;
+    }
+}
+
+int main(int argc, char *argv[]) {
+    signal(SIGINT, sigHandler);
+
     rt_init_gc(electrum::kGCModeInterpreterOwned);
     electrum::Compiler c;
 
     while (!done) {
         auto input = linenoise("> ");
+        if(input == nullptr) { continue; }
+        if(strcmp(input, "(quit)") == 0) { done = true; continue; }
+
         linenoiseHistoryAdd(input);
 
         try {
