@@ -62,7 +62,7 @@ llvm::Function* CompilerContext::currentFunc() {
 
 #pragma mark Local Environment
 
-void CompilerContext::pushLocalEnvironment(const std::unordered_map<std::string, llvm::Value*>& new_env) {
+void CompilerContext::pushLocalEnvironment(const std::unordered_map<std::string, std::shared_ptr<LocalDef>>& new_env) {
     local_bindings.push_back(new_env);
 }
 
@@ -70,7 +70,7 @@ void CompilerContext::popLocalEnvironment() {
     local_bindings.pop_back();
 }
 
-llvm::Value* CompilerContext::lookupInLocalEnvironment(const std::string name) {
+std::shared_ptr<LocalDef> CompilerContext::lookupInLocalEnvironment(const std::string name) {
     for (auto it = local_bindings.rbegin(); it!=local_bindings.rend(); ++it) {
         auto env = *it;
         auto result = env.find(name);

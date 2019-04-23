@@ -309,6 +309,8 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
     }
     case kAnalyzerNodeTypeTry: compileTry(std::dynamic_pointer_cast<TryAnalyzerNode>(node));
         break;
+    case kAnalyzerNodeTypeLet: compileLet(std::dynamic_pointer_cast<LetAnalyzerNode>(node));
+        break;
 
     default:throw CompilerException("Unrecognized node type", node->sourcePosition);
     }
@@ -430,7 +432,12 @@ void Compiler::compileVarLookup(const std::shared_ptr<VarLookupNode>& node) {
 
     auto result = currentContext()->lookupInLocalEnvironment(*node->name);
     if (result != nullptr) {
-        currentContext()->pushValue(result);
+        if(result->is_mutable) {
+            auto v = currentBuilder()->CreateLoad(result->value);
+            currentContext()->pushValue(v);
+        } else {
+            currentContext()->pushValue(result->value);
+        }
         return;
     }
 
@@ -494,21 +501,26 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
 //    currentContext()->currentDebugInfo()->lexical_blocks.push_back(subprogram);
 //    currentContext()->emitLocation(node->sourcePosition);
 
-    auto entry_block                                      = llvm::BasicBlock::Create(llvmContext(), "entry", lambda);
+    auto entry_block = llvm::BasicBlock::Create(llvmContext(), "entry", lambda);
     currentBuilder()->SetInsertPoint(entry_block);
 
     currentContext()->pushScope();
 
-    std::unordered_map<std::string, llvm::Value*> local_env;
-    int                                           arg_num = 0;
-    auto                                          arg_it  = lambda->args().begin();
+    std::unordered_map<std::string, shared_ptr<LocalDef>> local_env;
+
+    int  arg_num = 0;
+    auto arg_it  = lambda->args().begin();
     for (auto& arg_name : node->arg_names) {
         auto& arg = *arg_it;
         arg.setName(*arg_name);
 
         auto arg_pos = node->arg_name_nodes[arg_num]->sourcePosition;
 
-        local_env[*arg_name] = &arg;
+        auto d = make_shared<LocalDef>();
+        d->is_mutable = false;
+        d->name       = *arg_name;
+        d->value      = &arg;
+        local_env[*arg_name] = d;
 
         /*auto d = currentContext()->currentDIBuilder()->createParameterVariable(
                 currentContext()->currentDebugInfo()->currentScope(),
@@ -536,7 +548,12 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
     if (node->has_rest_arg) {
         auto& arg = *arg_it;
         arg.setName(*node->rest_arg_name);
-        local_env[*node->rest_arg_name] = &arg;
+
+        auto d = make_shared<LocalDef>();
+        d->is_mutable = false;
+        d->name       = *node->rest_arg_name;
+        d->value      = &arg;
+        local_env[*node->rest_arg_name] = d;
 
         ++arg_it;
     }
@@ -546,7 +563,12 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
     fn_arg.setName("env");
 
     for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
-        local_env[node->closed_overs[i]] = buildLambdaGetEnv(&fn_arg, i);
+        auto d = make_shared<LocalDef>();
+        // TODO: Add is_mutable flag to closed overs
+        d->is_mutable = false;
+        d->name       = node->closed_overs[i];
+        d->value      = buildLambdaGetEnv(&fn_arg, i);
+        local_env[node->closed_overs[i]] = d;
     }
 
     // Push the arguments onto the environment stack so that the compiler
@@ -579,7 +601,8 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
             node->closed_overs.size());
 
     for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
-        buildLambdaSetEnv(closure, i, currentContext()->lookupInLocalEnvironment(node->closed_overs[i]));
+        auto def = currentContext()->lookupInLocalEnvironment(node->closed_overs[i]);
+        buildLambdaSetEnv(closure, i, def->value);
     }
 
     currentContext()->pushValue(closure);
@@ -817,17 +840,22 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
 */
     currentContext()->pushScope();
 
-    auto entry_block                                      = llvm::BasicBlock::Create(llvmContext(), "entry", expander);
+    auto entry_block = llvm::BasicBlock::Create(llvmContext(), "entry", expander);
     currentBuilder()->SetInsertPoint(entry_block);
 
-    std::unordered_map<std::string, llvm::Value*> local_env;
-    int                                           arg_num = 0;
-    auto                                          arg_it  = expander->args().begin();
+    std::unordered_map<std::string, shared_ptr<LocalDef>> local_env;
+
+    int  arg_num = 0;
+    auto arg_it  = expander->args().begin();
     for (auto& arg_name : node->arg_names) {
         auto& arg = *arg_it;
         arg.setName(*arg_name);
 
-        local_env[*arg_name] = &arg;
+        auto d = make_shared<LocalDef>();
+        d->name       = *arg_name;
+        d->is_mutable = false;
+        d->value      = &arg;
+        local_env[*arg_name] = d;
 
         auto arg_pos = node->arg_name_nodes[arg_num]->sourcePosition;
 
@@ -858,7 +886,12 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
     if (node->has_rest_arg) {
         auto& arg = *arg_it;
         arg.setName(*node->rest_arg_name);
-        local_env[*node->rest_arg_name] = &arg;
+
+        auto d = make_shared<LocalDef>();
+        d->name       = *node->rest_arg_name;
+        d->is_mutable = false;
+        d->value      = &arg;
+        local_env[*node->rest_arg_name] = d;
 
         ++arg_it;
     }
@@ -867,7 +900,11 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
         auto& arg = *arg_it;
         arg.setName("environment");
 
-        local_env[node->closed_overs[i]] = buildLambdaGetEnv(&arg, i);
+        auto d = make_shared<LocalDef>();
+        d->name       = node->closed_overs[i];
+        d->is_mutable = false;
+        d->value      = buildLambdaGetEnv(&arg, i);
+        local_env[node->closed_overs[i]] = d;
     }
 
     // Push the arguments onto the environment stack so that the compiler
@@ -897,7 +934,7 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
             node->closed_overs.size());
 
     for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
-        buildLambdaSetEnv(closure, i, currentContext()->lookupInLocalEnvironment(node->closed_overs[i]));
+        buildLambdaSetEnv(closure, i, currentContext()->lookupInLocalEnvironment(node->closed_overs[i])->value);
     }
 
 
@@ -1088,7 +1125,7 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
 
         auto catch_node = node->catch_nodes[i];
 
-        std::unordered_map<std::string, llvm::Value*> local_env;
+        std::unordered_map<std::string, shared_ptr<LocalDef>> local_env;
 
 //        local_env[*catch_node->exception_binding] = landing_pad;
         currentContext()->pushLocalEnvironment(local_env);
@@ -1107,6 +1144,47 @@ void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
 
     currentBuilder()->SetInsertPoint(done_block);
     currentContext()->pushValue(currentBuilder()->CreateLoad(rv));
+}
+
+void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node) {
+    if (node->is_parallel) {
+        currentContext()->pushLocalEnvironment({});
+    }
+
+    unordered_map<string, shared_ptr<LocalDef>> bindings;
+    
+    for (const auto& b: node->bindings) {
+        compileNode(b.second);
+
+        auto d = make_shared<LocalDef>();
+        d->name       = b.first;
+        d->is_mutable = true;
+        d->value      = currentBuilder()->CreateAlloca(
+                llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
+
+        currentBuilder()->CreateStore(currentContext()->popValue(), d->value);
+
+        if (node->is_parallel) {
+            currentContext()->local_bindings.back()[b.first] = d;
+        }
+        else {
+            bindings[b.first] = d;
+        }
+    }
+
+    if (!node->is_parallel) {
+        currentContext()->pushLocalEnvironment(bindings);
+    }
+
+    llvm::Value* rv = nullptr;
+
+    for (const auto& b: node->body) {
+        compileNode(b);
+        rv = currentContext()->popValue();
+    }
+
+    currentContext()->pushValue(rv);
+    currentContext()->popLocalEnvironment();
 }
 
 #pragma mark - Helpers

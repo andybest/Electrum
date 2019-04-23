@@ -1237,15 +1237,20 @@ shared_ptr<AnalyzerNode> Analyzer::lookupInLocalEnv(const std::string& name) {
         auto result = env.find(name);
 
         if (result != env.end()) {
-            return result->second;
+            return result->second->node;
         }
     }
 
     return nullptr;
 }
 
-void Analyzer::storeInLocalEnv(const std::string& name, shared_ptr<AnalyzerNode> initial_value) {
-    local_envs_.at(local_envs_.size() - 1)[name] = std::move(initial_value);
+void Analyzer::storeInLocalEnv(const std::string& name, shared_ptr<AnalyzerNode> initial_value, bool is_mutable) {
+    auto def = std::make_shared<LocalDef>();
+    def->phase = currentEvaluationPhase();
+    def->node = initial_value;
+    def->is_mutable = is_mutable;
+
+    local_envs_.at(local_envs_.size() - 1)[name] = def;
 }
 
 void Analyzer::pushEvaluationPhase(EvaluationPhase phase) {

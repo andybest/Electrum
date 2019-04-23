@@ -593,3 +593,36 @@ TEST(Compiler, compilesMacroWithRestArgs) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, compilesLet) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto r1 = c.compileAndEvalString("(let ((a 1)"
+                                    "      (b 2))"
+                                    "  a)");
+
+    auto r2 = c.compileAndEvalString("(let ((a 1)"
+                                     "      (b 2))"
+                                     "  b)");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 1);
+
+    EXPECT_EQ(rt_is_integer(r2), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r2), 2);
+
+}
+
+TEST(Compiler, compilesLetAmp) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto r1 = c.compileAndEvalString("(let* ((a 1)"
+                                    "        (b a))"
+                                    "  b)");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 1);
+
+}

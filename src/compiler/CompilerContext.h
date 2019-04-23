@@ -42,6 +42,18 @@ namespace electrum {
 struct GlobalDef {
   std::string name;
   std::string mangled_name;
+
+  /// Is it an indirect var?
+  bool is_var;
+};
+
+struct LocalDef {
+  std::string name;
+
+  /// Is it a mutable var?
+  bool is_mutable;
+
+  llvm::Value* value;
 };
 
 struct TopLevelInitializerDef {
@@ -113,7 +125,7 @@ public:
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<GlobalDef>>> namespaces;
 
     /// The local bindings for the current level in the AST
-    std::vector<std::unordered_map<std::string, llvm::Value*>> local_bindings;
+    std::vector<std::unordered_map<std::string, std::shared_ptr<LocalDef>>> local_bindings;
 
     /* State */
     void pushNewState(string module_name, const string& directory, const string& filename);
@@ -130,9 +142,9 @@ public:
     llvm::Function* currentFunc();
 
     /* Local Environment */
-    void pushLocalEnvironment(const std::unordered_map<std::string, llvm::Value*>& new_env);
+    void pushLocalEnvironment(const std::unordered_map<std::string, std::shared_ptr<LocalDef>>& new_env);
     void popLocalEnvironment();
-    llvm::Value* lookupInLocalEnvironment(std::string name);
+    std::shared_ptr<LocalDef> lookupInLocalEnvironment(std::string name);
 
     /* LLVM */
     llvm::Module* currentModule();

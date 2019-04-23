@@ -31,6 +31,7 @@
 #include "Namespace.h"
 #include "NamespaceManager.h"
 #include <iostream>
+#include <map>
 #include <memory>
 #include <boost/variant.hpp>
 #include <string>
@@ -379,6 +380,9 @@ public:
     /// Is it a global variable?
     bool is_global;
 
+    /// Is it a mutable variable?
+    bool is_mutable;
+
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeVarLookup;
     }
@@ -389,6 +393,7 @@ public:
         if (target_ns) { node["target-ns"] = *target_ns; }
         node["name"]      = *name;
         node["is_global"] = is_global;
+        node["is_mutable"] = is_mutable;
 
         return node;
     }
@@ -638,7 +643,7 @@ public:
 class LetAnalyzerNode: public AnalyzerNode {
 public:
     vector<shared_ptr<AnalyzerNode>> body;
-    unordered_map<string, shared_ptr<AnalyzerNode>> bindings;
+    std::map<string, shared_ptr<AnalyzerNode>> bindings;
 
     /// Is let* rather than a plain let?
     bool is_parallel;
@@ -748,7 +753,7 @@ private:
     void pushLocalEnv();
     void popLocalEnv();
     shared_ptr<AnalyzerNode> lookupInLocalEnv(const std::string& name);
-    void storeInLocalEnv(const std::string& name, shared_ptr<AnalyzerNode> initial_value);
+    void storeInLocalEnv(const std::string& name, shared_ptr<AnalyzerNode> initial_value, bool is_mutable=false);
 
     /* Evaluation Phase */
     void pushEvaluationPhase(EvaluationPhase phase);
@@ -780,10 +785,16 @@ private:
       shared_ptr<AnalyzerNode> node;
     };
 
+    struct LocalDef {
+      EvaluationPhase phase;
+      shared_ptr<AnalyzerNode> node;
+      bool is_mutable;
+    };
+
     /// Holds global macros
     std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_macros_;
 
-    vector<unordered_map<string, shared_ptr<AnalyzerNode>>> local_envs_;
+    vector<unordered_map<string, shared_ptr<LocalDef>>> local_envs_;
 
     NamespaceManager ns_manager;
 
