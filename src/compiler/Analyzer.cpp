@@ -1106,6 +1106,23 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeCatch(const shared_ptr<ASTNode>& form)
     return node;
 }
 
+shared_ptr<AnalyzerNode> Analyzer::analyzeMakeList(const std::shared_ptr<ASTNode>& form) {
+    assert(form->tag == kTypeTagList);
+    auto listPtr = form->listValue;
+    assert(!listPtr->empty());
+
+    auto node = make_shared<ConstantListAnalyzerNode>();
+    node->sourcePosition = form->sourcePosition;
+    node->ns = current_ns_;
+
+    for(int i = 1; i < listPtr->size(); ++i) {
+        auto item = listPtr->at(i);
+        node->values.push_back(analyzeForm(item));
+    }
+
+    return node;
+}
+
 shared_ptr<AnalyzerNode> Analyzer::analyzeInNS(const std::shared_ptr<electrum::ASTNode>& form) {
     assert(form->tag == kTypeTagList);
     auto listPtr = form->listValue;

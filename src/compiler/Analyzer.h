@@ -686,6 +686,7 @@ private:
     shared_ptr<AnalyzerNode> analyzeEvalWhen(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeTry(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeCatch(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeMakeList(const std::shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeInNS(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode>
     maybeAnalyzeSpecialForm(const shared_ptr<string>& symbol_name, const shared_ptr<ASTNode>& form);
@@ -708,6 +709,7 @@ private:
             {"if", &Analyzer::analyzeIf},
             {"do", &Analyzer::analyzeDo},
             {"lambda", &Analyzer::analyzeLambda},
+            {"list", &Analyzer::analyzeMakeList},
             {"defmacro", &Analyzer::analyzeMacro},
             {"def", &Analyzer::analyzeDef},
             {"def-ffi-fn*", &Analyzer::analyzeDefFFIFn},
