@@ -311,6 +311,8 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
         break;
     case kAnalyzerNodeTypeLet: compileLet(std::dynamic_pointer_cast<LetAnalyzerNode>(node));
         break;
+    case kAnalyzerNodeTypeSetBang: compileSetBang(std::dynamic_pointer_cast<SetBangAnalyzerNode>(node));
+        break;
 
     default:throw CompilerException("Unrecognized node type", node->sourcePosition);
     }
@@ -432,10 +434,11 @@ void Compiler::compileVarLookup(const std::shared_ptr<VarLookupNode>& node) {
 
     auto result = currentContext()->lookupInLocalEnvironment(*node->name);
     if (result != nullptr) {
-        if(result->is_mutable) {
+        if (result->is_mutable) {
             auto v = currentBuilder()->CreateLoad(result->value);
             currentContext()->pushValue(v);
-        } else {
+        }
+        else {
             currentContext()->pushValue(result->value);
         }
         return;
@@ -1152,7 +1155,7 @@ void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node
     }
 
     unordered_map<string, shared_ptr<LocalDef>> bindings;
-    
+
     for (const auto& b: node->bindings) {
         compileNode(b.second);
 
@@ -1185,6 +1188,19 @@ void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node
 
     currentContext()->pushValue(rv);
     currentContext()->popLocalEnvironment();
+}
+
+void Compiler::compileSetBang(const std::shared_ptr<electrum::SetBangAnalyzerNode>& node) {
+    auto def = currentContext()->lookupInLocalEnvironment(node->var_name);
+
+    if (!def->is_mutable) {
+        throw CompilerException("Cannot set! mutable var", node->sourcePosition);
+    }
+
+    compileNode(node->new_value);
+    auto new_val = currentContext()->popValue();
+    currentBuilder()->CreateStore(new_val, def->value);
+    currentContext()->pushValue(new_val);
 }
 
 #pragma mark - Helpers

@@ -626,3 +626,15 @@ TEST(Compiler, compilesLetAmp) {
     EXPECT_EQ(rt_integer_value(r1), 1);
 
 }
+
+TEST(Compiler, compilesSetBang) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto r1 = c.compileAndEvalString("(let ((a 1))"
+                                     "  (set! a 2)"
+                                     "  a)");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 2);
+}

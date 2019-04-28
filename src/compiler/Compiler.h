@@ -79,6 +79,7 @@ private:
     void compileMacroExpand(const shared_ptr<MacroExpandAnalyzerNode>& node);
     void compileTry(const shared_ptr<TryAnalyzerNode> node);
     void compileLet(const shared_ptr<LetAnalyzerNode>& node);
+    void compileSetBang(const shared_ptr<SetBangAnalyzerNode>& node);
 
     std::string mangleSymbolName(std::string ns, const std::string& name);
 
