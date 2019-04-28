@@ -710,3 +710,24 @@ TEST(Analyzer, letAmpCanAccessOtherBinding) {
     Analyzer an;
     EXPECT_NO_THROW(an.analyze(val));
 }
+
+TEST(Analyzer, setBangThrowsWhenVarDoesNotExist) {
+    PARSE_STRING("(set! a 2)");
+
+    Analyzer an;
+    EXPECT_ANY_THROW(an.analyze(val));
+}
+
+TEST(Analyzer, setBangThrowsWhenVarIsImmutable) {
+    PARSE_STRING("(do (def a 1) (set! a 2))");
+
+    Analyzer an;
+    EXPECT_ANY_THROW(an.analyze(val));
+}
+
+TEST(Analyzer, setBangCanSetLetVar) {
+    PARSE_STRING("(let ((a 1)) (set! a 2))");
+
+    Analyzer an;
+    EXPECT_NO_THROW(an.analyze(val));
+}

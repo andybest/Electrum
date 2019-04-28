@@ -1222,6 +1222,45 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLet(const std::shared_ptr<electrum::AS
     return letNode;
 }
 
+shared_ptr<AnalyzerNode> Analyzer::analyzeSetBang(const std::shared_ptr<electrum::ASTNode>& form) {
+    assert(form->tag == kTypeTagList);
+    auto listPtr = form->listValue;
+    assert(!listPtr->empty());
+
+    if(listPtr->size() != 3) {
+        throw CompilerException("set! requires a variable and a new value", form->sourcePosition);
+    }
+
+    if(listPtr->at(1)->tag != kTypeTagSymbol) {
+        throw CompilerException("set! requires the variable name to be a symbol", listPtr->at(1)->sourcePosition);
+    }
+
+    auto var_name = *listPtr->at(1)->stringValue;
+    shared_ptr<LocalDef> def = nullptr;
+
+    for (auto it = local_envs_.rbegin(); it != local_envs_.rend(); ++it) {
+        auto env = *it;
+
+        auto result = env.find(var_name);
+
+        if (result != env.end()) {
+            def = result->second;
+        }
+    }
+
+    if(def == nullptr) {
+        throw CompilerException("set!: No such variable '" + var_name + "'", listPtr->at(1)->sourcePosition);
+    }
+
+    auto node = make_shared<SetBangAnalyzerNode>();
+    node->sourcePosition = form->sourcePosition;
+    node->ns = current_ns_;
+    node->var_name = var_name;
+    node->new_value = analyzeForm(listPtr->at(2));
+
+    return node;
+}
+
 void Analyzer::pushLocalEnv() {
     local_envs_.emplace_back();
 }

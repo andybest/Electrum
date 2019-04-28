@@ -61,7 +61,8 @@ enum AnalyzerNodeType {
   kAnalyzerNodeTypeTry,
   kAnalyzerNodeTypeCatch,
   kAnalyzerNodeTypeLet,
-  kAnalyzerNodeTypeWhile
+  kAnalyzerNodeTypeWhile,
+  kAnalyzerNodeTypeSetBang
 };
 
 class AnalyzerNode {
@@ -688,6 +689,30 @@ public:
     }
 };
 
+class SetBangAnalyzerNode: public AnalyzerNode {
+public:
+    string var_name;
+
+    shared_ptr<AnalyzerNode> new_value;
+
+    AnalyzerNodeType nodeType() override {
+        return kAnalyzerNodeTypeSetBang;
+    }
+
+    vector<shared_ptr<AnalyzerNode>> children() override {
+        return { new_value };
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"] = "set!";
+        node["var-name"] = var_name;
+        node["new-value"] = new_value->serialize();
+
+        return node;
+    }
+};
+
 class Analyzer {
 public:
     Analyzer();
@@ -744,6 +769,7 @@ private:
     shared_ptr<AnalyzerNode> analyzeMakeList(const std::shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeInNS(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeLet(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeSetBang(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode>
     maybeAnalyzeSpecialForm(const shared_ptr<string>& symbol_name, const shared_ptr<ASTNode>& form);
 
@@ -777,7 +803,8 @@ private:
             {"catch", &Analyzer::analyzeCatch},
             {"in-ns", &Analyzer::analyzeInNS},
             {"let", &Analyzer::analyzeLet},
-            {"let*", &Analyzer::analyzeLet}
+            {"let*", &Analyzer::analyzeLet},
+            {"set!", &Analyzer::analyzeSetBang}
     };
 
     struct AnalyzerDefinition {

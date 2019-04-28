@@ -41,9 +41,9 @@ TEST(Lexer, lexesParens) {
 }
 
 TEST(Lexer, lexesSymbols) {
-    TOKENIZE_STRING("... +soup+ ->string lambda q <=? &");
+    TOKENIZE_STRING("... +soup+ ->string lambda q <=? & set!");
 
-    EXPECT_EQ(tokens.size(), 7);
+    EXPECT_EQ(tokens.size(), 8);
 
     ASSERT_TOKEN(tokens[0], kTokenTypeSymbol, "...");
     ASSERT_TOKEN(tokens[1], kTokenTypeSymbol, "+soup+");
@@ -52,6 +52,7 @@ TEST(Lexer, lexesSymbols) {
     ASSERT_TOKEN(tokens[4], kTokenTypeSymbol, "q");
     ASSERT_TOKEN(tokens[5], kTokenTypeSymbol, "<=?");
     ASSERT_TOKEN(tokens[6], kTokenTypeSymbol, "&");
+    ASSERT_TOKEN(tokens[7], kTokenTypeSymbol, "set!");
 }
 
 TEST(Lexer, lexesUnicodeSymbols) {
