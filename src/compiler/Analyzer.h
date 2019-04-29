@@ -713,6 +713,40 @@ public:
     }
 };
 
+class WhileAnalyzerNode: public AnalyzerNode {
+public:
+    shared_ptr<AnalyzerNode> condition;
+
+    vector<shared_ptr<AnalyzerNode>> body;
+
+    AnalyzerNodeType nodeType() override {
+        return kAnalyzerNodeTypeWhile;
+    }
+
+    vector<shared_ptr<AnalyzerNode>> children() override {
+        vector<shared_ptr<AnalyzerNode>> c = { condition };
+        for(auto n: body) {
+            c.push_back(n);
+        }
+        return c;
+    }
+
+    YAML::Node serialize() override  {
+        YAML::Node node;
+        node["type"] = "while";
+        node["condition"] = condition->serialize();
+
+        vector<YAML::Node> b;
+        for(auto n: body) {
+            b.push_back(n->serialize());
+        }
+
+        node["body"] = b;
+
+        return node;
+    }
+};
+
 class Analyzer {
 public:
     Analyzer();
@@ -770,6 +804,7 @@ private:
     shared_ptr<AnalyzerNode> analyzeInNS(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeLet(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeSetBang(const shared_ptr<ASTNode>& form);
+    shared_ptr<AnalyzerNode> analyzeWhile(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode>
     maybeAnalyzeSpecialForm(const shared_ptr<string>& symbol_name, const shared_ptr<ASTNode>& form);
 
@@ -804,7 +839,8 @@ private:
             {"in-ns", &Analyzer::analyzeInNS},
             {"let", &Analyzer::analyzeLet},
             {"let*", &Analyzer::analyzeLet},
-            {"set!", &Analyzer::analyzeSetBang}
+            {"set!", &Analyzer::analyzeSetBang},
+            {"while", &Analyzer::analyzeWhile}
     };
 
     struct AnalyzerDefinition {

@@ -731,3 +731,12 @@ TEST(Analyzer, setBangCanSetLetVar) {
     Analyzer an;
     EXPECT_NO_THROW(an.analyze(val));
 }
+
+TEST(Analyzer, analyzesWhile) {
+    PARSE_STRING("(while #t 1)");
+
+    Analyzer an;
+    auto node = an.analyze(val);
+
+    ASSERT_EQ(node->nodeType(), kAnalyzerNodeTypeWhile);
+}

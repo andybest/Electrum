@@ -49,9 +49,9 @@ public:
 
 private:
 
-    llvm::orc::ExecutionSession es_;
-    CompilerContext compiler_context_;
-    Analyzer analyzer_;
+    llvm::orc::ExecutionSession  es_;
+    CompilerContext              compiler_context_;
+    Analyzer                     analyzer_;
     std::shared_ptr<ElectrumJit> jit_;
 
     /// Address space for the garbage collector
@@ -77,7 +77,7 @@ private:
     void compileDefFFIFn(const std::shared_ptr<DefFFIFunctionNode>& node);
     void compileDefMacro(const std::shared_ptr<DefMacroAnalyzerNode>& node);
     void compileMacroExpand(const shared_ptr<MacroExpandAnalyzerNode>& node);
-    void compileTry(const shared_ptr<TryAnalyzerNode> node);
+    void compileTry(const shared_ptr<TryAnalyzerNode>& node);
     void compileLet(const shared_ptr<LetAnalyzerNode>& node);
     void compileSetBang(const shared_ptr<SetBangAnalyzerNode>& node);
 

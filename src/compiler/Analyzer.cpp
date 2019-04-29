@@ -1261,6 +1261,27 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSetBang(const std::shared_ptr<electrum
     return node;
 }
 
+shared_ptr<AnalyzerNode> Analyzer::analyzeWhile(const std::shared_ptr<electrum::ASTNode>& form) {
+    assert(form->tag == kTypeTagList);
+    auto listPtr = form->listValue;
+    assert(!listPtr->empty());
+
+    if(listPtr->size() < 3) {
+        throw CompilerException("while requires a condition and a body", form->sourcePosition);
+    }
+
+    auto node = make_shared<WhileAnalyzerNode>();
+    node->sourcePosition = form->sourcePosition;
+    node->ns = current_ns_;
+    node->condition = analyzeForm(listPtr->at(1));
+
+    for(auto it = listPtr->begin() + 2; it != listPtr->end(); ++it) {
+        node->body.push_back(analyzeForm(*it));
+    }
+
+    return node;
+}
+
 void Analyzer::pushLocalEnv() {
     local_envs_.emplace_back();
 }
