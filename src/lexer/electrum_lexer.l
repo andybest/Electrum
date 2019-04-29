@@ -39,7 +39,7 @@ public:
 
 %o flex freespace dotall unicode
 
-
+LINE_COMMENT        ;([^\n]|\\\n)*\n
 L_PAREN             "("
 R_PAREN             ")"
 
@@ -84,7 +84,7 @@ STRING              \"([^\\\"]|\\\")*\"
 ",@"                { return kTokenTypeUnquoteSplice; }
 ","                 { return kTokenTypeUnquote; }
 
-;.*$                /* Line Comment */
+{LINE_COMMENT}      /* Line Comment */
 {WHITESPACE}        /* Ignore whitespace */
 
 {FLOAT}             { return kTokenTypeFloat; }
