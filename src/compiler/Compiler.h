@@ -80,6 +80,7 @@ private:
     void compileTry(const shared_ptr<TryAnalyzerNode>& node);
     void compileLet(const shared_ptr<LetAnalyzerNode>& node);
     void compileSetBang(const shared_ptr<SetBangAnalyzerNode>& node);
+    void compileWhile(const shared_ptr<WhileAnalyzerNode>& node);
 
     std::string mangleSymbolName(std::string ns, const std::string& name);
 

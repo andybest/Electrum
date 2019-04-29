@@ -313,6 +313,8 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
         break;
     case kAnalyzerNodeTypeSetBang: compileSetBang(std::dynamic_pointer_cast<SetBangAnalyzerNode>(node));
         break;
+    case kAnalyzerNodeTypeWhile: compileWhile(std::dynamic_pointer_cast<WhileAnalyzerNode>(node));
+        break;
 
     default:throw CompilerException("Unrecognized node type", node->sourcePosition);
     }
@@ -1037,7 +1039,7 @@ void Compiler::compileMacroExpand(const std::shared_ptr<electrum::MacroExpandAna
     currentContext()->pushValue(expander_result);
 }
 
-void Compiler::compileTry(const shared_ptr<TryAnalyzerNode> node) {
+void Compiler::compileTry(const shared_ptr<TryAnalyzerNode>& node) {
     if (!currentContext()->currentFunc()->hasPersonalityFn()) {
         auto personality_type = llvm::FunctionType::get(
                 llvm::IntegerType::getInt32Ty(llvmContext()),
@@ -1163,7 +1165,9 @@ void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node
         d->name       = b.first;
         d->is_mutable = true;
         d->value      = currentBuilder()->CreateAlloca(
-                llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace));
+                llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
+                0,
+                "let_var_" + d->name);
 
         currentBuilder()->CreateStore(currentContext()->popValue(), d->value);
 
@@ -1201,6 +1205,41 @@ void Compiler::compileSetBang(const std::shared_ptr<electrum::SetBangAnalyzerNod
     auto new_val = currentContext()->popValue();
     currentBuilder()->CreateStore(new_val, def->value);
     currentContext()->pushValue(new_val);
+}
+
+void Compiler::compileWhile(const shared_ptr<WhileAnalyzerNode>& node) {
+    auto cond_block = llvm::BasicBlock::Create(llvmContext(), "while_cond", currentContext()->currentFunc());
+    auto body_block = llvm::BasicBlock::Create(llvmContext(), "while_body", currentContext()->currentFunc());
+    auto end_block  = llvm::BasicBlock::Create(llvmContext(), "while_end", currentContext()->currentFunc());
+
+    auto result = currentBuilder()->CreateAlloca(llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
+            nullptr,
+            "while_result");
+    currentBuilder()->CreateStore(makeNil(), result);
+    currentBuilder()->CreateBr(cond_block);
+
+    currentBuilder()->SetInsertPoint(cond_block);
+
+    compileNode(node->condition);
+    auto cond = currentBuilder()->CreateICmpEQ(getBooleanValue(currentContext()->popValue()),
+            llvm::ConstantInt::get(llvm::IntegerType::getInt8Ty(llvmContext()),
+                    0));
+
+    currentBuilder()->CreateCondBr(cond, end_block, body_block);
+
+    currentBuilder()->SetInsertPoint(body_block);
+    llvm::Value* rv = makeNil();
+
+    for (const auto& n: node->body) {
+        compileNode(n);
+        rv = currentContext()->popValue();
+    }
+
+    currentBuilder()->CreateStore(rv, result);
+    currentBuilder()->CreateBr(cond_block);
+
+    currentBuilder()->SetInsertPoint(end_block);
+    currentContext()->pushValue(currentBuilder()->CreateLoad(result));
 }
 
 #pragma mark - Helpers

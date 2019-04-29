@@ -638,3 +638,20 @@ TEST(Compiler, compilesSetBang) {
     EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(r1), 2);
 }
+
+TEST(Compiler, compilesWhile) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compileAndEvalString("(def-ffi-fn* + rt_add :el (:el :el))");
+    c.compileAndEvalString("(def-ffi-fn* eq? rt_eq :el (:el :el))");
+    c.compileAndEvalString("(def-ffi-fn* not rt_not :el (:el))");
+
+    auto r1 = c.compileAndEvalString("(let ((a 0))"
+                                     "  (while (not (eq? a 10))"
+                                     "    (set! a (+ a 1))"
+                                     "    a))");
+
+    EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
+    EXPECT_EQ(rt_integer_value(r1), 10);
+}
