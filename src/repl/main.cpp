@@ -5,6 +5,9 @@
 #include <linenoise.h>
 #include <csignal>
 #include <iostream>
+#include <string>
+#include <fstream>
+#include <streambuf>
 #include "compiler/CompilerExceptions.h"
 #include "runtime/GarbageCollector.h"
 #include "runtime/Runtime.h"
@@ -23,11 +26,20 @@ void sigHandler(int signum) {
     }
 }
 
+void loadStdlib(electrum::Compiler *c) {
+    std::ifstream t("../../../stdlib/stdlib.el");
+    std::string str((std::istreambuf_iterator<char>(t)),
+                    std::istreambuf_iterator<char>());
+
+    c->compileAndEvalString(str);
+}
+
 int main(int argc, char *argv[]) {
     signal(SIGINT, sigHandler);
 
     rt_init_gc(electrum::kGCModeInterpreterOwned);
     electrum::Compiler c;
+    loadStdlib(&c);
 
     while (!done) {
         auto input = linenoise("> ");

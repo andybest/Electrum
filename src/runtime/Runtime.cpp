@@ -378,7 +378,7 @@ void* rt_make_keyword(const char* str) {
     return OBJECT_TO_TAG(keywordVal);
 }
 
-void* rt_is_keyword(void* val) {
+extern "C" void* rt_is_keyword(void* val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagKeyword));
 }
 
@@ -408,7 +408,7 @@ extern "C" void* rt_deref_var(void* v) {
     return var->val;
 }
 
-void* rt_is_pair(void* val) {
+extern "C" void* rt_is_pair(void* val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagPair));
 }
 
