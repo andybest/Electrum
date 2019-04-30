@@ -263,6 +263,10 @@ extern "C" void* rt_make_nil() {
     return NIL_PTR;
 }
 
+extern "C" void* rt_is_nil(void *val) {
+    return TO_TAGGED_BOOLEAN(val == NIL_PTR);
+}
+
 extern "C" void* rt_make_boolean(int8_t booleanValue) {
     return (booleanValue) ? TRUE_PTR : FALSE_PTR;
 }

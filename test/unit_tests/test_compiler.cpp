@@ -26,6 +26,7 @@
 #include "compiler/Compiler.h"
 #include "runtime/Runtime.h"
 #include <exception>
+#include <compiler/CompilerExceptions.h>
 
 using namespace electrum;
 
@@ -598,9 +599,9 @@ TEST(Compiler, compilesLet) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto r1 = c.compileAndEvalString("(let ((a 1)"
-                                    "      (b 2))"
-                                    "  a)");
+    auto     r1 = c.compileAndEvalString("(let ((a 1)"
+                                         "      (b 2))"
+                                         "  a)");
 
     auto r2 = c.compileAndEvalString("(let ((a 1)"
                                      "      (b 2))"
@@ -612,31 +613,35 @@ TEST(Compiler, compilesLet) {
     EXPECT_EQ(rt_is_integer(r2), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(r2), 2);
 
+    rt_deinit_gc();
 }
 
 TEST(Compiler, compilesLetAmp) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto r1 = c.compileAndEvalString("(let* ((a 1)"
-                                    "        (b a))"
-                                    "  b)");
+    auto     r1 = c.compileAndEvalString("(let* ((a 1)"
+                                         "        (b a))"
+                                         "  b)");
 
     EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(r1), 1);
 
+    rt_deinit_gc();
 }
 
 TEST(Compiler, compilesSetBang) {
     rt_init_gc(kGCModeInterpreterOwned);
 
     Compiler c;
-    auto r1 = c.compileAndEvalString("(let ((a 1))"
-                                     "  (set! a 2)"
-                                     "  a)");
+    auto     r1 = c.compileAndEvalString("(let ((a 1))"
+                                         "  (set! a 2)"
+                                         "  a)");
 
     EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(r1), 2);
+
+    rt_deinit_gc();
 }
 
 TEST(Compiler, compilesWhile) {
@@ -654,4 +659,33 @@ TEST(Compiler, compilesWhile) {
 
     EXPECT_EQ(rt_is_integer(r1), TRUE_PTR);
     EXPECT_EQ(rt_integer_value(r1), 10);
+
+    rt_deinit_gc();
+}
+
+TEST(Compiler, expansionVisibleFromAnotherExpansion) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    try {
+        c.compileAndEvalString(
+                "(eval-when (:compile :load)"
+                "  (def-ffi-fn* not rt_car :el (:el))"
+                "  (def-ffi-fn* nil? rt_car :el (:el))"
+                "  (def-ffi-fn* car rt_car :el (:el))"
+                "  (def-ffi-fn* cdr rt_cdr :el (:el))"
+                "  (def-ffi-fn* cons rt_make_pair :el (:el :el))"
+                "  (defmacro defn (name args & body) (list 'def name (cons 'lambda (cons args body))))"
+                "  (defn cadar (x) (car (cdr (car x))))"
+                "  (defn caar (x) (car (car x)))"
+                "  (defmacro cond (& clauses)"
+                "        (let ((pred (caar clauses)))"
+                "              pred)) )" );
+    }
+    catch (CompilerException& e) {
+        std::cout << e.what() << std::endl;
+        FAIL();
+    }
+
+    rt_deinit_gc();
 }

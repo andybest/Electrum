@@ -35,11 +35,16 @@ namespace electrum {
 Analyzer::Analyzer()
         :is_quoting_(false),
          in_macro_(false),
-         current_ns_("el.user") {
+         current_ns_("el.user"),
+         analysis_suspended_(false) {
 }
 
 shared_ptr<AnalyzerNode> Analyzer::analyze(const shared_ptr<ASTNode>& form, uint64_t depth, EvaluationPhase phase) {
     pushEvaluationPhase(phase);
+
+    if(analysis_suspended_) {
+        analysis_suspended_ = false;
+    }
 
     auto node = analyzeForm(form);
     runPasses(node, depth);
@@ -52,6 +57,15 @@ shared_ptr<AnalyzerNode> Analyzer::analyze(const shared_ptr<ASTNode>& form, uint
 
 shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode>& form) {
     shared_ptr<AnalyzerNode> node;
+
+    if(analysis_suspended_) {
+        auto suspended_node = make_shared<SuspendAnalysisAnalyzerNode>();
+        suspended_node->sourcePosition = form->sourcePosition;
+        suspended_node->ns = current_ns_;
+        suspended_node->form = form;
+        suspended_node->evaluation_phase = currentEvaluationPhase();
+        return suspended_node;
+    }
 
     switch (form->tag) {
     case kTypeTagInteger:node = analyzeInteger(form);
@@ -152,6 +166,23 @@ vector<string> Analyzer::analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node
                 closed_overs.end());
         break;
     }
+    case kAnalyzerNodeTypeLet: {
+        auto letNode = std::dynamic_pointer_cast<LetAnalyzerNode>(node);
+
+        closed_overs.erase(
+                std::remove_if(closed_overs.begin(),
+                        closed_overs.end(),
+                        [&letNode](auto c) {
+                    for (const auto& n: letNode->bindings) {
+                        if(n.first == c) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }),
+                closed_overs.end());
+        break;
+    }
     case kAnalyzerNodeTypeVarLookup: {
         auto var_node = std::dynamic_pointer_cast<VarLookupNode>(node);
         if (!var_node->is_global) {
@@ -224,8 +255,8 @@ void Analyzer::runPasses(const std::shared_ptr<electrum::AnalyzerNode>& node, ui
     // If any eval-when forms appear that are not top-level, throw an error.
     assertEvalWhenForCompileIsTopLevel(node);
 
-    // Update the evaluation phase of all of the nodes, with a default of load time evaluation.
-    updateEvaluationPhase(node, kEvaluationPhaseLoadTime);
+    // Update the evaluation phase of all of the nodes.
+    updateEvaluationPhase(node, currentEvaluationPhase());
 }
 
 shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(const shared_ptr<ASTNode>& form) {
@@ -742,6 +773,9 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacroExpand(const shared_ptr<ASTNode>&
         }
     }
 
+    // Suspend analysis so that the results of the expansion can be added to the environment
+    analysis_suspended_ = true;
+
     return node;
 }
 
@@ -773,16 +807,16 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDef(const shared_ptr<ASTNode>& form) {
     }
 
     auto name      = listPtr->at(1)->stringValue;
-    auto valueNode = analyzeForm(listPtr->at(2));
 
     AnalyzerDefinition d;
     d.phase = currentEvaluationPhase();
-    d.node  = valueNode;
 
     ns_manager.addGlobalDefinition(currentNamespace(),
             *name,
             kDefinitionTypeVariable,
             currentEvaluationPhase());
+
+    auto valueNode = analyzeForm(listPtr->at(2));
 
     auto node = std::make_shared<DefAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;

@@ -62,7 +62,8 @@ enum AnalyzerNodeType {
   kAnalyzerNodeTypeCatch,
   kAnalyzerNodeTypeLet,
   kAnalyzerNodeTypeWhile,
-  kAnalyzerNodeTypeSetBang
+  kAnalyzerNodeTypeSetBang,
+  kAnalyzerNodeTypeSuspendAnalysis
 };
 
 class AnalyzerNode {
@@ -747,6 +748,22 @@ public:
     }
 };
 
+class SuspendAnalysisAnalyzerNode: public AnalyzerNode {
+public:
+    shared_ptr<ASTNode> form;
+
+    AnalyzerNodeType nodeType() override {
+        return kAnalyzerNodeTypeSuspendAnalysis;
+    }
+
+    YAML::Node serialize() override {
+        YAML::Node node;
+        node["type"] = "suspend-analysis";
+
+        return node;
+    }
+};
+
 class Analyzer {
 public:
     Analyzer();
@@ -869,6 +886,9 @@ private:
 
     /// The current quasiquote state
     std::vector<bool> quasi_quote_state_;
+
+    /// Flag to specify whether analysis has been suspended (pending the result of an expansion)
+    bool analysis_suspended_;
 
     /// Flag to specify whether the analyzer is currently analyzing a macro expander
     bool in_macro_;

@@ -740,3 +740,10 @@ TEST(Analyzer, analyzesWhile) {
 
     ASSERT_EQ(node->nodeType(), kAnalyzerNodeTypeWhile);
 }
+
+TEST(Analyzer, defBodyCanReferenceVar) {
+    PARSE_STRING("(def f (lambda (x) (f x)))");
+
+    Analyzer an;
+    ASSERT_NO_THROW(an.analyze((val)));
+}

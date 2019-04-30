@@ -315,6 +315,13 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
         break;
     case kAnalyzerNodeTypeWhile: compileWhile(std::dynamic_pointer_cast<WhileAnalyzerNode>(node));
         break;
+    case kAnalyzerNodeTypeSuspendAnalysis: {
+        auto n = std::dynamic_pointer_cast<SuspendAnalysisAnalyzerNode>(node);
+        auto form = n->form;
+        auto newNode = analyzer_.analyze(form, n->node_depth, n->evaluation_phase);
+        compileNode(newNode);
+        break;
+    }
 
     default:throw CompilerException("Unrecognized node type", node->sourcePosition);
     }
@@ -636,6 +643,12 @@ void Compiler::compileDef(const std::shared_ptr<DefAnalyzerNode>& node) {
     // Store var in global
     currentBuilder()->CreateStore(v, glob, false);
 
+    auto d = std::make_shared<GlobalDef>();
+    d->name         = *node->name;
+    d->mangled_name = mangled_name;
+
+    currentContext()->namespaces[node->ns][*node->name] = d;
+
     // Compile value
     compileNode(node->value);
 
@@ -644,11 +657,6 @@ void Compiler::compileDef(const std::shared_ptr<DefAnalyzerNode>& node) {
 
     currentContext()->pushValue(makeNil());
 
-    auto d = std::make_shared<GlobalDef>();
-    d->name         = *node->name;
-    d->mangled_name = mangled_name;
-
-    currentContext()->namespaces[node->ns][*node->name] = d;
 }
 
 void Compiler::compileMaybeInvoke(const std::shared_ptr<MaybeInvokeAnalyzerNode>& node) {
@@ -939,7 +947,8 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
             node->closed_overs.size());
 
     for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
-        buildLambdaSetEnv(closure, i, currentContext()->lookupInLocalEnvironment(node->closed_overs[i])->value);
+        auto v = currentContext()->lookupInLocalEnvironment(node->closed_overs[i]);
+        buildLambdaSetEnv(closure, i, v->value);
     }
 
 
