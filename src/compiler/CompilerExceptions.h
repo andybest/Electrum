@@ -108,10 +108,11 @@ public:
         return sourcePosition_;
     }
 
+    ParserExceptionType             exceptionType_;
+
 protected:
     std::string                     message_;
     std::shared_ptr<SourcePosition> sourcePosition_;
-    ParserExceptionType             exceptionType_;
 };
 }
 
