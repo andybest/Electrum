@@ -58,6 +58,12 @@ int main(int argc, char *argv[]) {
                       << e.sourcePosition()->line << ":"
                       << e.sourcePosition()->column << std::endl;
         }
+        catch (electrum::ParserException &e) {
+            std::cout << "Error: " << e.what() << std::endl;
+            std::cout << "\t" << *e.sourcePosition()->filename << ":"
+                      << e.sourcePosition()->line << ":"
+                      << e.sourcePosition()->column << std::endl;
+        }
         catch (...) {
             std::cout << "Uncaught error" << std::endl;
         }

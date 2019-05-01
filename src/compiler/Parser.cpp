@@ -23,6 +23,7 @@
 */
 
 #include "Parser.h"
+#include "CompilerExceptions.h"
 #include <lex.yy.h>
 #include <Runtime.h>
 
@@ -33,12 +34,16 @@ shared_ptr<ASTNode> Parser::readString(const string& input, const string& filena
     lexer.filename = std::make_shared<string>(filename);
     auto tokens = lexer.getTokens();
 
-    return readTokens(&tokens, tokens.begin()).first;
+    auto result = readTokens(&tokens, tokens.begin());
+
+    // TODO: Handle multiple expressions
+
+    return result.first;
 }
 
 pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::readTokens(vector<Token>* tokens,
         vector<Token>::iterator it) const {
-    while (it!=tokens->end()) {
+    while (it != tokens->end()) {
         auto t = *it;
 
         switch (t.type) {
@@ -64,6 +69,14 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::readTokens(vector<Tok
         case kTokenTypeLParen: {
             return parseList(tokens, ++it);
         }
+        case kTokenTypeRParen: {
+            auto pos = make_shared<SourcePosition>();
+            pos->line     = t.line;
+            pos->column   = t.column;
+            pos->filename = t.filename;
+
+            throw ParserException(kParserExceptionUnexpectedRParen, "Unexpected right paren", pos);
+        }
 
         default:break;
         }
@@ -76,24 +89,24 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::readTokens(vector<Tok
 
 shared_ptr<ASTNode> Parser::parseInteger(const Token& t) const {
     auto val = make_shared<electrum::ASTNode>();
-    val->tag = kTypeTagInteger;
+    val->tag          = kTypeTagInteger;
     val->integerValue = stoll(t.text);
 
-    val->sourcePosition = make_shared<SourcePosition>();
-    val->sourcePosition->line = t.line;
-    val->sourcePosition->column = t.column;
+    val->sourcePosition           = make_shared<SourcePosition>();
+    val->sourcePosition->line     = t.line;
+    val->sourcePosition->column   = t.column;
     val->sourcePosition->filename = t.filename;
     return val;
 }
 
 shared_ptr<ASTNode> Parser::parseFloat(const Token& t) const {
     auto val = make_shared<ASTNode>();
-    val->tag = kTypeTagFloat;
+    val->tag        = kTypeTagFloat;
     val->floatValue = std::stod(t.text);
 
-    val->sourcePosition = make_shared<SourcePosition>();
-    val->sourcePosition->line = t.line;
-    val->sourcePosition->column = t.column;
+    val->sourcePosition           = make_shared<SourcePosition>();
+    val->sourcePosition->line     = t.line;
+    val->sourcePosition->column   = t.column;
     val->sourcePosition->filename = t.filename;
     return val;
 }
@@ -102,9 +115,9 @@ shared_ptr<ASTNode> Parser::parseNil(const Token& t) const {
     auto val = make_shared<ASTNode>();
     val->tag = kTypeTagNil;
 
-    val->sourcePosition = make_shared<SourcePosition>();
-    val->sourcePosition->line = t.line;
-    val->sourcePosition->column = t.column;
+    val->sourcePosition           = make_shared<SourcePosition>();
+    val->sourcePosition->line     = t.line;
+    val->sourcePosition->column   = t.column;
     val->sourcePosition->filename = t.filename;
     return val;
 }
@@ -113,23 +126,23 @@ shared_ptr<ASTNode> Parser::parseBoolean(const Token& t) const {
     auto val = make_shared<ASTNode>();
     val->tag = kTypeTagBoolean;
 
-    val->booleanValue = t.text=="#t" || t.text=="#true";
+    val->booleanValue = t.text == "#t" || t.text == "#true";
 
-    val->sourcePosition = make_shared<SourcePosition>();
-    val->sourcePosition->line = t.line;
-    val->sourcePosition->column = t.column;
+    val->sourcePosition           = make_shared<SourcePosition>();
+    val->sourcePosition->line     = t.line;
+    val->sourcePosition->column   = t.column;
     val->sourcePosition->filename = t.filename;
     return val;
 }
 
 shared_ptr<ASTNode> Parser::parseSymbol(const Token& t) const {
     auto val = make_shared<ASTNode>();
-    val->tag = kTypeTagSymbol;
+    val->tag         = kTypeTagSymbol;
     val->stringValue = make_shared<string>(t.text);
 
-    val->sourcePosition = make_shared<SourcePosition>();
-    val->sourcePosition->line = t.line;
-    val->sourcePosition->column = t.column;
+    val->sourcePosition           = make_shared<SourcePosition>();
+    val->sourcePosition->line     = t.line;
+    val->sourcePosition->column   = t.column;
     val->sourcePosition->filename = t.filename;
     return val;
 }
@@ -139,11 +152,11 @@ shared_ptr<ASTNode> Parser::parseKeyword(const Token& t) const {
     val->tag = kTypeTagKeyword;
 
     // Remove the colon
-    val->stringValue = make_shared<string>(t.text.substr(1, t.text.size()-1));
+    val->stringValue = make_shared<string>(t.text.substr(1, t.text.size() - 1));
 
-    val->sourcePosition = make_shared<SourcePosition>();
-    val->sourcePosition->line = t.line;
-    val->sourcePosition->column = t.column;
+    val->sourcePosition           = make_shared<SourcePosition>();
+    val->sourcePosition->line     = t.line;
+    val->sourcePosition->column   = t.column;
     val->sourcePosition->filename = t.filename;
     return val;
 }
@@ -155,11 +168,11 @@ shared_ptr<ASTNode> Parser::parseString(const Token& t) const {
     val->tag = kTypeTagString;
 
     // Remove the opening and closing quotes
-    val->stringValue = make_shared<string>(t.text.substr(1, t.text.size()-2));
+    val->stringValue = make_shared<string>(t.text.substr(1, t.text.size() - 2));
 
-    val->sourcePosition = make_shared<SourcePosition>();
-    val->sourcePosition->line = t.line;
-    val->sourcePosition->column = t.column;
+    val->sourcePosition           = make_shared<SourcePosition>();
+    val->sourcePosition->line     = t.line;
+    val->sourcePosition->column   = t.column;
     val->sourcePosition->filename = t.filename;
     return val;
 }
@@ -180,12 +193,12 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseList(vector<Toke
         }
         case kTokenTypeRParen: {
             auto val = make_shared<ASTNode>();
-            val->tag = kTypeTagList;
+            val->tag       = kTypeTagList;
             val->listValue = list;
 
-            val->sourcePosition = make_shared<SourcePosition>();
-            val->sourcePosition->line = t.line;
-            val->sourcePosition->column = t.column;
+            val->sourcePosition           = make_shared<SourcePosition>();
+            val->sourcePosition->line     = t.line;
+            val->sourcePosition->column   = t.column;
             val->sourcePosition->filename = t.filename;
             return std::make_pair(val, it);
         }
@@ -201,7 +214,13 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseList(vector<Toke
     }
 
     // Error, list not closed- expected a right paren.
-    throw std::exception();
+    auto lastToken = *(it - 1);
+    auto pos       = make_shared<SourcePosition>();
+    pos->column   = lastToken.column;
+    pos->line     = lastToken.line;
+    pos->filename = lastToken.filename;
+
+    throw ParserException(kParserExceptionMissingRParen, "Missing right paren.", pos);
 }
 
 pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(vector<Token>* const tokens,
@@ -229,9 +248,9 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(vector<Tok
         break;
     }
 
-    sym->sourcePosition = make_shared<SourcePosition>();
-    sym->sourcePosition->line = t.line;
-    sym->sourcePosition->column = t.column;
+    sym->sourcePosition           = make_shared<SourcePosition>();
+    sym->sourcePosition->line     = t.line;
+    sym->sourcePosition->column   = t.column;
     sym->sourcePosition->filename = t.filename;
 
     list->push_back(sym);
@@ -246,8 +265,12 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(vector<Tok
         break;
     }
     case kTokenTypeRParen: {
-        // Unexpected close paren
-        throw std::exception();
+        auto pos = make_shared<SourcePosition>();
+        pos->line     = t.line;
+        pos->column   = t.column;
+        pos->filename = t.filename;
+
+        throw ParserException(kParserExceptionUnexpectedRParen, "Unexpected right paren", pos);
     }
     default: {
         auto v = readTokens(tokens, it);
@@ -260,12 +283,12 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(vector<Tok
     //it;
 
     auto val = make_shared<ASTNode>();
-    val->tag = kTypeTagList;
+    val->tag       = kTypeTagList;
     val->listValue = list;
 
-    val->sourcePosition = make_shared<SourcePosition>();
-    val->sourcePosition->line = t.line;
-    val->sourcePosition->column = t.column;
+    val->sourcePosition           = make_shared<SourcePosition>();
+    val->sourcePosition->line     = t.line;
+    val->sourcePosition->column   = t.column;
     val->sourcePosition->filename = t.filename;
     return std::make_pair(val, it);
 }
@@ -273,50 +296,50 @@ pair<shared_ptr<ASTNode>, vector<Token>::iterator> Parser::parseQuote(vector<Tok
 shared_ptr<ASTNode> Parser::readLispValue(void* val, const shared_ptr<SourcePosition>& source_position) {
     auto form = make_shared<ASTNode>();
 
-    if (rt_is_integer(val)==TRUE_PTR) {
-        form->tag = kTypeTagInteger;
+    if (rt_is_integer(val) == TRUE_PTR) {
+        form->tag          = kTypeTagInteger;
         form->integerValue = rt_integer_value(val);
     }
-    else if (rt_is_float(val)==TRUE_PTR) {
-        form->tag = kTypeTagFloat;
+    else if (rt_is_float(val) == TRUE_PTR) {
+        form->tag        = kTypeTagFloat;
         form->floatValue = rt_float_value(val);
     }
-    else if (rt_is_boolean(val)==TRUE_PTR) {
-        form->tag = kTypeTagBoolean;
-        form->booleanValue = val==TRUE_PTR;
+    else if (rt_is_boolean(val) == TRUE_PTR) {
+        form->tag          = kTypeTagBoolean;
+        form->booleanValue = val == TRUE_PTR;
     }
-    else if (rt_is_string(val)==TRUE_PTR) {
-        form->tag = kTypeTagString;
+    else if (rt_is_string(val) == TRUE_PTR) {
+        form->tag         = kTypeTagString;
         form->stringValue = make_shared<string>(rt_string_value(val));
     }
-    else if (rt_is_symbol(val)==TRUE_PTR) {
-        form->tag = kTypeTagSymbol;
+    else if (rt_is_symbol(val) == TRUE_PTR) {
+        form->tag         = kTypeTagSymbol;
         form->stringValue = make_shared<string>(rt_symbol_extract_string(val));
     }
-    else if (rt_is_pair(val)==TRUE_PTR) {
+    else if (rt_is_pair(val) == TRUE_PTR) {
         form->tag = kTypeTagList;
 
         auto list = make_shared<vector<shared_ptr<ASTNode>>>();
 
         auto head = val;
-        while (rt_is_pair(head)==TRUE_PTR) {
+        while (rt_is_pair(head) == TRUE_PTR) {
             auto current = rt_car(head);
             list->push_back(readLispValue(current, source_position));
 
             head = rt_cdr(head);
         }
 
-        if (head!=NIL_PTR) {
+        if (head != NIL_PTR) {
             list->push_back(readLispValue(head, source_position));
         }
 
         form->listValue = list;
     }
-    else if (val==NIL_PTR) {
+    else if (val == NIL_PTR) {
         form->tag = kTypeTagNil;
     }
     else {
-        if(is_object(val)) {
+        if (is_object(val)) {
             auto obj = TAG_TO_OBJECT(val);
             std::cout << "Object: " << obj->tag << std::endl;
         }

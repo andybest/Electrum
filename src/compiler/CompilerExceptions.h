@@ -34,13 +34,13 @@ namespace electrum {
 class CompilerException : public std::exception {
 public:
     explicit CompilerException(const char* message,
-            shared_ptr <SourcePosition> sourcePosition)
+            shared_ptr<SourcePosition> sourcePosition)
             :message_(message),
              sourcePosition_(sourcePosition) {
     }
 
     explicit CompilerException(std::string message,
-            shared_ptr <SourcePosition> sourcePosition)
+            shared_ptr<SourcePosition> sourcePosition)
             :message_(message),
              sourcePosition_(sourcePosition) {
     }
@@ -56,8 +56,62 @@ public:
     }
 
 protected:
-    std::string message_;
+    std::string                     message_;
     std::shared_ptr<SourcePosition> sourcePosition_;
+};
+
+enum ParserExceptionType {
+  kParserExceptionMisc,
+  kParserExceptionMissingRParen,
+  kParserExceptionUnexpectedRParen
+};
+
+class ParserException : public std::exception {
+public:
+    explicit ParserException(ParserExceptionType exceptionType,
+            const char* message,
+            shared_ptr<SourcePosition> sourcePosition)
+            :message_(message),
+             sourcePosition_(std::move(sourcePosition)),
+             exceptionType_(exceptionType) {
+    }
+
+    explicit ParserException(ParserExceptionType exceptionType,
+            std::string message,
+            shared_ptr<SourcePosition> sourcePosition)
+            :message_(std::move(message)),
+             sourcePosition_(std::move(sourcePosition)),
+             exceptionType_(exceptionType) {
+    }
+
+    explicit ParserException(const char* message,
+            shared_ptr<SourcePosition> sourcePosition)
+            :message_(message),
+             sourcePosition_(std::move(sourcePosition)),
+             exceptionType_(kParserExceptionMisc) {
+    }
+
+    explicit ParserException(std::string message,
+            shared_ptr<SourcePosition> sourcePosition)
+            :message_(std::move(message)),
+             sourcePosition_(std::move(sourcePosition)),
+             exceptionType_(kParserExceptionMisc) {
+    }
+
+    virtual ~ParserException() throw() { }
+
+    virtual const char* what() const throw() {
+        return message_.c_str();
+    }
+
+    std::shared_ptr<SourcePosition> sourcePosition() {
+        return sourcePosition_;
+    }
+
+protected:
+    std::string                     message_;
+    std::shared_ptr<SourcePosition> sourcePosition_;
+    ParserExceptionType             exceptionType_;
 };
 }
 
