@@ -30,6 +30,10 @@
 
   (def-ffi-fn* apply rt_apply :el (:el :el))
 
+  ; Exceptions
+  (def-ffi-fn* throw el_rt_throw :el (:el))
+  (def-ffi-fn* exception el_rt_make_exception :el (:el :el :el))
+
   (defmacro defn (name args & body)
     (list 'def name (cons 'lambda (cons args body))))
 
@@ -68,15 +72,31 @@
   (defn cdddar (x) (cdr (cdr (cdr (car x)))))
   (defn cddddr (x) (cdr (cdr (cdr (cdr x)))))
 
+  (defn count (x)
+    (if (not (list? x))
+        (throw (exception 'invalid-argument "Count requires a list as an argument"))
+      (let ((remaining x)
+            (total 0))
+        (while (not (nil? remaining))
+          (set! total (+ total 1))
+          (set! remaining (cdr remaining)))
+        total)))
+
   (defmacro cond (& clauses)
     (let ((rest-clauses clauses)
-          (result nil))
-      (while (not (nil? rest-clauses))
-        (let ((pred (caar rest-clauses))
-              (expr (cadar rest-clauses)))
-          (set! result (append result (list 'if pred expr)))
-          (set! rest-clauses (cdr rest-clauses))))
-      (append result 'nil)))
+          (result nil)
+          (seen-else? #f))
+      (while (and (not (nil? rest-clauses))
+                  (not seen-else?))
+        (let* ((clause (car clauses))
+               (pred (car clause))
+               (consequent (cadr clause)))
+          (if (eq? pred :else)
+              (do
+                  (set! seen-else? #t)
+                  (append result consequent)))
+
+          (set! rest-clauses (cdr rest-clauses))))))
 
                                         ;(defmacro quasiquote (expr)
                                         ;  (if (not (list? expr))

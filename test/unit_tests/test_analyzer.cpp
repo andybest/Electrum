@@ -747,3 +747,20 @@ TEST(Analyzer, defBodyCanReferenceVar) {
     Analyzer an;
     ASSERT_NO_THROW(an.analyze((val)));
 }
+
+TEST(Analyzer, analyzesOneArmedIf) {
+    PARSE_STRING("(if #t 1)");
+
+    Analyzer an;
+    shared_ptr<AnalyzerNode> node;
+    ASSERT_NO_THROW(node = an.analyze((val)));
+
+    ASSERT_EQ(node->nodeType(), kAnalyzerNodeTypeIf);
+    auto ifNode = std::dynamic_pointer_cast<IfAnalyzerNode>(node);
+
+    EXPECT_NE(ifNode->alternative, nullptr);
+
+    ASSERT_EQ(ifNode->alternative->nodeType(), kAnalyzerNodeTypeConstant);
+    auto constNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(ifNode->alternative);
+    EXPECT_EQ(constNode->type, kAnalyzerConstantTypeNil);
+}
