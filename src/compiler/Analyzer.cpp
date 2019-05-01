@@ -42,7 +42,7 @@ Analyzer::Analyzer()
 shared_ptr<AnalyzerNode> Analyzer::analyze(const shared_ptr<ASTNode>& form, uint64_t depth, EvaluationPhase phase) {
     pushEvaluationPhase(phase);
 
-    if(analysis_suspended_) {
+    if (analysis_suspended_) {
         analysis_suspended_ = false;
     }
 
@@ -58,11 +58,11 @@ shared_ptr<AnalyzerNode> Analyzer::analyze(const shared_ptr<ASTNode>& form, uint
 shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode>& form) {
     shared_ptr<AnalyzerNode> node;
 
-    if(analysis_suspended_) {
+    if (analysis_suspended_) {
         auto suspended_node = make_shared<SuspendAnalysisAnalyzerNode>();
-        suspended_node->sourcePosition = form->sourcePosition;
-        suspended_node->ns = current_ns_;
-        suspended_node->form = form;
+        suspended_node->sourcePosition   = form->sourcePosition;
+        suspended_node->ns               = current_ns_;
+        suspended_node->form             = form;
         suspended_node->evaluation_phase = currentEvaluationPhase();
         return suspended_node;
     }
@@ -173,13 +173,13 @@ vector<string> Analyzer::analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node
                 std::remove_if(closed_overs.begin(),
                         closed_overs.end(),
                         [&letNode](auto c) {
-                    for (const auto& n: letNode->bindings) {
-                        if(n.first == c) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }),
+                          for (const auto& n: letNode->bindings) {
+                              if (n.first == c) {
+                                  return true;
+                              }
+                          }
+                          return false;
+                        }),
                 closed_overs.end());
         break;
     }
@@ -280,11 +280,11 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSymbol(const shared_ptr<ASTNode>& form
         return node;
     }
 
-    string   binding = *sym_name;
-    string   ns      = current_ns_;
-    auto pos = sym_name->find_first_of('/');
+    string binding = *sym_name;
+    string ns      = current_ns_;
+    auto   pos     = sym_name->find_first_of('/');
     if (pos != std::string::npos && pos != 0) {
-        ns = sym_name->substr(0, pos);
+        ns         = sym_name->substr(0, pos);
         auto b_pos = pos + 1;
         binding = sym_name->substr(b_pos, sym_name->size() - b_pos);
     }
@@ -483,6 +483,16 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeIf(const shared_ptr<ASTNode>& form) {
         auto alternativeForm = listPtr->at(3);
         node->alternative = analyzeForm(alternativeForm);
     }
+    else {
+        auto constNode = make_shared<ConstantValueAnalyzerNode>();
+        constNode->sourcePosition = form->sourcePosition;
+        constNode->ns             = current_ns_;
+        constNode->type           = kAnalyzerConstantTypeNil;
+        node->alternative         = constNode;
+    }
+
+    assert(node->consequent != nullptr);
+    assert(node->alternative != nullptr);
 
     return node;
 }
@@ -653,7 +663,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
     bool               has_rest_arg = false;
     shared_ptr<string> rest_arg_name;
     int                rest_count   = 0;
-    
+
     for (const auto& arg: *arg_list) {
         if (arg->tag != kTypeTagSymbol) {
             throw CompilerException("Defmacro arguments must be symbols",
@@ -673,7 +683,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
             has_rest_arg = true;
             continue;
         }
-        
+
         auto sym = std::make_shared<ConstantValueAnalyzerNode>();
         sym->sourcePosition = arg->sourcePosition;
         sym->ns             = current_ns_;
@@ -693,7 +703,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
     if (has_rest_arg) {
         storeInLocalEnv(*rest_arg_name, std::make_shared<ConstantValueAnalyzerNode>());
     }
-    
+
     if (listPtr->size() < 4) {
         throw CompilerException("Defmacro forms must have at least one body expression",
                 form->sourcePosition);
@@ -728,7 +738,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
         node->has_rest_arg  = true;
         node->rest_arg_name = rest_arg_name;
     }
-    
+
     global_macros_[*binding] = node;
 
     popLocalEnv();
@@ -806,7 +816,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeDef(const shared_ptr<ASTNode>& form) {
                 listPtr->at(1)->sourcePosition);
     }
 
-    auto name      = listPtr->at(1)->stringValue;
+    auto name = listPtr->at(1)->stringValue;
 
     AnalyzerDefinition d;
     d.phase = currentEvaluationPhase();
@@ -1147,9 +1157,9 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMakeList(const std::shared_ptr<ASTNode
 
     auto node = make_shared<ConstantListAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
-    node->ns = current_ns_;
+    node->ns             = current_ns_;
 
-    for(int i = 1; i < listPtr->size(); ++i) {
+    for (int i = 1; i < listPtr->size(); ++i) {
         auto item = listPtr->at(i);
         node->values.push_back(analyzeForm(item));
     }
@@ -1199,59 +1209,58 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLet(const std::shared_ptr<electrum::AS
 
     auto letNode = make_shared<LetAnalyzerNode>();
     letNode->sourcePosition = form->sourcePosition;
-    letNode->ns = current_ns_;
-    letNode->is_parallel = is_parallel;
+    letNode->ns             = current_ns_;
+    letNode->is_parallel    = is_parallel;
 
     pushLocalEnv();
 
-    if(listPtr->size() < 2) {
+    if (listPtr->size() < 2) {
         throw CompilerException("let forms require a list of bindings", form->sourcePosition);
     }
 
-    if(listPtr->at(1)->tag != kTypeTagList) {
+    if (listPtr->at(1)->tag != kTypeTagList) {
         throw CompilerException("let: expected a list of bindings", listPtr->at(1)->sourcePosition);
     }
 
-    for(auto b: *listPtr->at(1)->listValue) {
-        if(b->tag != kTypeTagList) {
+    for (auto b: *listPtr->at(1)->listValue) {
+        if (b->tag != kTypeTagList) {
             throw CompilerException("let: expected binding form to be a list", b->sourcePosition);
         }
 
         auto b_list = b->listValue;
 
-        if(b_list->size() != 2) {
+        if (b_list->size() != 2) {
             throw CompilerException("let: expected binding form to have 2 values", b->sourcePosition);
         }
 
-        if(b_list->at(0)->tag != kTypeTagSymbol) {
+        if (b_list->at(0)->tag != kTypeTagSymbol) {
             throw CompilerException("let: expected binding to be a symbol", b_list->at(0)->sourcePosition);
         }
 
         auto binding = b_list->at(0)->stringValue;
-        auto val = analyzeForm(b_list->at(1));
+        auto val     = analyzeForm(b_list->at(1));
         letNode->bindings[*binding] = val;
 
-        if(is_parallel) {
+        if (is_parallel) {
             storeInLocalEnv(*binding, val);
         }
     }
 
-    if(!is_parallel) {
-        for(const auto& b: letNode->bindings) {
+    if (!is_parallel) {
+        for (const auto& b: letNode->bindings) {
             storeInLocalEnv(b.first, b.second);
         }
     }
 
-    if(listPtr->size() < 3) {
+    if (listPtr->size() < 3) {
         throw CompilerException("let: expected at least one body form", form->sourcePosition);
     }
 
-    for(auto it = listPtr->begin() + 2; it != listPtr->end(); ++it) {
+    for (auto it = listPtr->begin() + 2; it != listPtr->end(); ++it) {
         letNode->body.push_back(analyzeForm(*it));
     }
 
     popLocalEnv();
-
 
     return letNode;
 }
@@ -1261,16 +1270,16 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSetBang(const std::shared_ptr<electrum
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
 
-    if(listPtr->size() != 3) {
+    if (listPtr->size() != 3) {
         throw CompilerException("set! requires a variable and a new value", form->sourcePosition);
     }
 
-    if(listPtr->at(1)->tag != kTypeTagSymbol) {
+    if (listPtr->at(1)->tag != kTypeTagSymbol) {
         throw CompilerException("set! requires the variable name to be a symbol", listPtr->at(1)->sourcePosition);
     }
 
-    auto var_name = *listPtr->at(1)->stringValue;
-    shared_ptr<LocalDef> def = nullptr;
+    auto                 var_name = *listPtr->at(1)->stringValue;
+    shared_ptr<LocalDef> def      = nullptr;
 
     for (auto it = local_envs_.rbegin(); it != local_envs_.rend(); ++it) {
         auto env = *it;
@@ -1282,15 +1291,15 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSetBang(const std::shared_ptr<electrum
         }
     }
 
-    if(def == nullptr) {
+    if (def == nullptr) {
         throw CompilerException("set!: No such variable '" + var_name + "'", listPtr->at(1)->sourcePosition);
     }
 
     auto node = make_shared<SetBangAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
-    node->ns = current_ns_;
-    node->var_name = var_name;
-    node->new_value = analyzeForm(listPtr->at(2));
+    node->ns             = current_ns_;
+    node->var_name       = var_name;
+    node->new_value      = analyzeForm(listPtr->at(2));
 
     return node;
 }
@@ -1300,16 +1309,16 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeWhile(const std::shared_ptr<electrum::
     auto listPtr = form->listValue;
     assert(!listPtr->empty());
 
-    if(listPtr->size() < 3) {
+    if (listPtr->size() < 3) {
         throw CompilerException("while requires a condition and a body", form->sourcePosition);
     }
 
     auto node = make_shared<WhileAnalyzerNode>();
     node->sourcePosition = form->sourcePosition;
-    node->ns = current_ns_;
-    node->condition = analyzeForm(listPtr->at(1));
+    node->ns             = current_ns_;
+    node->condition      = analyzeForm(listPtr->at(1));
 
-    for(auto it = listPtr->begin() + 2; it != listPtr->end(); ++it) {
+    for (auto it = listPtr->begin() + 2; it != listPtr->end(); ++it) {
         node->body.push_back(analyzeForm(*it));
     }
 
@@ -1340,8 +1349,8 @@ shared_ptr<AnalyzerNode> Analyzer::lookupInLocalEnv(const std::string& name) {
 
 void Analyzer::storeInLocalEnv(const std::string& name, shared_ptr<AnalyzerNode> initial_value, bool is_mutable) {
     auto def = std::make_shared<LocalDef>();
-    def->phase = currentEvaluationPhase();
-    def->node = initial_value;
+    def->phase      = currentEvaluationPhase();
+    def->node       = initial_value;
     def->is_mutable = is_mutable;
 
     local_envs_.at(local_envs_.size() - 1)[name] = def;
