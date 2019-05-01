@@ -93,6 +93,17 @@ TEST(Compiler, compilesConstantNil) {
     rt_deinit_gc();
 }
 
+TEST(Compiler, compilesConstantKeyword) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    auto     result = c.compileAndEvalString(":foo");
+
+    EXPECT_EQ(rt_is_keyword(result), TRUE_PTR);
+
+    rt_deinit_gc();
+}
+
 TEST(Compiler, compilesIf) {
     rt_init_gc(kGCModeInterpreterOwned);
 

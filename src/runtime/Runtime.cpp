@@ -367,7 +367,7 @@ extern "C" const char* rt_string_value(void* val) {
     return str->stringValue;
 }
 
-void* rt_make_keyword(const char* str) {
+extern "C" void* rt_make_keyword(const char* str) {
     size_t len = strlen(str);
 
     // Allocate enough space for the string
@@ -384,6 +384,12 @@ void* rt_make_keyword(const char* str) {
 
 extern "C" void* rt_is_keyword(void* val) {
     return TO_TAGGED_BOOLEAN(electrum::is_object_with_tag(val, kETypeTagKeyword));
+}
+
+extern "C" const char* rt_keyword_extract_string(void* val) {
+    rt_assert_tag(val, kETypeTagKeyword, "Expected keyword");
+    auto sym = reinterpret_cast<EKeyword*>(TAG_TO_OBJECT(val));
+    return sym->name;
 }
 
 extern "C" void* rt_make_var(void* sym) {

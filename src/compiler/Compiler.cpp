@@ -316,8 +316,8 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
     case kAnalyzerNodeTypeWhile: compileWhile(std::dynamic_pointer_cast<WhileAnalyzerNode>(node));
         break;
     case kAnalyzerNodeTypeSuspendAnalysis: {
-        auto n = std::dynamic_pointer_cast<SuspendAnalysisAnalyzerNode>(node);
-        auto form = n->form;
+        auto n       = std::dynamic_pointer_cast<SuspendAnalysisAnalyzerNode>(node);
+        auto form    = n->form;
         auto newNode = analyzer_.analyze(form, n->node_depth, n->evaluation_phase);
         compileNode(newNode);
         break;
@@ -342,6 +342,8 @@ void Compiler::compileConstant(std::shared_ptr<ConstantValueAnalyzerNode> node) 
     case kAnalyzerConstantTypeString:v = makeString(boost::get<shared_ptr<std::string>>(node->value));
         break;
     case kAnalyzerConstantTypeNil:v = makeNil();
+        break;
+    case kAnalyzerConstantTypeKeyword: v = makeKeyword(boost::get<shared_ptr<std::string>>(node->value));
         break;
     default:throw CompilerException("Unrecognized constant type", node->sourcePosition);
     }
