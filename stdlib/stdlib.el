@@ -30,10 +30,6 @@
 
   (def-ffi-fn* apply rt_apply :el (:el :el))
 
-  ; Exceptions
-  (def-ffi-fn* throw el_rt_throw :el (:el))
-  (def-ffi-fn* exception el_rt_make_exception :el (:el :el :el))
-
   (defmacro defn (name args & body)
     (list 'def name (cons 'lambda (cons args body))))
 
@@ -71,16 +67,6 @@
   (defn cddadr (x) (cdr (cdr (car (cdr x)))))
   (defn cdddar (x) (cdr (cdr (cdr (car x)))))
   (defn cddddr (x) (cdr (cdr (cdr (cdr x)))))
-
-  (defn count (x)
-    (if (not (list? x))
-        (throw (exception 'invalid-argument "Count requires a list as an argument"))
-      (let ((remaining x)
-            (total 0))
-        (while (not (nil? remaining))
-          (set! total (+ total 1))
-          (set! remaining (cdr remaining)))
-        total)))
 
   (defmacro cond (& clauses)
     (let* ((process-clauses (lambda (clauses)
