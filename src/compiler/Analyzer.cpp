@@ -583,11 +583,11 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode>& form
     pushLocalEnv();
 
     for (auto& arg_name : arg_names) {
-        storeInLocalEnv(*arg_name, std::make_shared<ConstantValueAnalyzerNode>());
+        storeInLocalEnv(*arg_name, false);
     }
 
     if (has_rest_arg) {
-        storeInLocalEnv(*rest_arg_name, std::make_shared<ConstantValueAnalyzerNode>());
+        storeInLocalEnv(*rest_arg_name, false);
     }
 
     if (list_ptr->size() < 3) {
@@ -697,11 +697,11 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacro(const shared_ptr<ASTNode>& form)
     pushLocalEnv();
 
     for (auto& arg_name : arg_names) {
-        storeInLocalEnv(*arg_name, std::make_shared<ConstantValueAnalyzerNode>());
+        storeInLocalEnv(*arg_name, false);
     }
 
     if (has_rest_arg) {
-        storeInLocalEnv(*rest_arg_name, std::make_shared<ConstantValueAnalyzerNode>());
+        storeInLocalEnv(*rest_arg_name, false);
     }
     
     if (listPtr->size() < 4) {
@@ -1132,7 +1132,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeCatch(const shared_ptr<ASTNode>& form)
     vector<shared_ptr<AnalyzerNode>> body;
 
     pushLocalEnv();
-    storeInLocalEnv(*exception_binding, std::make_shared<ConstantValueAnalyzerNode>());
+    storeInLocalEnv(*exception_binding, false);
 
     for (int i = 2; i < listPtr->size(); i++) {
         body.push_back(analyzeForm(listPtr->at(i)));
@@ -1335,21 +1335,21 @@ void Analyzer::popLocalEnv() {
     local_envs_.pop_back();
 }
 
-shared_ptr<AnalyzerNode> Analyzer::lookupInLocalEnv(const std::string& name) {
+shared_ptr<Analyzer::LocalDef> Analyzer::lookupInLocalEnv(const std::string& name) {
     for (auto it = local_envs_.rbegin(); it != local_envs_.rend(); ++it) {
         auto env = *it;
 
         auto result = env.find(name);
 
         if (result != env.end()) {
-            return result->second->node;
+            return result->second;
         }
     }
 
     return nullptr;
 }
 
-void Analyzer::storeInLocalEnv(const std::string& name, shared_ptr<AnalyzerNode> initial_value, bool is_mutable) {
+void Analyzer::storeInLocalEnv(const std::string& name, bool is_mutable) {
     auto def = std::make_shared<LocalDef>();
     def->phase      = currentEvaluationPhase();
     def->is_mutable = is_mutable;
