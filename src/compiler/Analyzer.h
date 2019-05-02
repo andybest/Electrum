@@ -793,6 +793,8 @@ private:
     /// Recursively walks the node tree and generates a list of closed overs for each node
     vector<string> analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node);
 
+    struct LocalDef;
+
     /* Analyzers */
     shared_ptr<AnalyzerNode> analyzeForm(const shared_ptr<ASTNode>& form);
     shared_ptr<AnalyzerNode> analyzeSymbol(const shared_ptr<ASTNode>& form);
@@ -830,8 +832,8 @@ private:
     /* Environment */
     void pushLocalEnv();
     void popLocalEnv();
-    shared_ptr<AnalyzerNode> lookupInLocalEnv(const std::string& name);
-    void storeInLocalEnv(const std::string& name, shared_ptr<AnalyzerNode> initial_value, bool is_mutable=false);
+    shared_ptr<LocalDef> lookupInLocalEnv(const std::string& name);
+    void storeInLocalEnv(const std::string& name, bool is_mutable=false);
 
     /* Evaluation Phase */
     void pushEvaluationPhase(EvaluationPhase phase);
@@ -867,7 +869,6 @@ private:
 
     struct LocalDef {
       EvaluationPhase phase;
-      shared_ptr<AnalyzerNode> node;
       bool is_mutable;
     };
 

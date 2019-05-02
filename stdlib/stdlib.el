@@ -83,20 +83,15 @@
         total)))
 
   (defmacro cond (& clauses)
-    (let ((rest-clauses clauses)
-          (result nil)
-          (seen-else? #f))
-      (while (and (not (nil? rest-clauses))
-                  (not seen-else?))
-        (let* ((clause (car clauses))
-               (pred (car clause))
-               (consequent (cadr clause)))
-          (if (eq? pred :else)
-              (do
-                  (set! seen-else? #t)
-                  (append result consequent)))
-
-          (set! rest-clauses (cdr rest-clauses))))))
+    (let* ((process-clauses (lambda (clauses)
+                             (if (nil? clauses)
+                                 nil
+                               (if (eq? (caar clauses) :else)
+                                   (cadar clauses)
+                                 (list 'if (caar clauses)
+                                       (cadar clauses)
+                                       (process-clauses (cdr clauses))))))))
+      (process-clauses clauses)))
 
                                         ;(defmacro quasiquote (expr)
                                         ;  (if (not (list? expr))

@@ -753,7 +753,7 @@ TEST(Analyzer, analyzesOneArmedIf) {
 
     Analyzer an;
     shared_ptr<AnalyzerNode> node;
-    ASSERT_NO_THROW(node = an.analyze((val)));
+    ASSERT_NO_THROW(node = an.analyze(val));
 
     ASSERT_EQ(node->nodeType(), kAnalyzerNodeTypeIf);
     auto ifNode = std::dynamic_pointer_cast<IfAnalyzerNode>(node);
@@ -763,4 +763,13 @@ TEST(Analyzer, analyzesOneArmedIf) {
     ASSERT_EQ(ifNode->alternative->nodeType(), kAnalyzerNodeTypeConstant);
     auto constNode = std::dynamic_pointer_cast<ConstantValueAnalyzerNode>(ifNode->alternative);
     EXPECT_EQ(constNode->type, kAnalyzerConstantTypeNil);
+}
+
+TEST(Analyzer, lambdaDefinedInLetCanReferenceSelf) {
+    PARSE_STRING("(let* ((f (lambda () f)))"
+                 "  f)");
+
+    Analyzer an;
+    shared_ptr<AnalyzerNode> node;
+    ASSERT_NO_THROW(an.analyze(val));
 }
