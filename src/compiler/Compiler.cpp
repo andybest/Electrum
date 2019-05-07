@@ -616,7 +616,16 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
 
     for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
         auto def = currentContext()->lookupInLocalEnvironment(node->closed_overs[i]);
-        buildLambdaSetEnv(closure, i, def->value);
+        if(def == nullptr) {
+            throw CompilerException("Unknown compiler exception", node->sourcePosition);
+        }
+
+        if(def->is_mutable) {
+            auto v = currentBuilder()->CreateLoad(def->value);
+            buildLambdaSetEnv(closure, i, v);
+        } else {
+            buildLambdaSetEnv(closure, i, def->value);
+        }
     }
 
     currentContext()->pushValue(closure);
@@ -949,8 +958,13 @@ void Compiler::compileDefMacro(const std::shared_ptr<electrum::DefMacroAnalyzerN
             node->closed_overs.size());
 
     for (uint64_t i = 0; i < node->closed_overs.size(); i++) {
-        auto v = currentContext()->lookupInLocalEnvironment(node->closed_overs[i]);
-        buildLambdaSetEnv(closure, i, v->value);
+        auto def = currentContext()->lookupInLocalEnvironment(node->closed_overs[i]);
+        if(def->is_mutable) {
+            auto v = currentBuilder()->CreateLoad(def->value);
+            buildLambdaSetEnv(closure, i, v);
+        } else {
+            buildLambdaSetEnv(closure, i, def->value);
+        }
     }
 
 
@@ -1170,7 +1184,6 @@ void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node
     unordered_map<string, shared_ptr<LocalDef>> bindings;
 
     for (const auto& b: node->bindings) {
-        compileNode(b.second);
 
         auto d = make_shared<LocalDef>();
         d->name       = b.first;
@@ -1180,7 +1193,6 @@ void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node
                 0,
                 "let_var_" + d->name);
 
-        currentBuilder()->CreateStore(currentContext()->popValue(), d->value);
 
         if (node->is_parallel) {
             currentContext()->local_bindings.back()[b.first] = d;
@@ -1188,6 +1200,17 @@ void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node
         else {
             bindings[b.first] = d;
         }
+
+        compileNode(b.second);
+
+        // Set the value of let var immediately after the definition of the value,
+        // so things like (let* ((f (lambda () f))) (f)) work
+        auto ip = currentBuilder()->GetInsertPoint();
+        auto ib = currentBuilder()->GetInsertBlock();
+        auto letVal = currentContext()->popValue();
+        currentBuilder()->SetInsertPoint(((llvm::Instruction*) letVal)->getNextNode());
+        currentBuilder()->CreateStore(letVal, d->value);
+        currentBuilder()->SetInsertPoint(ib, ip);
     }
 
     if (!node->is_parallel) {

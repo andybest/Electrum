@@ -681,8 +681,8 @@ TEST(Compiler, expansionVisibleFromAnotherExpansion) {
     try {
         c.compileAndEvalString(
                 "(eval-when (:compile :load)"
-                "  (def-ffi-fn* not rt_car :el (:el))"
-                "  (def-ffi-fn* nil? rt_car :el (:el))"
+                "  (def-ffi-fn* not rt_not :el (:el))"
+                "  (def-ffi-fn* nil? rt_is_nil :el (:el))"
                 "  (def-ffi-fn* car rt_car :el (:el))"
                 "  (def-ffi-fn* cdr rt_cdr :el (:el))"
                 "  (def-ffi-fn* cons rt_make_pair :el (:el :el))"
@@ -691,12 +691,33 @@ TEST(Compiler, expansionVisibleFromAnotherExpansion) {
                 "  (defn caar (x) (car (car x)))"
                 "  (defmacro cond (& clauses)"
                 "        (let ((pred (caar clauses)))"
-                "              pred)) )" );
+                "              pred)) )");
     }
     catch (CompilerException& e) {
         std::cout << e.what() << std::endl;
         FAIL();
     }
+
+    rt_deinit_gc();
+}
+
+TEST(Compiler, lambdaDefinedInLetCanReferenceSelf) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compileAndEvalString("(def-ffi-fn* nil? rt_is_nil :el (:el))");
+    c.compileAndEvalString("(def-ffi-fn* or rt_or :el (:el :el))");
+    c.compileAndEvalString("(def-ffi-fn* car rt_car :el (:el))");
+    c.compileAndEvalString("(def-ffi-fn* cdr rt_cdr :el (:el))");
+
+    auto r = c.compileAndEvalString("(let* ((f (lambda (l)"
+                                    "            (if (nil? (cdr l))"
+                                    "              (car l)"
+                                    "              (f (cdr l))))))"
+                                    "  (f '(1 2 3 4)))");
+
+    ASSERT_TRUE(is_integer(r));
+    EXPECT_EQ(rt_integer_value(r), 4);
 
     rt_deinit_gc();
 }

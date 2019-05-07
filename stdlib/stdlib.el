@@ -33,7 +33,6 @@
   (defmacro defn (name args & body)
     (list 'def name (cons 'lambda (cons args body))))
 
-
   (defn append (l1 l2)
     (if (nil? l1)
         l2
@@ -67,6 +66,13 @@
   (defn cddadr (x) (cdr (cdr (car (cdr x)))))
   (defn cdddar (x) (cdr (cdr (cdr (car x)))))
   (defn cddddr (x) (cdr (cdr (cdr (cdr x)))))
+
+  (defn last (l)
+    (let* ((f (lambda (l)
+                (if (nil? (cdr l))
+                          (car l)
+                  (f (cdr l))))))
+      (f l)))
 
   (defmacro cond (& clauses)
     (let* ((process-clauses (lambda (clauses)
