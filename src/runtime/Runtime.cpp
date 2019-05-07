@@ -834,6 +834,8 @@ extern "C" void* rt_eq(void* x, void* y) {
     case kETypeTagString:return TO_TAGGED_BOOLEAN(strcmp(rt_string_value(x), rt_string_value(y)) == 0);
     case kETypeTagSymbol:
         return TO_TAGGED_BOOLEAN(strcmp(rt_symbol_extract_string(x), rt_symbol_extract_string(y)) == 0);
+    case kETypeTagKeyword:
+        return TO_TAGGED_BOOLEAN(strcmp(rt_keyword_extract_string(x), rt_keyword_extract_string(y)) == 0);
     default: // TODO: Others
         return FALSE_PTR;
     }
