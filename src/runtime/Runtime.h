@@ -245,6 +245,7 @@ extern "C" void* rt_apply_19(void*, void*, void*, void*, void*, void*, void*, vo
 extern "C" void* rt_apply_20(void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*, void*,
         void*, void*, void*, void*, void*, void*, void*, void*);
 
+extern "C" void *rt_print(void* expr);
 
 //}
 /*EBoolean *rt_make_boolean(uint8_t booleanValue);

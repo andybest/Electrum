@@ -1205,12 +1205,18 @@ void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node
 
         // Set the value of let var immediately after the definition of the value,
         // so things like (let* ((f (lambda () f))) (f)) work
-        auto ip = currentBuilder()->GetInsertPoint();
-        auto ib = currentBuilder()->GetInsertBlock();
+
         auto letVal = currentContext()->popValue();
-        currentBuilder()->SetInsertPoint(((llvm::Instruction*) letVal)->getNextNode());
-        currentBuilder()->CreateStore(letVal, d->value);
-        currentBuilder()->SetInsertPoint(ib, ip);
+        auto next = ((llvm::Instruction*) letVal)->getNextNode();
+        if(next != nullptr) {
+            auto ip = currentBuilder()->GetInsertPoint();
+            auto ib = currentBuilder()->GetInsertBlock();
+            currentBuilder()->SetInsertPoint(next);
+            currentBuilder()->CreateStore(letVal, d->value);
+            currentBuilder()->SetInsertPoint(ib, ip);
+        } else {
+            currentBuilder()->CreateStore(letVal, d->value);
+        }
     }
 
     if (!node->is_parallel) {

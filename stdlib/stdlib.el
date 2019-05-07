@@ -30,8 +30,21 @@
 
   (def-ffi-fn* apply rt_apply :el (:el :el))
 
+  (def-ffi-fn* print* rt_print :el (:el))
+
   (defmacro defn (name args & body)
     (list 'def name (cons 'lambda (cons args body))))
+
+  (defn print (& values)
+    (let ((is-first #t)
+          (rest values))
+      (while (not (nil? rest))
+        (if is-first
+            (set! is-first #f)
+          (print* " "))
+        (print* (car rest))
+        (set! rest (cdr rest))))
+    nil)
 
   (defn append (l1 l2)
     (if (nil? l1)
