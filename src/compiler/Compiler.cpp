@@ -197,7 +197,7 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
     moduless << "expander_module_" << cnt;
 
     auto temp_path = tempPath();
-    auto filename = temp_path.filename();
+    auto filename  = temp_path.filename();
     temp_path.remove_filename();
 
     currentContext()->pushNewState(moduless.str(), filename.string(), temp_path.string());
@@ -513,7 +513,16 @@ void Compiler::compileLambda(const std::shared_ptr<LambdaAnalyzerNode>& node) {
 
     /* Function Debug Info */
 
-    llvm::DIScope* f_ctx = currentContext()->currentDebugInfo()->currentScope();
+    llvm::DIScope* f_ctx       = currentContext()->currentDebugInfo()->currentScope();
+
+    boost::filesystem::path source_path(*node->sourcePosition->filename);
+    auto                    fn = source_path.filename();
+    source_path.remove_filename();
+
+    auto unit = currentContext()->currentDIBuilder()->createFile(
+            fn.string(),
+            source_path.string());
+
     auto subprogram = currentContext()->currentDIBuilder()->createFunction(
             f_ctx,
             ss.str(),
@@ -1231,7 +1240,7 @@ void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node
         d->is_mutable = true;
         d->value      = currentBuilder()->CreateAlloca(
                 llvm::IntegerType::getInt8PtrTy(llvmContext(), kGCAddressSpace),
-                0,
+                nullptr,
                 "let_var_" + d->name);
 
         if (node->is_parallel) {
@@ -1261,6 +1270,9 @@ void Compiler::compileLet(const std::shared_ptr<electrum::LetAnalyzerNode>& node
             else {
                 currentBuilder()->CreateStore(let_val, d->value);
             }
+        }
+        else {
+            currentBuilder()->CreateStore(let_val, d->value);
         }
     }
 

@@ -915,7 +915,7 @@ void print_list(void *l) {
 
 extern "C" void *rt_print(void *expr) {
     if (electrum::is_integer(expr)) {
-        printf("%lld", rt_integer_value(expr));
+        printf("%ld", rt_integer_value(expr));
         return NIL_PTR;
     } else if(electrum::is_boolean(expr)) {
         if(expr == TRUE_PTR) {

@@ -721,3 +721,18 @@ TEST(Compiler, lambdaDefinedInLetCanReferenceSelf) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, letCanWorkWithRestArg) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compileAndEvalString("(def-ffi-fn* car rt_car :el (:el))");
+    auto r = c.compileAndEvalString("((lambda (& rest)"
+                                    "  (let ((r rest))"
+                                    "    (car r))) 'a 'b 'c' 'd)");
+
+    ASSERT_TRUE(is_object_with_tag(r, kETypeTagSymbol));
+    EXPECT_STREQ(rt_symbol_extract_string(r), "a");
+
+    rt_deinit_gc();
+}
