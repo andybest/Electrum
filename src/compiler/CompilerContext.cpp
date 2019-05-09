@@ -111,7 +111,6 @@ void CompilerContext::pushNewState(string module_name, const string& directory, 
     s->debug_info = std::make_shared<DebugInfo>();
     s->debug_info->builder = std::make_shared<llvm::DIBuilder>(*s->module);
 
-    /*
     s->debug_info->compile_unit = s->debug_info->builder->createCompileUnit(
             llvm::dwarf::DW_LANG_C,
             s->debug_info->builder->createFile(filename, directory),
@@ -119,8 +118,6 @@ void CompilerContext::pushNewState(string module_name, const string& directory, 
             false,
             "",
             1);
-            */
-
 
     _state_stack.push_back(s);
 
@@ -159,7 +156,6 @@ shared_ptr<ScopeInfo> CompilerContext::currentScope() {
 #pragma mark - DebugInfo
 
 void CompilerContext::emitLocation(const std::shared_ptr<SourcePosition>& position) {
-    return;
     llvm::DIScope *scope = currentDebugInfo()->currentScope();
 
     currentBuilder()->SetCurrentDebugLocation(

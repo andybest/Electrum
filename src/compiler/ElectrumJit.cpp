@@ -32,7 +32,7 @@
 namespace electrum {
 
 static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Module> module) {
-    auto fpm = std::make_unique<llvm::legacy::FunctionPassManager>(module.get());
+    auto fpm                 = std::make_unique<llvm::legacy::FunctionPassManager>(module.get());
 
 //    fpm->add(llvm::createPlaceSafepointsPass());
     fpm->doInitialization();
@@ -58,11 +58,12 @@ static std::unique_ptr<llvm::Module> optimize_module(std::unique_ptr<llvm::Modul
      */
 
     std::string errors;
-    auto error_stream = llvm::raw_string_ostream(errors);
-    auto has_errors = llvm::verifyModule(*module, &error_stream, nullptr);
+    auto        error_stream = llvm::raw_string_ostream(errors);
+    auto        has_errors   = llvm::verifyModule(*module, &error_stream, nullptr);
     if (has_errors) {
-        error_stream.flush();
         std::cout << errors << std::endl;
+        std::fflush(stdout);
+        error_stream.flush();
         module->print(llvm::errs(), nullptr);
         throw std::exception();
     }
@@ -78,12 +79,12 @@ ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession& es)
                    if (auto Sym = optimize_layer_.findSymbol(Name, false)) {
                        return Sym;
                    }
-                   else if (auto Err = Sym.takeError()) {
+                   else if (auto Err     = Sym.takeError()) {
                        std::cerr << "JIT- Could not resolve symbol: " << Name << std::endl;
                        return std::move(Err);
                    }
-                   if (auto SymAddr =
-                           llvm::RTDyldMemoryManager::getSymbolAddressInProcess(Name)) {
+                   if (auto      SymAddr =
+                                         llvm::RTDyldMemoryManager::getSymbolAddressInProcess(Name)) {
                        return llvm::JITSymbol(SymAddr, llvm::JITSymbolFlags::Exported);
                    }
 
@@ -106,6 +107,12 @@ ElectrumJit::ElectrumJit(llvm::orc::ExecutionSession& es)
                          const llvm::RuntimeDyld::LoadedObjectInfo& info) {
                    //this->gdb_listener_->notifyObjectLoaded();
                    //NotifyObjectEmitted(obj, info);
+                 },
+                 [this](llvm::orc::VModuleKey, const llvm::object::ObjectFile& obj,
+                         const llvm::RuntimeDyld::LoadedObjectInfo& info) {
+                   uint64_t key = static_cast<uint64_t>(
+                           reinterpret_cast<uintptr_t>(obj.getData().data()));
+                   this->gdb_listener_->notifyObjectLoaded(key, obj, info);
                  }),
          compile_layer_(object_layer_, llvm::orc::SimpleCompiler(*target_machine_)),
          optimize_layer_(compile_layer_, [this](std::unique_ptr<llvm::Module> M) {
@@ -129,7 +136,7 @@ llvm::orc::VModuleKey ElectrumJit::addModule(std::unique_ptr<llvm::Module> modul
 }
 
 llvm::JITSymbol ElectrumJit::findSymbol(const std::string& name) {
-    std::string mangled_name;
+    std::string              mangled_name;
     llvm::raw_string_ostream mangled_name_stream(mangled_name);
     llvm::Mangler::getNameWithPrefix(mangled_name_stream, name, data_layout_);
     return optimize_layer_.findSymbol(name, false);
