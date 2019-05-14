@@ -15,17 +15,17 @@
   (def-ffi-fn* cdr rt_cdr :el (:el))
 
                                         ; Basic arithmetic
-  (def-ffi-fn* + rt_add :el (:el :el))
-  (def-ffi-fn* - rt_sub :el (:el :el))
-  (def-ffi-fn* * rt_mul :el (:el :el))
-  (def-ffi-fn* / rt_div :el (:el :el))
+  (def-ffi-fn* rt-add rt_add :el (:el :el))
+  (def-ffi-fn* rt-sub rt_sub :el (:el :el))
+  (def-ffi-fn* rt-mul rt_mul :el (:el :el))
+  (def-ffi-fn* rt-div rt_div :el (:el :el))
 
                                         ; Predicates
   (def-ffi-fn* eq? rt_eq :el (:el :el))
 
                                         ; Boolean operators
-  (def-ffi-fn* and rt_and :el (:el :el))
-  (def-ffi-fn* or  rt_or :el (:el :el))
+  (def-ffi-fn* rt-and rt_and :el (:el :el))
+  (def-ffi-fn* rt-or  rt_or :el (:el :el))
   (def-ffi-fn* not rt_not :el (:el))
 
   (def-ffi-fn* apply rt_apply :el (:el :el))
@@ -38,6 +38,38 @@
 
   (defmacro defn (name args & body)
     (list 'def name (cons 'lambda (cons args body))))
+
+  (defmacro reduce-args (f & args)
+    (let* ((red (lambda (f remaining)
+                  (if (not (nil? (cdr remaining)))
+                      (list f (car remaining) (red f (cdr remaining)))
+                    (car remaining)))))
+      (let ((result (red f args)))
+        (print* result)
+        result)))
+
+  (defmacro reduce-args-reverse (f & args)
+    (let ((remaining (cdr args))
+          (result (car args)))
+      (while (not (nil? remaining))
+        (set! result (list f result (car remaining)))
+        (set! remaining (cdr remaining)))
+      (print* result)
+      result))
+
+  (defmacro def-rt-multiarg (binding fn)
+    (list 'defmacro binding '(& args) (list 'cons ''reduce-args (list 'cons (list 'quote fn) 'args))))
+
+  (defmacro def-rt-multiarg-reverse (binding fn)
+    (list 'defmacro binding '(& args) (list 'cons ''reduce-args-reverse (list 'cons (list 'quote fn) 'args))))
+
+  (def-rt-multiarg + rt-add)
+  (def-rt-multiarg - rt-sub)
+  (def-rt-multiarg * rt-mul)
+  (def-rt-multiarg-reverse / rt-div)
+
+  (def-rt-multiarg and rt-and)
+  (def-rt-multiarg or rt-or)
 
   (defn print (& values)
     (let ((is-first #t)
@@ -119,6 +151,7 @@
         (throw 'invalid-argument "Expected one arg" nil)
       nil))
 
+
   ;(defmacro quasiquote (expr)
   ;  (let ((assert-one-arg (lambda (l)
   ;                          (unless (cond
@@ -133,10 +166,6 @@
   ;                                    (assert-one-arg expr)
   ;                                    (cadr expr))))))
 
-                                        ;(defmacro quasiquote (expr)
-                                        ;  (if (not (list? expr))
-                                        ;      expr
-                                        ;    (if (eq? (car expr) 'unquote)))
   )
 
 
