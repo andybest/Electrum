@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 
         while (!has_full_input) {
 
-            std::string ln_input;
+            char* ln_input;
             if (input_lines == 0) {
                 ln_input = linenoise("  > ");
             }
@@ -56,7 +56,11 @@ int main(int argc, char* argv[]) {
                 ln_input = linenoise("... ");
             }
 
-            if (ln_input.empty()) { continue; }
+            if(ln_input == nullptr) {
+                break;
+            }
+
+            if (strlen(ln_input) == 0) { continue; }
 
             input << ln_input;
 
