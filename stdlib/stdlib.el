@@ -87,6 +87,12 @@
                   (f (cdr l))))))
       (f l)))
 
+  (defmacro when (condition & body)
+    (list 'if condition (append (list 'do ) body) nil))
+
+  (defmacro unless (condition & body)
+    (list 'if condition nil (append (list 'do) body)))
+
   (defmacro cond (& clauses)
     (let* ((process-clauses (lambda (clauses)
                              (if (nil? clauses)
@@ -96,7 +102,33 @@
                                  (list 'if (caar clauses)
                                        (cadar clauses)
                                        (process-clauses (cdr clauses))))))))
-      (process-clauses clauses)))
+      (let ((result (process-clauses clauses)))
+        (print result)
+        result)))
+
+  ;(defn assert-one (x)
+  ;  (if
+  ;      (cond
+  ;       ((nil? x) #t)
+  ;       ((nil? (cdr x)) #t)
+  ;       ((not (nil? (cddr x))) #t)
+  ;       (:else #f))
+  ;      (throw 'invalid-argument "Expected one arg" nil)
+  ;    nil))
+
+  ;(defmacro quasiquote (expr)
+  ;  (let ((assert-one-arg (lambda (l)
+  ;                          (unless (cond
+  ;                                   ((nil? x) #t)
+  ;                                   ((nil? (cdr x) #t))
+  ;                                   ((not (nil? (cddr x))))
+  ;                                   (:else #f))
+  ;                            (throw 'invalid-argument "Expected one arg" nil)))))
+  ;    (cond
+  ;     ((not (list? expr)) (list 'quote expr))
+  ;     ((eq? (car expr) 'unquote) (do
+  ;                                    (assert-one-arg expr)
+  ;                                    (cadr expr))))))
 
                                         ;(defmacro quasiquote (expr)
                                         ;  (if (not (list? expr))

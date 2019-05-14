@@ -534,13 +534,18 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode>& form
                 form->sourcePosition);
     }
 
-    if (list_ptr->at(1)->tag != kTypeTagList) {
+    if (list_ptr->at(1)->tag != kTypeTagList && list_ptr->at(1)->tag != kTypeTagNil) {
         // Lambda arguments must be a list
         throw CompilerException("Lambda arguments must be a list",
                 list_ptr->at(1)->sourcePosition);
     }
 
-    auto arg_list = list_ptr->at(1)->listValue;
+    vector<shared_ptr<ASTNode>> arg_list;
+    if(list_ptr->at(1)->tag == kTypeTagList) {
+        arg_list = *(list_ptr->at(1)->listValue);
+    } else {
+        arg_list = {};
+    };
 
     std::vector<shared_ptr<AnalyzerNode>> arg_name_nodes;
     std::vector<shared_ptr<std::string>>  arg_names;
@@ -549,7 +554,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeLambda(const shared_ptr<ASTNode>& form
     shared_ptr<string> rest_arg_name;
     int                rest_count   = 0;
 
-    for (const auto& arg: *arg_list) {
+    for (const auto& arg: arg_list) {
         if (arg->tag != kTypeTagSymbol) {
             // Lambda arguments must be symbols
             throw CompilerException("Lambda arguments must be symbols",
@@ -770,6 +775,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeMacroExpand(const shared_ptr<ASTNode>&
     node->macro          = macro;
     node->args.reserve(listPtr->size() - 1);
     node->do_evaluate = true;
+    node->local_envs = local_envs_;
 
     bool first = true;
     for (const auto& a: *listPtr) {
@@ -1281,7 +1287,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeSetBang(const std::shared_ptr<electrum
     }
 
     auto var_name = *listPtr->at(1)->stringValue;
-    shared_ptr<LocalDef> def = nullptr;
+    shared_ptr<AnalyzerLocalDef> def = nullptr;
 
     for (auto it = local_envs_.rbegin(); it != local_envs_.rend(); ++it) {
         auto env = *it;
@@ -1335,7 +1341,7 @@ void Analyzer::popLocalEnv() {
     local_envs_.pop_back();
 }
 
-shared_ptr<Analyzer::LocalDef> Analyzer::lookupInLocalEnv(const std::string& name) {
+shared_ptr<AnalyzerLocalDef> Analyzer::lookupInLocalEnv(const std::string& name) {
     for (auto it = local_envs_.rbegin(); it != local_envs_.rend(); ++it) {
         auto env = *it;
 
@@ -1350,7 +1356,7 @@ shared_ptr<Analyzer::LocalDef> Analyzer::lookupInLocalEnv(const std::string& nam
 }
 
 void Analyzer::storeInLocalEnv(const std::string& name, bool is_mutable) {
-    auto def = std::make_shared<LocalDef>();
+    auto def = std::make_shared<AnalyzerLocalDef>();
     def->phase      = currentEvaluationPhase();
     def->is_mutable = is_mutable;
 

@@ -28,7 +28,7 @@
 #include <boost/detail/bitmask.hpp>
 
 /// Values that represent the phases in which the currently compiling expression will be evaluated in
-enum EvaluationPhase {
+enum EvaluationPhase: int {
   /// No evaluation
           kEvaluationPhaseNone = 0U,
 

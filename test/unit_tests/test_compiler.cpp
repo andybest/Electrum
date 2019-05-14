@@ -736,3 +736,13 @@ TEST(Compiler, letCanWorkWithRestArg) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, macroCanReferToLambdaArg) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compileAndEvalString("(defmacro identity (y) y)");
+    EXPECT_NO_THROW(c.compileAndEvalString("(def f (lambda (x) (identity x)))"));
+
+    rt_deinit_gc();
+}

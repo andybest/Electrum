@@ -200,7 +200,9 @@ void* Compiler::compileAndEvalExpander(std::shared_ptr<MacroExpandAnalyzerNode> 
     auto filename  = temp_path.filename();
     temp_path.remove_filename();
 
+    auto b = currentContext()->local_bindings;
     currentContext()->pushNewState(moduless.str(), filename.string(), temp_path.string());
+
 
     createGCEntry();
 
@@ -317,7 +319,11 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
             auto   expansion     = compileAndEvalExpander(macro_expand_node);
             Parser p;
             auto   form          = p.readLispValue(expansion, node->sourcePosition);
+
+            auto prev_locals = analyzer_.local_envs_;
+            analyzer_.local_envs_ = macro_expand_node->local_envs;
             auto   expanded_node = analyzer_.analyze(form, node->node_depth, node->evaluation_phase);
+            analyzer_.local_envs_ = prev_locals;
 
             compileNode(expanded_node);
         }

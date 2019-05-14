@@ -45,6 +45,11 @@ using std::make_shared;
 using std::string;
 using std::unordered_map;
 
+struct AnalyzerLocalDef {
+  EvaluationPhase phase;
+  bool is_mutable;
+};
+
 enum AnalyzerNodeType {
   kAnalyzerNodeTypeIf,
   kAnalyzerNodeTypeConstant,
@@ -412,6 +417,9 @@ public:
     /// Specifies whether the result be evaluated after expansion
     bool do_evaluate;
 
+    /// Local environment at point of expansion
+    vector<unordered_map<string, shared_ptr<AnalyzerLocalDef>>> local_envs;
+
     vector<shared_ptr<AnalyzerNode>> children() override {
         vector<shared_ptr<AnalyzerNode>> c = {macro};
         for (const auto& a: args) { c.push_back(a); }
@@ -775,6 +783,7 @@ public:
     vector<shared_ptr<AnalyzerNode>> collapseTopLevelForms(const shared_ptr<AnalyzerNode>& node);
 
     shared_ptr<Namespace> currentNamespace();
+    vector<unordered_map<string, shared_ptr<AnalyzerLocalDef>>> local_envs_;
 private:
 
     /* Passes */
@@ -793,7 +802,6 @@ private:
     /// Recursively walks the node tree and generates a list of closed overs for each node
     vector<string> analyzeClosedOvers(const shared_ptr<AnalyzerNode>& node);
 
-    struct LocalDef;
 
     /* Analyzers */
     shared_ptr<AnalyzerNode> analyzeForm(const shared_ptr<ASTNode>& form);
@@ -832,7 +840,7 @@ private:
     /* Environment */
     void pushLocalEnv();
     void popLocalEnv();
-    shared_ptr<LocalDef> lookupInLocalEnv(const std::string& name);
+    shared_ptr<AnalyzerLocalDef> lookupInLocalEnv(const std::string& name);
     void storeInLocalEnv(const std::string& name, bool is_mutable=false);
 
     /* Evaluation Phase */
@@ -867,15 +875,9 @@ private:
       shared_ptr<AnalyzerNode> node;
     };
 
-    struct LocalDef {
-      EvaluationPhase phase;
-      bool is_mutable;
-    };
 
     /// Holds global macros
     std::unordered_map<std::string, shared_ptr<AnalyzerNode>> global_macros_;
-
-    vector<unordered_map<string, shared_ptr<LocalDef>>> local_envs_;
 
     NamespaceManager ns_manager;
 
