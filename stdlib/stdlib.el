@@ -32,6 +32,10 @@
 
   (def-ffi-fn* print* rt_print :el (:el))
 
+                                        ; Exceptions
+  (def-ffi-fn* throw el_rt_throw :el (:el))
+  (def-ffi-fn* exception el_rt_make_exception :el (:el :el :el))
+
   (defmacro defn (name args & body)
     (list 'def name (cons 'lambda (cons args body))))
 
@@ -102,19 +106,18 @@
                                  (list 'if (caar clauses)
                                        (cadar clauses)
                                        (process-clauses (cdr clauses))))))))
-      (let ((result (process-clauses clauses)))
-        (print result)
-        result)))
+      (process-clauses clauses)))
 
-  ;(defn assert-one (x)
-  ;  (if
-  ;      (cond
-  ;       ((nil? x) #t)
-  ;       ((nil? (cdr x)) #t)
-  ;       ((not (nil? (cddr x))) #t)
-  ;       (:else #f))
-  ;      (throw 'invalid-argument "Expected one arg" nil)
-  ;    nil))
+  (defn assert-one (x)
+    (if
+        (cond
+         ((nil? x) #t)
+         ((not (list? x)) #t)
+         ((nil? (cdr x)) #t)
+         ((not (nil? (cddr x))) #t)
+         (:else #f))
+        (throw 'invalid-argument "Expected one arg" nil)
+      nil))
 
   ;(defmacro quasiquote (expr)
   ;  (let ((assert-one-arg (lambda (l)

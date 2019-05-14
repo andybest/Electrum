@@ -69,19 +69,21 @@ int main(int argc, char* argv[]) {
 
             try {
                 auto rv = c.compileAndEvalString(input.str());
-                electrum::print_expr(rv);
+                std::cout << std::endl;
+                rt_print(rv);
+                std::cout << std::endl;
             }
             catch (electrum::CompilerException& e) {
-                std::cout << "Error: " << e.what() << std::endl;
-                std::cout << "\t" << *e.sourcePosition()->filename << ":"
+                std::cerr << "Error: " << e.what() << std::endl;
+                std::cerr << "\t" << *e.sourcePosition()->filename << ":"
                           << e.sourcePosition()->line << ":"
                           << e.sourcePosition()->column << std::endl;
                 break;
             }
             catch (electrum::ParserException& e) {
                 if (e.exceptionType_ != electrum::kParserExceptionMissingRParen) {
-                    std::cout << "Error: " << e.what() << std::endl;
-                    std::cout << "\t" << *e.sourcePosition()->filename << ":"
+                    std::cerr << "Error: " << e.what() << std::endl;
+                    std::cerr << "\t" << *e.sourcePosition()->filename << ":"
                               << e.sourcePosition()->line << ":"
                               << e.sourcePosition()->column << std::endl;
                 } else {
@@ -89,7 +91,7 @@ int main(int argc, char* argv[]) {
                 }
             }
             catch (...) {
-                std::cout << "Uncaught error" << std::endl;
+                std::cerr<< "Uncaught error" << std::endl;
                 break;
             }
 
