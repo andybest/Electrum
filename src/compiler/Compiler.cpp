@@ -316,11 +316,10 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
             compileMacroExpand(macro_expand_node);
         }
         else {
+            auto prev_locals = analyzer_.local_envs_;
             auto   expansion     = compileAndEvalExpander(macro_expand_node);
             Parser p;
             auto   form          = p.readLispValue(expansion, node->sourcePosition);
-
-            auto prev_locals = analyzer_.local_envs_;
             analyzer_.local_envs_ = macro_expand_node->local_envs;
             auto   expanded_node = analyzer_.analyze(form, node->node_depth, node->evaluation_phase);
             analyzer_.local_envs_ = prev_locals;
@@ -340,8 +339,11 @@ void Compiler::compileNode(std::shared_ptr<AnalyzerNode> node) {
     case kAnalyzerNodeTypeSuspendAnalysis: {
         auto n       = std::dynamic_pointer_cast<SuspendAnalysisAnalyzerNode>(node);
         auto form    = n->form;
+        auto prev_locals = analyzer_.local_envs_;
+        analyzer_.local_envs_ = n->saved_locals;
         auto newNode = analyzer_.analyze(form, n->node_depth, n->evaluation_phase);
         compileNode(newNode);
+        analyzer_.local_envs_ = prev_locals;
         break;
     }
 

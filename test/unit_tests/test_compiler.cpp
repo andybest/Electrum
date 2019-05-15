@@ -746,3 +746,13 @@ TEST(Compiler, macroCanReferToLambdaArg) {
 
     rt_deinit_gc();
 }
+
+TEST(Compiler, macroExpansionDoesNotDisruptLocalEnvironment) {
+    rt_init_gc(kGCModeInterpreterOwned);
+
+    Compiler c;
+    c.compileAndEvalString("(defmacro identity (y) y)");
+    EXPECT_NO_THROW(c.compileAndEvalString("(def f (lambda (x) (identity 1) x))"));
+
+    rt_deinit_gc();
+}

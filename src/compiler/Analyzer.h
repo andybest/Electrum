@@ -760,6 +760,8 @@ class SuspendAnalysisAnalyzerNode: public AnalyzerNode {
 public:
     shared_ptr<ASTNode> form;
 
+    vector<unordered_map<string, shared_ptr<AnalyzerLocalDef>>> saved_locals;
+
     AnalyzerNodeType nodeType() override {
         return kAnalyzerNodeTypeSuspendAnalysis;
     }

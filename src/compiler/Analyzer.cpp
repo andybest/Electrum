@@ -64,6 +64,7 @@ shared_ptr<AnalyzerNode> Analyzer::analyzeForm(const shared_ptr<ASTNode>& form) 
         suspended_node->ns = current_ns_;
         suspended_node->form = form;
         suspended_node->evaluation_phase = currentEvaluationPhase();
+        suspended_node->saved_locals = local_envs_;
         return suspended_node;
     }
 
