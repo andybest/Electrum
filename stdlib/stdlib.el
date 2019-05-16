@@ -45,7 +45,6 @@
                       (list f (car remaining) (red f (cdr remaining)))
                     (car remaining)))))
       (let ((result (red f args)))
-        (print* result)
         result)))
 
   (defmacro reduce-args-reverse (f & args)
@@ -54,7 +53,6 @@
       (while (not (nil? remaining))
         (set! result (list f result (car remaining)))
         (set! remaining (cdr remaining)))
-      (print* result)
       result))
 
   (defmacro def-rt-multiarg (binding fn)
@@ -140,32 +138,33 @@
                                        (process-clauses (cdr clauses))))))))
       (process-clauses clauses)))
 
-  (defn assert-one (x)
-    (if
-        (cond
-         ((nil? x) #t)
-         ((not (list? x)) #t)
-         ((nil? (cdr x)) #t)
-         ((not (nil? (cddr x))) #t)
-         (:else #f))
-        (throw 'invalid-argument "Expected one arg" nil)
-      nil))
+  (defn qq-assert-one-arg (x)
+    (unless (and
+             (list? x)
+             (not (nil? (cdr x)))
+             (nil? (cddr x)))
+      (throw 'invalid-argument "Expected one arg" nil)))
 
+  ;((uqs a) 3 4)
+  (defn qq-it-list (l)
+    (let ((is-unquote-splice (cond
+                              ((not (list? (car l))) #f)
+                              ((eq? (caar l) 'uqs) #t)
+                              (:else #f))))
+      (if (nil? (cdr l))
+          (if is-unquote-splice
+              (do (print l)
+                  (list (list 'car (cadar l))))
+            (cons (list 'qq (car l)) nil))
+        (if is-unquote-splice
+            (append (cadar l) (qq-it-list (cdr l)))
+          (cons (list 'qq (car l)) (qq-it-list (cdr l)))))))
 
-  ;(defmacro quasiquote (expr)
-  ;  (let ((assert-one-arg (lambda (l)
-  ;                          (unless (cond
-  ;                                   ((nil? x) #t)
-  ;                                   ((nil? (cdr x) #t))
-  ;                                   ((not (nil? (cddr x))))
-  ;                                   (:else #f))
-  ;                            (throw 'invalid-argument "Expected one arg" nil)))))
-  ;    (cond
-  ;     ((not (list? expr)) (list 'quote expr))
-  ;     ((eq? (car expr) 'unquote) (do
-  ;                                    (assert-one-arg expr)
-  ;                                    (cadr expr))))))
-
+  (defmacro qq (expr)
+    (cond
+     ((not (list? expr)) (list 'quote expr))
+     ((eq? (car expr) 'uq) (do
+                               (qq-assert-one-arg expr)
+                               (cadr expr)))
+     (:else (cons 'list (qq-it-list expr)))))
   )
-
-

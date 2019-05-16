@@ -90,6 +90,7 @@ int main(int argc, char* argv[]) {
                     std::cerr << "\t" << *e.sourcePosition()->filename << ":"
                               << e.sourcePosition()->line << ":"
                               << e.sourcePosition()->column << std::endl;
+                    break;
                 } else {
                     continue;
                 }
